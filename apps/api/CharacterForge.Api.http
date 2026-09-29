@@ -1,0 +1,9 @@
+@CharacterForge_Api = http://localhost:5154
+
+GET {{CharacterForge_Api}}/health
+Accept: application/json
+
+###
+
+GET {{CharacterForge_Api}}/api/meta
+Accept: application/json

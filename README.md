@@ -1,0 +1,88 @@
+# Character Forge
+
+Character Forge is a mobile-first, rule-aware character builder for the modern fifth-edition rules available in **SRD 5.2.1**. It aims to feel like an adventurer's workshop rather than a themed business form, while keeping the codebase straightforward and production-minded.
+
+The project currently contains the completed discovery and foundation phases: a responsive dark-fantasy landing experience, route shell, and a minimal React-to-ASP.NET Core integration. The catalog and character builder are intentionally not implemented yet.
+
+## Stack
+
+- React 19, TypeScript (strict), Vite, React Router
+- TanStack Query, Zod, Motion, Lucide
+- ASP.NET Core on .NET 10, minimal REST endpoints, OpenAPI, Problem Details
+- xUnit and ASP.NET Core integration testing
+- Vitest and Testing Library
+- IndexedDB is planned for local character storage; there is no server database or authentication
+
+## Repository layout
+
+```text
+apps/
+  api/          ASP.NET Core API
+  web/          React application
+docs/
+  DECISIONS/    Architecture decision records
+tests/
+  CharacterForge.Api.Tests/
+```
+
+The backend uses feature folders and a small `Infrastructure` area. More projects or layers will be added only when a real dependency boundary requires them.
+
+## Requirements
+
+- Node.js 24 (see `.nvmrc`; Vite also supports its documented compatible Node versions)
+- npm 12+
+- .NET SDK 10.0.401 or a compatible newer feature band
+
+## Run locally
+
+Install frontend dependencies from the repository root:
+
+```bash
+npm install
+```
+
+Start the API and web app in separate terminals:
+
+```bash
+dotnet run --project apps/api
+npm run dev:web
+```
+
+Open `http://localhost:5173`. Vite proxies `/api` and `/health` to `http://localhost:5154` during development.
+
+Optional frontend configuration can be copied from `apps/web/.env.example`. Production CORS origins are configured with `Cors__AllowedOrigins__0`, `Cors__AllowedOrigins__1`, and so on; production host filtering is configured with `AllowedHosts`. No production origin is allowed by default.
+
+## Quality checks
+
+```bash
+npm run lint:web
+npm run test:web
+npm run build:web
+dotnet build CharacterForge.slnx --configuration Release
+dotnet test CharacterForge.slnx --configuration Release
+```
+
+When the API runs in Development, its OpenAPI document is available at `http://localhost:5154/openapi/v1.json`. Its health endpoint is `http://localhost:5154/health`.
+
+## Data and licensing
+
+The selected rules contract is `ruleset: "2024"` and `rulesVersion: "SRD-5.2.1"`. Future catalog data will be normalized by the backend from the [D&D 5e SRD API 2024](https://www.dnd5eapi.co/api/2024). The frontend will not depend directly on that provider's response shape.
+
+Only legally redistributable SRD material is in scope. Do not add content from non-SRD sourcebooks or scrape D&D Beyond. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) and the [API research checkpoint](docs/SRD-API-RESEARCH.md).
+
+## Architecture and roadmap
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Current progress](docs/PROGRESS.md)
+- [Architecture decisions](docs/DECISIONS)
+
+## Current limitations
+
+- Catalog, Rule Engine, builder, IndexedDB storage, import/export, and print layouts are future phases.
+- The D&D API's 2024 surface is live, but its public introduction page still defaults to 2014 and upstream documentation contains stale versioning copy. Phase 2 must validate each consumed 2024 schema against the live endpoint and OpenAPI source.
+- The API exposes no immutable content snapshot identifier in its normal resource responses; Character Forge must retain its own provider-observation metadata when caching catalog content.
+
+## License
+
+Project source licensing has not yet been selected. Third-party content and assets retain the licenses recorded in [ATTRIBUTIONS.md](ATTRIBUTIONS.md).

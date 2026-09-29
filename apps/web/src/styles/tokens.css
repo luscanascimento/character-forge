@@ -1,0 +1,48 @@
+:root {
+  color-scheme: dark;
+
+  --color-void: #080807;
+  --color-charcoal: #0d0c0b;
+  --color-coal: #141210;
+  --color-surface: #1b1713;
+  --color-surface-raised: #241d17;
+  --color-border: #493928;
+  --color-border-bright: #76583a;
+  --color-parchment: #e4d4b2;
+  --color-parchment-bright: #f1e5c9;
+  --color-text: #d5c8ae;
+  --color-text-muted: #9c907d;
+  --color-bronze: #b78952;
+  --color-gold: #d2a55f;
+  --color-ember: #b64024;
+  --color-ember-bright: #df6740;
+  --color-wine: #5d1b1e;
+  --color-success: #77946a;
+  --color-danger: #c75a4f;
+
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  --font-body: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-label: ui-monospace, 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+
+  --radius-sm: 0.2rem;
+  --radius-md: 0.45rem;
+  --radius-lg: 0.8rem;
+
+  --duration-fast: 140ms;
+  --duration-normal: 240ms;
+  --duration-slow: 500ms;
+
+  --shadow-deep: 0 28px 80px rgb(0 0 0 / 45%);
+  --shadow-ember: 0 0 32px rgb(182 64 36 / 24%);
+  --content-width: 74rem;
+}

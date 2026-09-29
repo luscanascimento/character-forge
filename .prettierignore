@@ -1,0 +1,8 @@
+**/bin
+**/obj
+**/dist
+**/node_modules
+**/coverage
+*.png
+*.slnx
+package-lock.json

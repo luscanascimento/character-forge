@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/apps/" />
+  <Folder Name="/apps/api/">
+    <Project Path="apps/api/CharacterForge.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CharacterForge.Api.Tests/CharacterForge.Api.Tests.csproj" />
+  </Folder>
+</Solution>
