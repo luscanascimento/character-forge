@@ -2,13 +2,13 @@
 
 Character Forge is a mobile-first, rule-aware character builder for the modern fifth-edition rules available in **SRD 5.2.1**. It aims to feel like an adventurer's workshop rather than a themed business form, while keeping the codebase straightforward and production-minded.
 
-The project currently contains the completed discovery and foundation phases: a responsive dark-fantasy landing experience, route shell, and a minimal React-to-ASP.NET Core integration. The catalog and character builder are intentionally not implemented yet.
+The project currently contains the completed discovery, foundation, and SRD catalog phases: a responsive dark-fantasy landing experience plus a searchable compendium backed by normalized SRD 5.2.1 data. The character domain and builder are intentionally not implemented yet.
 
 ## Stack
 
 - React 19, TypeScript (strict), Vite, React Router
 - TanStack Query, Zod, Motion, Lucide
-- ASP.NET Core on .NET 10, minimal REST endpoints, OpenAPI, Problem Details
+- ASP.NET Core on .NET 10, typed `HttpClient`, memory cache, minimal REST endpoints, OpenAPI, Problem Details
 - xUnit and ASP.NET Core integration testing
 - Vitest and Testing Library
 - IndexedDB is planned for local character storage; there is no server database or authentication
@@ -52,6 +52,8 @@ Open `http://localhost:5173`. Vite proxies `/api` and `/health` to `http://local
 
 Optional frontend configuration can be copied from `apps/web/.env.example`. Production CORS origins are configured with `Cors__AllowedOrigins__0`, `Cors__AllowedOrigins__1`, and so on; production host filtering is configured with `AllowedHosts`. No production origin is allowed by default.
 
+The SRD provider is configured through `SrdApi__BaseUrl`, `SrdApi__TimeoutSeconds`, and `SrdApi__CacheDurationMinutes`. Defaults target the public 2024 API with an 8-second timeout and six-hour in-memory cache. Restarting the API clears that cache.
+
 ## Quality checks
 
 ```bash
@@ -68,7 +70,7 @@ When the API runs in Development, its OpenAPI document is available at `http://l
 
 The selected rules contract is `ruleset: "2024"` and `rulesVersion: "SRD-5.2.1"`. Future catalog data will be normalized by the backend from the [D&D 5e SRD API 2024](https://www.dnd5eapi.co/api/2024). The frontend will not depend directly on that provider's response shape.
 
-Only legally redistributable SRD material is in scope. Do not add content from non-SRD sourcebooks or scrape D&D Beyond. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) and the [API research checkpoint](docs/SRD-API-RESEARCH.md).
+Only legally redistributable SRD material is in scope. Do not add content from non-SRD sourcebooks or scrape D&D Beyond. The catalog exposes classes, species, backgrounds, feats, spells, and equipment through `/api/catalog/{category}` and `/api/catalog/{category}/{id}`. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) and the [API research checkpoint](docs/SRD-API-RESEARCH.md).
 
 ## Architecture and roadmap
 
@@ -79,8 +81,8 @@ Only legally redistributable SRD material is in scope. Do not add content from n
 
 ## Current limitations
 
-- Catalog, Rule Engine, builder, IndexedDB storage, import/export, and print layouts are future phases.
-- The D&D API's 2024 surface is live, but its public introduction page still defaults to 2014 and upstream documentation contains stale versioning copy. Phase 2 must validate each consumed 2024 schema against the live endpoint and OpenAPI source.
+- Rule Engine, builder, IndexedDB storage, import/export, and print layouts are future phases.
+- Spell list filtering currently supports name, level, school, and class. Ritual/concentration filters require a richer local index because the upstream 2024 list contract does not expose those fields; that index is deferred until spellcasting work justifies it.
 - The API exposes no immutable content snapshot identifier in its normal resource responses; Character Forge must retain its own provider-observation metadata when caching catalog content.
 
 ## License

@@ -24,13 +24,13 @@ There is no authentication, server database, message broker, microservice bounda
 
 - React Router owns navigation and lazy route boundaries.
 - TanStack Query owns server state, including loading and unavailable-API states.
-- Zod validates data crossing untrusted boundaries. It is already used for `/api/meta` and will later validate imports/local migrations.
+- Zod validates data crossing untrusted boundaries. It validates `/api/meta` and all catalog responses and will later validate imports/local migrations.
 - React Hook Form will be introduced only when builder forms justify it.
 - Motion provides a small number of meaningful transitions and respects `prefers-reduced-motion`.
 - CSS design tokens establish the charcoal, parchment, bronze, ember, typography, spacing, radius, and duration vocabulary. Components use semantic classes rather than utility walls.
 - Components display rule results; they must not independently determine rule legality.
 
-Route placeholders are intentional Phase 1 boundaries, not implemented features.
+Compendium routes are lazy-loaded and keep server state in TanStack Query. Search/filter state lives in the URL so views are linkable and browser navigation remains useful. External descriptions are rendered as text; no provider HTML enters the DOM.
 
 ## Backend
 
@@ -38,23 +38,32 @@ Route placeholders are intentional Phase 1 boundaries, not implemented features.
 
 ```text
 Features/
+  Catalog/
   Meta/
 Infrastructure/
+  Srd/
 Program.cs
 ```
 
 New catalog functionality should live in its feature area, with shared infrastructure extracted only after a real second consumer appears. The API currently provides:
 
 - `GET /api/meta` for the active Character Forge rules contract
+- `GET /api/catalog/{category}` for normalized, searched, filtered, and paginated summaries
+- `GET /api/catalog/{category}/{id}` for normalized detail
 - `GET /health`
 - `/openapi/v1.json` in Development
 - centralized exception handling with safe Problem Details
 - configured-origin CORS (deny-by-default when no origins are configured)
 - baseline response security headers and production HTTPS/HSTS
+- a per-IP fixed-window limit on catalog reads
+
+The SRD adapter uses a typed `HttpClient` created by `HttpClientFactory`, an eight-second configurable timeout, request cancellation, explicit external DTOs, and category-specific mapping. Provider transport failures, timeouts, invalid JSON, and non-success responses become safe `503` Problem Details. Missing detail resources remain `404`.
+
+`CatalogService` caches normalized upstream lists and details in `IMemoryCache` for six hours by default. Search, sorting, and pagination operate over cached lists; cache entries carry their observed `fetchedAt` instant. There is no stale-data store across process restarts yet.
 
 ## Domain
 
-The domain does not exist yet; it begins in Phase 3 after normalized catalog contracts are stable. The central aggregate will carry explicit rules identity:
+The domain does not exist yet; it begins in Phase 3 now that normalized catalog contracts are stable. The central aggregate will carry explicit rules identity:
 
 ```text
 ruleset: "2024"
@@ -68,7 +77,7 @@ External API DTOs, domain models, and public response contracts may differ when 
 
 ## Data flow
 
-Catalog reads will follow this path in Phase 2:
+Catalog reads follow this path:
 
 ```text
 React query
@@ -77,10 +86,10 @@ React query
   → memory cache
   → SRD content adapter
   → external 2024 DTO
-  → normalized Character Forge contract
+  → normalized Character Forge contract with provider/rules metadata
 ```
 
-The frontend never calls `dnd5eapi.co` directly. Provider timeouts, cancellation, malformed responses, and temporary unavailability become predictable Character Forge errors. Retries are bounded and used only for transient, idempotent GET failures.
+The frontend never calls `dnd5eapi.co` directly. Provider timeouts, cancellation, malformed responses, and temporary unavailability become predictable Character Forge errors. No automatic backend retry is applied yet: provider reads are idempotent, but six-hour caching and explicit user retry avoid multiplying traffic during an outage.
 
 Character writes will remain browser-local:
 
@@ -120,7 +129,7 @@ Spell level is independent from character or class level. A spell becomes availa
 
 ## Content providers
 
-Content source and rules are separate concerns. Phase 2 will introduce the smallest useful adapter contract around the one real provider, the D&D 5e SRD API 2024. No licensed or homebrew provider class will be implemented until such a provider exists.
+Content source and rules are separate concerns. `ISrdContentSource` is the smallest useful adapter contract around the one real provider, the D&D 5e SRD API 2024. It exists as a test and application boundary, not as a speculative provider hierarchy. No licensed or homebrew provider class will be implemented until such a provider exists.
 
 The SRD adapter owns HTTP behavior and external DTO normalization. The Rule Engine consumes normalized content and has no dependency on upstream URLs or JSON field names.
 
@@ -137,7 +146,7 @@ Phase 8 will create an original semantic HTML sheet and dedicated `@media print`
 ## Testing strategy
 
 - Backend unit tests concentrate on domain rules as they arrive.
-- Backend integration tests cover public endpoints and external-adapter behavior with controlled HTTP handlers.
+- Backend integration tests cover public endpoints and external-adapter behavior with controlled HTTP handlers, including provider shape differences and predictable failures.
 - Frontend tests cover high-value behavior: navigation, explanations, persistence, import/export, and failures.
 - A small Playwright suite arrives after the primary builder journey exists.
 - Large snapshots and tests of implementation details are avoided.

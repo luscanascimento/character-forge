@@ -2,60 +2,63 @@
 
 ## Current phase
 
-**Phase 1 — Foundation: complete.**
+**Phase 2 — SRD Catalog: complete.**
 
-Phase 0 and Phase 1 are implemented. Work must resume at **Phase 2 — SRD Catalog** without redoing foundation work.
+Phases 0–2 are implemented. Work must resume at **Phase 3 — Character Domain** without redoing catalog or foundation work.
 
 ## Last completed work
 
-- Validated SRD 5.2.1 licensing and the live D&D 5e SRD API `/api/2024` resource surface.
-- Recorded the API inventory, observed counts, missing-general-rules caveat, and upstream documentation discrepancy.
-- Created the React/Vite/strict TypeScript and ASP.NET Core/.NET 10 workspace.
-- Added React Router lazy routes, TanStack Query, Zod response validation, Motion, Lucide, responsive design tokens, and accessible reduced-motion behavior.
-- Added a dark-fantasy homepage, original generated hero artwork, placeholder routes, local-first microcopy, and in-app legal attribution.
-- Added `/api/meta`, `/health`, development OpenAPI, Problem Details, global exception handling, restricted configurable CORS, production HTTPS/HSTS, and baseline security headers.
-- Added frontend behavioral tests and backend integration tests.
+- Revalidated the official 2024 documentation, live endpoints, upstream OpenAPI, and representative payloads for every consumed category.
+- Added a typed `HttpClientFactory` SRD adapter with explicit external DTOs, eight-second configurable timeout, cancellation, malformed-response handling, and normalized mapping.
+- Added six-hour configurable `IMemoryCache` entries for lists/details, provider observation timestamps, and explicit `2024` / `SRD-5.2.1` metadata on public contracts.
+- Added safe catalog endpoints for classes, species, backgrounds, feats, spells, and equipment, including search, sorting, pagination, input limits, `404`, validation Problem Details, and predictable `503` provider failures.
+- Added spell filters for level, school, and class. Combined school/class queries intersect official upstream result sets without downloading every spell detail.
+- Added a per-IP catalog limit of 120 requests per minute and suppressed successful `HttpClient` request noise while retaining structured failure logs.
+- Built the responsive dark-fantasy compendium, category navigation, URL-backed search/filters, loading/empty/error states, reduced-motion transitions, and detail views that never render provider HTML.
+- Added backend adapter/endpoint tests and frontend compendium behavior tests. Live smoke tests pass for representative content in all six categories.
+- Documented why ritual/concentration spell filters remain deferred: the upstream list contract exposes neither field, and eager-fetching 339 details would be wasteful.
 
 ## Work in progress
 
-None. The working checkpoint is the end of Phase 1.
+None. The working checkpoint is the end of Phase 2.
 
 ## Next step
 
-Start Phase 2 with a narrow vertical slice:
+Start Phase 3 with a narrow, test-first domain slice:
 
-1. Re-read `README.md`, this file, `ROADMAP.md`, `ARCHITECTURE.md`, ADR-001 and ADR-003, and `SRD-API-RESEARCH.md`.
-2. Define the first Character Forge catalog contract for class summaries.
-3. Implement a typed `HttpClientFactory` client for `/api/2024/classes`, with timeout, cancellation, mapping, `IMemoryCache`, and predictable provider failures.
-4. Add integration tests with a stubbed upstream handler.
-5. Expose the normalized class-summary endpoint and build the first compendium list state.
-
-Do not consume the external API directly from React and do not begin character domain rules yet.
+1. Re-read `README.md`, this file, `ROADMAP.md`, `ARCHITECTURE.md`, ADR-001, and the normalized catalog contracts.
+2. Define the versioned `Character` aggregate boundary with `ruleset: "2024"`, `rulesVersion: "SRD-5.2.1"`, identity, six ability scores, species/background references, and a class-progression collection whose first implementation supports exactly one class.
+3. Implement focused ability-modifier and proficiency-bonus calculations plus structured `ValidationResult` / `RuleViolation` types.
+4. Add unit tests for ability score bounds/modifiers, proficiency progression, missing choices, and rules-version mismatches.
+5. Expose only the minimum validation/calculation API needed to prove the domain boundary; do not begin the builder, IndexedDB, class progression features, or spellcasting.
 
 ## Pending decisions
 
-- Cache duration and stale-data fallback policy should be decided from observed provider behavior during the first Phase 2 slice.
-- Whether normalized provider snapshots need lightweight checked-in fixtures should be decided after the first two resource schemas are mapped.
+- The exact versioned character document shape and the boundary between persisted draft data and validated domain state must be settled in Phase 3.
+- Whether the frontend may mirror any presentation-only calculation must be decided only after the canonical server rule exists and can be contract-tested.
 - A project source-code license remains to be selected before public portfolio release.
+- Checked-in provider snapshots are not currently justified; small representative inline fixtures cover consumed schema variants. Revisit only if upstream contract testing becomes hard to understand.
 
 ## Known issues and limitations
 
-- Catalog, Rule Engine, builder, IndexedDB, import/export, and print functionality are not implemented by design.
-- Upstream 2024 documentation is partially inconsistent: the live API and source expose 2024 while introductory/readme prose still references 2014.
+- The Rule Engine, builder, IndexedDB, import/export, and print functionality are not implemented by design.
+- Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
+- Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
+- Cache is process-local and has no stale-on-error persistence after an API restart.
 - The external API does not expose an immutable catalog snapshot version in normal responses.
 - The hero has been converted to a 140 KB WebP; responsive variants can be considered during the Phase 9 performance audit if measurements justify them.
 
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 2 passing (`vitest run`)
+- Frontend unit tests: 6 passing across 3 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
-- Formatting: passing (`prettier --check .` and `dotnet format --verify-no-changes`)
-- Backend Release build: passing with 0 warnings and 0 errors
-- Backend integration tests: 3 passing
-- Manual HTTP smoke checks: `/api/meta`, `/health`, OpenAPI, security headers, and origin-specific CORS passing
-- Visual smoke checks: desktop 1440×1000 and mobile 375×812 reviewed; primary content and controls remain usable
+- Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
+- Backend build: passing with 0 warnings and 0 errors
+- Backend adapter/integration tests: 15 passing
+- Live provider smoke checks: classes, species, backgrounds, feats, filtered spells, and equipment list/detail responses passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
+- Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 
 ## Last checkpoint
 

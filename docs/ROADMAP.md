@@ -22,7 +22,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** Phase 0.
 
-## Phase 2 — SRD Catalog (next)
+## Phase 2 — SRD Catalog (complete)
 
 **Objectives:** implement the dedicated D&D API client, external DTO mapping, memory cache, predictable provider errors, and compendium browse/detail experiences for the explicitly supported SRD categories.
 
@@ -30,7 +30,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** Phase 1 and the endpoint inventory in `SRD-API-RESEARCH.md`.
 
-## Phase 3 — Character Domain
+## Phase 3 — Character Domain (next)
 
 **Objectives:** model a versioned character, ability scores, one initial class, species, background, proficiencies, derived statistics, and small cohesive rules.
 

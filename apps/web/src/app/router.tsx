@@ -5,6 +5,8 @@ import { AppShell } from '../components/AppShell'
 import { RouteFallback } from '../components/RouteFallback'
 
 const HomePage = lazy(() => import('../pages/HomePage'))
+const CompendiumPage = lazy(() => import('../pages/CompendiumPage'))
+const CatalogDetailPage = lazy(() => import('../pages/CatalogDetailPage'))
 const ComingSoonPage = lazy(() => import('../pages/ComingSoonPage'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'))
 const AttributionsPage = lazy(() => import('../pages/AttributionsPage'))
@@ -33,13 +35,15 @@ export const router = createBrowserRouter([
       },
       {
         path: '/compendium',
-        element: withSuspense(
-          <ComingSoonPage
-            eyebrow="The archive is sealed"
-            title="Compendium"
-            description="SRD 5.2.1 classes, species, spells, feats, and equipment arrive in the next phase."
-          />,
-        ),
+        element: withSuspense(<CompendiumPage />),
+      },
+      {
+        path: '/compendium/:category',
+        element: withSuspense(<CompendiumPage />),
+      },
+      {
+        path: '/compendium/:category/:id',
+        element: withSuspense(<CatalogDetailPage />),
       },
       {
         path: '/characters',

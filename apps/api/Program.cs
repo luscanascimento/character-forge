@@ -1,5 +1,9 @@
+using CharacterForge.Api.Features.Catalog;
 using CharacterForge.Api.Features.Meta;
 using CharacterForge.Api.Infrastructure;
+using CharacterForge.Api.Infrastructure.Srd;
+using Microsoft.Extensions.Options;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,9 +16,39 @@ builder.Services.AddProblemDetails(options =>
         context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
     };
 });
+builder.Services.AddExceptionHandler<SrdProviderExceptionHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
+builder.Services.AddMemoryCache();
+builder.Services.AddRateLimiter(rateLimiter =>
+{
+    rateLimiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    rateLimiter.AddPolicy("catalog", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 120,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
+
+builder.Services
+    .AddOptions<SrdApiOptions>()
+    .Bind(builder.Configuration.GetSection(SrdApiOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddHttpClient<ISrdContentSource, SrdApiClient>((services, client) =>
+{
+    var options = services.GetRequiredService<IOptions<SrdApiOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl, UriKind.Absolute);
+    client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("CharacterForge/1.0");
+});
+builder.Services.AddScoped<CatalogService>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
@@ -49,9 +83,11 @@ else
 }
 
 app.UseCors();
+app.UseRateLimiter();
 
 app.MapHealthChecks("/health");
 app.MapMetaEndpoints();
+app.MapCatalogEndpoints();
 
 app.Run();
 

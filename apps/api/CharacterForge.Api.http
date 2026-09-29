@@ -7,3 +7,18 @@ Accept: application/json
 
 GET {{CharacterForge_Api}}/api/meta
 Accept: application/json
+
+###
+
+GET {{CharacterForge_Api}}/api/catalog/classes?pageSize=12
+Accept: application/json
+
+###
+
+GET {{CharacterForge_Api}}/api/catalog/spells?level=3&school=evocation&class=wizard&sort=level
+Accept: application/json
+
+###
+
+GET {{CharacterForge_Api}}/api/catalog/spells/fireball
+Accept: application/json
