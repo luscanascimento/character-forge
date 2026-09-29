@@ -18,6 +18,32 @@ public sealed class SrdApiClientTests
               "primary_ability": { "desc": "Intelligence", "ability_scores": [{ "index": "int", "name": "INT" }] },
               "hit_die": 6,
               "proficiencies": [{ "index": "daggers", "name": "Daggers" }],
+              "proficiency_choices": [{
+                "desc": "Choose 1: Arcana or History",
+                "choose": 1,
+                "type": "proficiencies",
+                "from": {
+                  "option_set_type": "options_array",
+                  "options": [
+                    {
+                      "option_type": "reference",
+                      "item": {
+                        "index": "skill-arcana",
+                        "name": "Skill: Arcana",
+                        "url": "/api/2024/proficiencies/skill-arcana"
+                      }
+                    },
+                    {
+                      "option_type": "reference",
+                      "item": {
+                        "index": "skill-history",
+                        "name": "Skill: History",
+                        "url": "/api/2024/proficiencies/skill-history"
+                      }
+                    }
+                  ]
+                }
+              }],
               "saving_throws": [{ "index": "int", "name": "INT" }],
               "subclasses": [{ "index": "evoker", "name": "Evoker" }],
               "spellcasting": { "level": 1, "spellcasting_ability": { "index": "int", "name": "INT" } }
@@ -36,6 +62,10 @@ public sealed class SrdApiClientTests
         Assert.Contains(
             item.CharacterCreation.GrantedProficiencies,
             proficiency => proficiency.Id == "daggers");
+        var choice = Assert.Single(item.CharacterCreation.ProficiencyChoices);
+        Assert.Equal("classes/wizard/proficiencies/0", choice.Id);
+        Assert.Equal(1, choice.Count);
+        Assert.Equal(["skill-arcana", "skill-history"], choice.Options.Select(option => option.Id));
     }
 
     [Fact]
@@ -72,6 +102,134 @@ public sealed class SrdApiClientTests
         Assert.Equal(
             ["skill-insight", "tool-calligraphers-supplies"],
             item.CharacterCreation.GrantedProficiencies.Select(proficiency => proficiency.Id));
+    }
+
+    [Fact]
+    public async Task GetSpecies_ResolvesTraitProficiencyChoiceAndNormalizesSkillIds()
+    {
+        var client = CreateClient(request => request.RequestUri!.PathAndQuery switch
+        {
+            "/api/2024/species/elf" => Json("""
+                {
+                  "index": "elf",
+                  "name": "Elf",
+                  "type": "Humanoid",
+                  "size": "Medium",
+                  "speed": 30,
+                  "traits": [{ "index": "keen-senses", "name": "Keen Senses" }]
+                }
+                """),
+            "/api/2024/traits/keen-senses" => Json("""
+                {
+                  "index": "keen-senses",
+                  "name": "Keen Senses",
+                  "proficiency_choices": {
+                    "desc": "Choose Insight or Perception",
+                    "choose": 1,
+                    "type": "proficiencies",
+                    "from": {
+                      "option_set_type": "options_array",
+                      "options": [
+                        {
+                          "option_type": "reference",
+                          "item": {
+                            "index": "insight",
+                            "name": "Insight",
+                            "url": "/api/2024/skills/insight"
+                          }
+                        },
+                        {
+                          "option_type": "reference",
+                          "item": {
+                            "index": "perception",
+                            "name": "Perception",
+                            "url": "/api/2024/skills/perception"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+                """),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        });
+
+        var item = await client.GetItemAsync(CatalogCategory.Species, "elf", CancellationToken.None);
+
+        Assert.NotNull(item?.CharacterCreation);
+        var choice = Assert.Single(item.CharacterCreation.ProficiencyChoices);
+        Assert.Equal("species/elf/traits/keen-senses/proficiencies/0", choice.Id);
+        Assert.Equal(["skill-insight", "skill-perception"], choice.Options.Select(option => option.Id));
+        Assert.All(choice.Options, option => Assert.StartsWith("Skill: ", option.Name));
+    }
+
+    [Fact]
+    public async Task GetClass_FlattensNestedProficiencyChoiceFamilies()
+    {
+        const string json = """
+            {
+              "index": "monk",
+              "name": "Monk",
+              "hit_die": 8,
+              "proficiency_choices": [{
+                "desc": "Choose an artisan tool or musical instrument",
+                "choose": 1,
+                "type": "proficiencies",
+                "from": {
+                  "option_set_type": "options_array",
+                  "options": [
+                    {
+                      "option_type": "choice",
+                      "choice": {
+                        "desc": "Artisan tools",
+                        "choose": 1,
+                        "type": "proficiencies",
+                        "from": {
+                          "option_set_type": "options_array",
+                          "options": [{
+                            "option_type": "reference",
+                            "item": {
+                              "index": "carpenters-tools",
+                              "name": "Carpenter's Tools",
+                              "url": "/api/2024/proficiencies/tool-carpenters-tools"
+                            }
+                          }]
+                        }
+                      }
+                    },
+                    {
+                      "option_type": "choice",
+                      "choice": {
+                        "desc": "Musical instruments",
+                        "choose": 1,
+                        "type": "proficiencies",
+                        "from": {
+                          "option_set_type": "options_array",
+                          "options": [{
+                            "option_type": "reference",
+                            "item": {
+                              "index": "flute",
+                              "name": "Flute",
+                              "url": "/api/2024/proficiencies/flute"
+                            }
+                          }]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }]
+            }
+            """;
+        var client = CreateClient(_ => Json(json));
+
+        var item = await client.GetItemAsync(CatalogCategory.Classes, "monk", CancellationToken.None);
+
+        Assert.NotNull(item?.CharacterCreation);
+        var choice = Assert.Single(item.CharacterCreation.ProficiencyChoices);
+        Assert.Equal(
+            ["tool-carpenters-tools", "flute"],
+            choice.Options.Select(option => option.Id));
     }
 
     [Theory]

@@ -47,11 +47,12 @@ public sealed class CharacterEvaluationService(CatalogService catalog)
         }
 
         var grants = new List<ProficiencyGrant>();
-        AddGrants(grants, selectedClass!, classFacts);
-        AddGrants(grants, species!, RequireFacts(species!, "species"));
-        AddGrants(grants, background!, RequireFacts(background!, "background"));
+        var choices = new List<ProficiencyChoiceRule>();
+        AddFacts(grants, choices, selectedClass!, classFacts);
+        AddFacts(grants, choices, species!, RequireFacts(species!, "species"));
+        AddFacts(grants, choices, background!, RequireFacts(background!, "background"));
 
-        return CharacterEvaluator.Evaluate(character, new CharacterRulesContext(hitDie, grants));
+        return CharacterEvaluator.Evaluate(character, new CharacterRulesContext(hitDie, grants, choices));
     }
 
     private static List<RuleViolation> MissingContentViolations(
@@ -89,8 +90,9 @@ public sealed class CharacterEvaluationService(CatalogService catalog)
         item.CharacterCreation
         ?? throw new SrdProviderException($"The selected {category} did not provide character creation facts.");
 
-    private static void AddGrants(
+    private static void AddFacts(
         ICollection<ProficiencyGrant> grants,
+        ICollection<ProficiencyChoiceRule> choices,
         CatalogItemDetail item,
         CatalogCharacterCreationFacts facts)
     {
@@ -102,6 +104,18 @@ public sealed class CharacterEvaluationService(CatalogService catalog)
         {
             grants.Add(new ProficiencyGrant(
                 new ContentReference(proficiency.Id, proficiency.Name),
+                source));
+        }
+
+        foreach (var choice in facts.ProficiencyChoices)
+        {
+            choices.Add(new ProficiencyChoiceRule(
+                choice.Id,
+                choice.Prompt,
+                choice.Count,
+                choice.Options
+                    .Select(option => new ContentReference(option.Id, option.Name))
+                    .ToArray(),
                 source));
         }
     }

@@ -126,5 +126,16 @@ public sealed class CharacterValidatorTests
         new AbilityScores(8, 14, 13, 12, 10, 16),
         new ContentReference("elf", "Elf"),
         new ContentReference("acolyte", "Acolyte"),
-        [new ClassProgression(new ContentReference("wizard", "Wizard"), level)]);
+        [new ClassProgression(new ContentReference("wizard", "Wizard"), level)],
+        [
+            new ProficiencyChoiceSelection(
+                "classes/wizard/proficiencies/0",
+                [
+                    new ContentReference("skill-arcana", "Skill: Arcana"),
+                    new ContentReference("skill-history", "Skill: History")
+                ]),
+            new ProficiencyChoiceSelection(
+                "species/elf/traits/keen-senses/proficiencies/0",
+                [new ContentReference("skill-perception", "Skill: Perception")])
+        ]);
 }

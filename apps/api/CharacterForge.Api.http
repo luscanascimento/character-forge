@@ -48,5 +48,20 @@ Content-Type: application/json
       "class": { "id": "wizard", "name": "Wizard" },
       "level": 1
     }
+  ],
+  "proficiencyChoices": [
+    {
+      "choiceId": "classes/wizard/proficiencies/0",
+      "selections": [
+        { "id": "skill-arcana", "name": "Skill: Arcana" },
+        { "id": "skill-history", "name": "Skill: History" }
+      ]
+    },
+    {
+      "choiceId": "species/elf/traits/keen-senses/proficiencies/0",
+      "selections": [
+        { "id": "skill-perception", "name": "Skill: Perception" }
+      ]
+    }
   ]
 }

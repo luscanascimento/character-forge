@@ -28,9 +28,17 @@ public sealed record GrantedProficiency(
     ContentReference Proficiency,
     IReadOnlyList<ProficiencySource> Sources);
 
+public sealed record ProficiencyChoiceRule(
+    string Id,
+    string Prompt,
+    int Count,
+    IReadOnlyList<ContentReference> Options,
+    ProficiencySource Source);
+
 public sealed record CharacterRulesContext(
     int HitDie,
-    IReadOnlyList<ProficiencyGrant> ProficiencyGrants);
+    IReadOnlyList<ProficiencyGrant> ProficiencyGrants,
+    IReadOnlyList<ProficiencyChoiceRule> ProficiencyChoices);
 
 public sealed record CharacterEvaluation(
     ValidationResult Validation,
@@ -44,6 +52,15 @@ public static class CharacterEvaluator
         if (!validation.IsValid)
         {
             return new CharacterEvaluation(validation, null);
+        }
+
+        var proficiencyResolution = ProficiencyChoiceRules.Resolve(
+            character.ProficiencyChoices,
+            context.ProficiencyChoices,
+            context.ProficiencyGrants);
+        if (!proficiencyResolution.Validation.IsValid)
+        {
+            return new CharacterEvaluation(proficiencyResolution.Validation, null);
         }
 
         var abilities = character.Abilities!;
@@ -65,6 +82,6 @@ public static class CharacterEvaluator
                     ? HitPointRules.GetLevelOneMaximum(context.HitDie, abilities.Constitution)
                     : null,
                 context.HitDie,
-                ProficiencyRules.MergeGrants(context.ProficiencyGrants)));
+                ProficiencyRules.MergeGrants(proficiencyResolution.Grants)));
     }
 }

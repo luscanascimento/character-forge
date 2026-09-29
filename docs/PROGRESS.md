@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 3 — Character Domain: in progress.**
+**Phase 3 — Character Domain: complete.**
 
-Phases 0–2 are implemented. Two Phase 3 domain slices are complete; work must continue with proficiency choices without starting the builder or persistence.
+Phases 0–3 are implemented. Work must resume at **Phase 4 — Character Builder MVP** without expanding class progression, equipment, or spellcasting early.
 
 ## Last completed work
 
@@ -18,32 +18,37 @@ Phases 0–2 are implemented. Two Phase 3 domain slices are complete; work must 
 - Added trusted content resolution for selected class, species, and background, including structured violations when a saved reference no longer exists.
 - Added unarmored AC and level-1 HP calculations plus fixed proficiency grants that deduplicate by id while retaining every source.
 - Live-smoke-tested the full validation flow with Wizard, Elf, and Acolyte against the 2024 provider.
+- Normalized class/background proficiency choices and species choices referenced through traits into stable ids, counts, prompts, and canonical option lists.
+- Flattened the provider's nested Monk tool families without leaking its choice tree into catalog, draft, or domain contracts.
+- Added proficiency selections to the draft aggregate and structured violations for missing, repeated, stale, disallowed, incorrectly counted, or duplicate selections.
+- Canonicalized selected proficiency names from trusted content and documented why SRD 5.2.1 duplicates are rejected rather than replaced by a rule carried over from 2014.
+- Extended the frontend catalog schema so normalized creation facts survive the API boundary for Phase 4.
+- Live-smoke-tested the complete Wizard/Elf/Acolyte choice flow and recorded the normalization decision in ADR-005.
 
 ## Work in progress
 
-Phase 3 remains open. Ability modifiers, proficiency bonus, unarmored AC, level-1 HP, and fixed proficiency grants are implemented. Variable proficiency choices are not.
+None. The working checkpoint is the end of Phase 3.
 
 ## Next step
 
-Continue Phase 3 with the next test-first domain slice:
+Start Phase 4 with a narrow, storage-first slice:
 
-1. Normalize proficiency-choice requirements from class/background details and referenced species traits without leaking provider option DTOs.
-2. Add selected proficiency choices to the draft aggregate and validate required counts, allowed options, duplicates, and stale choice ids.
-3. Decide and test the 2024 replacement behavior when two sources grant the same skill or tool proficiency.
-4. Extend derived proficiency output only after every required choice is valid.
-5. Do not begin the builder, IndexedDB, later-level class progression, equipment effects, or spellcasting.
+1. Re-read ADR-002 and define the frontend schema-version-1 storage envelope with UUID, rules identity, created/updated timestamps, and character draft data.
+2. Add Zod schemas at the API/local-storage boundaries and treat all IndexedDB reads as untrusted.
+3. Implement a small IndexedDB persistence module with list/get/save/delete operations and an explicit migration seam.
+4. Add focused tests for round trips, malformed records, unavailable storage, and the version-1 migration path.
+5. Do not build the progressive form, auto-save UI, duplication flow, later-level progression, equipment effects, or spellcasting until the storage boundary is proven.
 
 ## Pending decisions
 
-- Whether the frontend may mirror any presentation-only calculation must be decided only after the canonical server rule exists and can be contract-tested.
-- Species trait resolution and caching must be designed before nested proficiency choices enter domain evaluation.
-- Duplicate proficiency replacement behavior must be confirmed against SRD 5.2.1 before choice validation is finalized.
+- Whether the frontend should mirror any presentation-only calculation remains deferred; the canonical server result must stay authoritative.
+- The exact IndexedDB wrapper and test double should be selected only after the version-1 envelope is defined.
 - A project source-code license remains to be selected before public portfolio release.
 - Checked-in provider snapshots are not currently justified; small representative inline fixtures cover consumed schema variants. Revisit only if upstream contract testing becomes hard to understand.
 
 ## Known issues and limitations
 
-- Proficiency choices, armored/equipment AC, HP after level 1, builder, IndexedDB, import/export, and print functionality are not implemented yet.
+- Armored/equipment AC, HP after level 1, builder, IndexedDB, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -53,12 +58,12 @@ Continue Phase 3 with the next test-first domain slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 6 passing across 3 files (`vitest run`)
+- Frontend unit tests: 7 passing across 4 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 60 passing
-- Live provider smoke checks: classes, species, backgrounds, feats, filtered spells, equipment list/detail, and character validation responses passing
+- Backend unit/integration tests: 70 passing
+- Live provider smoke checks: classes, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 

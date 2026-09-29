@@ -55,6 +55,12 @@ public sealed class CharacterEndpointsTests : IDisposable
         Assert.Contains(
             evaluation.Derived.GrantedProficiencies,
             proficiency => proficiency.Proficiency.Id == "skill-insight");
+        Assert.Contains(
+            evaluation.Derived.GrantedProficiencies,
+            proficiency => proficiency.Proficiency.Id == "skill-arcana");
+        Assert.Contains(
+            evaluation.Derived.GrantedProficiencies,
+            proficiency => proficiency.Proficiency.Id == "skill-perception");
     }
 
     [Fact]
@@ -79,6 +85,31 @@ public sealed class CharacterEndpointsTests : IDisposable
         Assert.Contains(
             evaluation.Validation.Violations,
             violation => violation.Code == "character.rulesVersion.unsupported");
+    }
+
+    [Fact]
+    public async Task Validate_ReportsMissingProficiencyChoicesWithoutDerivedValues()
+    {
+        var character = CharacterValidatorTests.CreateValidCharacter() with
+        {
+            ProficiencyChoices = []
+        };
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/characters/validate",
+            character,
+            CancellationToken.None);
+        var evaluation = await response.Content.ReadFromJsonAsync<CharacterEvaluation>(
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(evaluation);
+        Assert.False(evaluation.Validation.IsValid);
+        Assert.Null(evaluation.Derived);
+        Assert.Equal(
+            2,
+            evaluation.Validation.Violations.Count(
+                violation => violation.Code == "character.proficiencyChoice.required"));
     }
 
     [Fact]
@@ -175,14 +206,39 @@ public sealed class CharacterEndpointsTests : IDisposable
                     [
                         new CatalogReference("simple-weapons", "Simple Weapons"),
                         new CatalogReference("saving-throw-int", "Saving Throw: INT")
+                    ],
+                    [
+                        new CatalogProficiencyChoice(
+                            "classes/wizard/proficiencies/0",
+                            "Choose two Wizard skills",
+                            2,
+                            [
+                                new CatalogReference("skill-arcana", "Skill: Arcana"),
+                                new CatalogReference("skill-history", "Skill: History"),
+                                new CatalogReference("skill-insight", "Skill: Insight")
+                            ])
                     ]),
                 CatalogCategory.Backgrounds => new CatalogCharacterCreationFacts(
                     null,
                     [
                         new CatalogReference("skill-insight", "Skill: Insight"),
                         new CatalogReference("skill-religion", "Skill: Religion")
+                    ],
+                    []),
+                CatalogCategory.Species => new CatalogCharacterCreationFacts(
+                    null,
+                    [],
+                    [
+                        new CatalogProficiencyChoice(
+                            "species/elf/traits/keen-senses/proficiencies/0",
+                            "Choose one Keen Senses skill",
+                            1,
+                            [
+                                new CatalogReference("skill-insight", "Skill: Insight"),
+                                new CatalogReference("skill-perception", "Skill: Perception"),
+                                new CatalogReference("skill-survival", "Skill: Survival")
+                            ])
                     ]),
-                CatalogCategory.Species => new CatalogCharacterCreationFacts(null, []),
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, null)
             };
 

@@ -15,7 +15,7 @@ Use a dedicated `SrdApiClient` adapter. It owns `HttpClientFactory` configuratio
 
 The Rule Engine depends on normalized content and never on external API models.
 
-Phase 3 extends normalized item detail with typed character-creation facts for values used by rules, beginning with class hit die and direct proficiency grants. These facts remain provider-neutral; the domain receives a resolved `CharacterRulesContext` and never parses catalog labels such as `d6` or trusts equivalent values from the browser.
+Phase 3 extends normalized item detail with typed character-creation facts for values used by rules: class hit die, direct proficiency grants, and proficiency-choice requirements. These facts remain provider-neutral; the domain receives a resolved `CharacterRulesContext` and never parses catalog labels such as `d6` or trusts equivalent values from the browser.
 
 ## Consequences
 

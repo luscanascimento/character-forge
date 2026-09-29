@@ -22,9 +22,16 @@ public sealed record CatalogSection(string Title, IReadOnlyList<CatalogReference
 
 public sealed record CatalogTextSection(string Title, IReadOnlyList<string> Paragraphs);
 
+public sealed record CatalogProficiencyChoice(
+    string Id,
+    string Prompt,
+    int Count,
+    IReadOnlyList<CatalogReference> Options);
+
 public sealed record CatalogCharacterCreationFacts(
     int? HitDie,
-    IReadOnlyList<CatalogReference> GrantedProficiencies);
+    IReadOnlyList<CatalogReference> GrantedProficiencies,
+    IReadOnlyList<CatalogProficiencyChoice> ProficiencyChoices);
 
 public sealed record CatalogItemDetail(
     string Id,

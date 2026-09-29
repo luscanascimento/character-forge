@@ -30,7 +30,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** Phase 1 and the endpoint inventory in `SRD-API-RESEARCH.md`.
 
-## Phase 3 — Character Domain (in progress)
+## Phase 3 — Character Domain (complete)
 
 **Objectives:** model a versioned character, ability scores, one initial class, species, background, proficiencies, derived statistics, and small cohesive rules.
 
@@ -38,7 +38,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** normalized catalog contracts from Phase 2.
 
-## Phase 4 — Character Builder MVP
+## Phase 4 — Character Builder MVP (next)
 
 **Objectives:** build the progressive builder, IndexedDB persistence, My Characters, edits, duplication/deletion, and auto-save.
 

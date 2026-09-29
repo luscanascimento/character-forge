@@ -22,9 +22,12 @@ internal static class SrdCatalogMapper
         ]),
         CharacterCreation: new CatalogCharacterCreationFacts(
             item.HitDie,
-            References(item.Proficiencies)));
+            ProficiencyReferences(item.Proficiencies),
+            ProficiencyChoices($"classes/{item.Index}", item.ProficiencyChoices)));
 
-    public static CatalogItemDetail Map(SrdSpeciesDetail item) => new(
+    public static CatalogItemDetail Map(
+        SrdSpeciesDetail item,
+        IReadOnlyList<SrdTraitDetail> traits) => new(
         item.Index,
         item.Name,
         CatalogCategory.Species.ToSlug(),
@@ -40,7 +43,13 @@ internal static class SrdCatalogMapper
         ]),
         CharacterCreation: new CatalogCharacterCreationFacts(
             HitDie: null,
-            References(item.Proficiencies)));
+            ProficiencyReferences(item.Proficiencies),
+            traits
+                .Where(trait => trait.ProficiencyChoice is not null)
+                .Select(trait => ProficiencyChoice(
+                    $"species/{item.Index}/traits/{trait.Index}/proficiencies/0",
+                    trait.ProficiencyChoice!))
+                .ToArray()));
 
     public static CatalogItemDetail Map(SrdBackgroundDetail item) => new(
         item.Index,
@@ -59,7 +68,8 @@ internal static class SrdCatalogMapper
         ]),
         CharacterCreation: new CatalogCharacterCreationFacts(
             HitDie: null,
-            References(item.Proficiencies)));
+            ProficiencyReferences(item.Proficiencies),
+            ProficiencyChoices($"backgrounds/{item.Index}", item.ProficiencyChoices)));
 
     public static CatalogItemDetail Map(SrdFeatDetail item) => new(
         item.Index,
@@ -145,6 +155,62 @@ internal static class SrdCatalogMapper
     private static IReadOnlyList<CatalogReference> References(IReadOnlyList<SrdReference>? references) =>
         references?.Select(reference => new CatalogReference(reference.Index, reference.Name, reference.Note)).ToArray()
         ?? [];
+
+    private static IReadOnlyList<CatalogReference> ProficiencyReferences(
+        IReadOnlyList<SrdReference>? references) =>
+        references?.Select(ProficiencyReference).ToArray() ?? [];
+
+    private static IReadOnlyList<CatalogProficiencyChoice> ProficiencyChoices(
+        string source,
+        IReadOnlyList<SrdChoice>? choices) => choices?
+        .Select((choice, index) => ProficiencyChoice($"{source}/proficiencies/{index}", choice))
+        .ToArray() ?? [];
+
+    private static CatalogProficiencyChoice ProficiencyChoice(string id, SrdChoice choice)
+    {
+        var options = FlattenProficiencyOptions(choice)
+            .DistinctBy(option => option.Id, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (choice.Choose < 1 || options.Length < choice.Choose)
+        {
+            throw new SrdProviderException($"The SRD provider returned an invalid proficiency choice at '{id}'.");
+        }
+
+        return new CatalogProficiencyChoice(id, choice.Desc, choice.Choose, options);
+    }
+
+    private static IEnumerable<CatalogReference> FlattenProficiencyOptions(SrdChoice choice)
+    {
+        foreach (var option in choice.From.Options ?? [])
+        {
+            if (option.Item is not null)
+            {
+                yield return ProficiencyReference(option.Item);
+            }
+
+            if (option.Choice is not null)
+            {
+                foreach (var nested in FlattenProficiencyOptions(option.Choice))
+                {
+                    yield return nested;
+                }
+            }
+        }
+    }
+
+    private static CatalogReference ProficiencyReference(SrdReference reference)
+    {
+        var id = reference.Url?.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault()
+            ?? reference.Index;
+        var isSkill = reference.Url?.Contains("/skills/", StringComparison.Ordinal) == true;
+
+        return new CatalogReference(
+            isSkill && !id.StartsWith("skill-", StringComparison.Ordinal) ? $"skill-{id}" : id,
+            isSkill && !reference.Name.StartsWith("Skill:", StringComparison.Ordinal)
+                ? $"Skill: {reference.Name}"
+                : reference.Name,
+            reference.Note);
+    }
 
     private static string JoinNames(IReadOnlyList<SrdReference>? references) =>
         references is null ? string.Empty : string.Join(", ", references.Select(reference => reference.Name));

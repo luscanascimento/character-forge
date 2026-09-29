@@ -35,13 +35,33 @@ public sealed class SrdApiClient(HttpClient httpClient, ILogger<SrdApiClient> lo
         return category switch
         {
             CatalogCategory.Classes => Map(await GetOptionalAsync<SrdClassDetail>(path, cancellationToken), SrdCatalogMapper.Map),
-            CatalogCategory.Species => Map(await GetOptionalAsync<SrdSpeciesDetail>(path, cancellationToken), SrdCatalogMapper.Map),
+            CatalogCategory.Species => await GetSpeciesAsync(path, cancellationToken),
             CatalogCategory.Backgrounds => Map(await GetOptionalAsync<SrdBackgroundDetail>(path, cancellationToken), SrdCatalogMapper.Map),
             CatalogCategory.Feats => Map(await GetOptionalAsync<SrdFeatDetail>(path, cancellationToken), SrdCatalogMapper.Map),
             CatalogCategory.Spells => Map(await GetOptionalAsync<SrdSpellDetail>(path, cancellationToken), SrdCatalogMapper.Map),
             CatalogCategory.Equipment => Map(await GetOptionalAsync<SrdEquipmentDetail>(path, cancellationToken), SrdCatalogMapper.Map),
             _ => throw new ArgumentOutOfRangeException(nameof(category), category, null)
         };
+    }
+
+    private async Task<CatalogItemDetail?> GetSpeciesAsync(
+        string path,
+        CancellationToken cancellationToken)
+    {
+        var species = await GetOptionalAsync<SrdSpeciesDetail>(path, cancellationToken);
+        if (species is null)
+        {
+            return null;
+        }
+
+        var traitTasks = (species.Traits ?? [])
+            .Select(trait => GetRequiredAsync<SrdTraitDetail>(
+                $"traits/{Uri.EscapeDataString(trait.Index)}",
+                cancellationToken))
+            .ToArray();
+        var traits = await Task.WhenAll(traitTasks);
+
+        return SrdCatalogMapper.Map(species, traits);
     }
 
     private async Task<IReadOnlyList<CatalogItemSummary>> GetSpellsAsync(

@@ -75,7 +75,11 @@ This does **not** prove every paragraph or table in the SRD PDF has a structured
 
 Live verification on 2026-09-29 confirmed that class detail exposes numeric `hit_die`, direct `proficiencies`, and nested `proficiency_choices`; background detail exposes direct proficiencies; and species proficiency choices can be nested inside referenced trait details. For example, Elf references the Keen Senses trait, whose detail contains a one-of-three skill choice.
 
-Character Forge now normalizes numeric hit dice and direct proficiency grants as typed character-creation facts. Domain evaluation consumes only those normalized facts. Variable proficiency choices are deliberately deferred to the next domain slice because supporting them correctly requires a stable choice contract and trait resolution; display descriptions will not be parsed as rules.
+Character Forge now normalizes numeric hit dice, direct proficiency grants, and proficiency-choice requirements as typed character-creation facts. Domain evaluation consumes only those normalized facts; display descriptions are never parsed as rules.
+
+The implemented inventory covers direct reference choices on all twelve classes, the Soldier background, and referenced trait choices for Elf and Human. The Monk's outer one-of-two tool-family choice is semantically a union of reference options, so the adapter flattens it while preserving the outer count of one. Provider URLs are used to canonicalize inconsistent proficiency ids, including skill references and tool ids.
+
+SRD 5.2.1 states that the Proficiency Bonus does not stack, but the official text contains no equivalent of SRD 5.1's general replacement rule for duplicate proficiencies. Character Forge therefore rejects a selectable proficiency that duplicates another selected or fixed grant; it does not manufacture an unrestricted replacement option.
 
 ## Upstream documentation status
 

@@ -16,6 +16,7 @@ The initial `Character` aggregate is a versioned draft-capable document containi
 - all six ability scores;
 - species and background catalog references containing stable ids and display names;
 - a `classProgressions` collection containing class references and levels.
+- proficiency-choice selections keyed by stable normalized choice ids.
 
 The collection keeps the document extensible, but the current validator requires exactly one class. Unsupported rules identities, incomplete choices, invalid references, ability scores outside 1–30, and class levels outside 1–20 produce structured `RuleViolation` values instead of exceptions. Pure calculators reject values outside their rule bounds.
 

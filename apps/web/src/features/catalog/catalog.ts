@@ -26,6 +26,25 @@ const summarySchema = z.object({
   level: z.number().int().nullable().optional(),
 })
 
+const referenceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  note: z.string().nullable().optional(),
+})
+
+const characterCreationSchema = z.object({
+  hitDie: z.number().int().positive().nullable(),
+  grantedProficiencies: z.array(referenceSchema),
+  proficiencyChoices: z.array(
+    z.object({
+      id: z.string(),
+      prompt: z.string(),
+      count: z.number().int().positive(),
+      options: z.array(referenceSchema),
+    }),
+  ),
+})
+
 export const catalogPageSchema = z.object({
   items: z.array(summarySchema),
   page: z.number().int(),
@@ -44,19 +63,14 @@ export const catalogItemSchema = z.object({
   sections: z.array(
     z.object({
       title: z.string(),
-      entries: z.array(
-        z.object({
-          id: z.string(),
-          name: z.string(),
-          note: z.string().nullable().optional(),
-        }),
-      ),
+      entries: z.array(referenceSchema),
     }),
   ),
   textSections: z
     .array(z.object({ title: z.string(), paragraphs: z.array(z.string()) }))
     .nullish()
     .transform((sections) => sections ?? []),
+  characterCreation: characterCreationSchema.nullable().optional(),
   source: sourceSchema,
 })
 

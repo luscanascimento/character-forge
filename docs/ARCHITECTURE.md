@@ -64,19 +64,22 @@ The SRD adapter uses a typed `HttpClient` created by `HttpClientFactory`, an eig
 
 ## Domain
 
-The Phase 3 domain is in progress. Its central aggregate carries explicit rules identity:
+The Phase 3 domain is complete. Its central aggregate carries explicit rules identity:
 
 ```text
 ruleset: "2024"
 rulesVersion: "SRD-5.2.1"
 classProgressions: [ ... ]
+proficiencyChoices: [ ... ]
 ```
 
 The aggregate is draft-capable: incomplete or invalid choices remain representable and are explained by a structured `ValidationResult`. Catalog selections are retained as references with ids and display names. `classProgressions` is a collection so the document shape does not make one class irreversible, while the current validator explicitly requires exactly one entry and implements no multiclass behavior.
 
 Pure ability-modifier and proficiency-bonus calculators enforce their numeric bounds. `POST /api/characters/validate` is the canonical rule boundary: it does not persist data and emits derived values only when the complete document is valid for 2024 / SRD 5.2.1. See ADR-004 for the distinction between a persisted draft and trusted domain state.
 
-Character evaluation resolves the selected class, species, and background through `CatalogService` before calculating. Normalized catalog detail carries typed character-creation facts—currently hit die and direct proficiency grants—so the domain never parses presentation strings or accepts client-supplied rule facts. The evaluator calculates unarmored AC and level-1 HP, merges duplicate proficiency grants, and retains every content source that supplied a grant. Proficiency choices nested under class options or species traits remain a separate unfinished rule seam.
+Character evaluation resolves the selected class, species, and background through `CatalogService` before calculating. Normalized catalog detail carries typed character-creation facts—hit die, direct proficiency grants, and proficiency-choice requirements—so the domain never parses presentation strings or accepts client-supplied rule facts. The adapter resolves referenced species traits and flattens the provider's equivalent nested option families into stable choice ids, counts, and option lists.
+
+The evaluator calculates unarmored AC and level-1 HP, validates every required proficiency choice, canonicalizes selected references, rejects stale/disallowed/duplicate selections, merges unavoidable fixed duplicates, and retains every source that supplied a grant. SRD 5.2.1 says proficiency bonuses do not stack but does not carry forward the 2014 rule that allowed arbitrary replacement of duplicate proficiencies, so Character Forge does not invent such replacements.
 
 External API DTOs, domain models, and public response contracts may differ when the boundary protects rules or stability. They should not be triplicated when their shapes and reasons to change are genuinely identical.
 
@@ -102,7 +105,7 @@ Character writes will remain browser-local:
 Builder intent → domain/rule validation API → versioned character document → IndexedDB
 ```
 
-The exact balance between local previews and authoritative server validation will be decided in Phase 3. Business rules must have one canonical implementation; presentation-only calculations may be mirrored only if explicitly proven safe and tested against the canonical result.
+Business rules have one canonical server implementation. Presentation-only calculations may be mirrored later only if explicitly proven safe and contract-tested against the canonical result.
 
 ## Rule Engine
 
