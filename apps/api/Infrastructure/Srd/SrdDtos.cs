@@ -33,6 +33,7 @@ internal sealed record SrdSpeciesDetail(
     string Type,
     string Size,
     int Speed,
+    IReadOnlyList<SrdReference>? Proficiencies,
     IReadOnlyList<SrdReference>? Traits,
     IReadOnlyList<SrdReference>? Subspecies);
 

@@ -22,6 +22,10 @@ public sealed record CatalogSection(string Title, IReadOnlyList<CatalogReference
 
 public sealed record CatalogTextSection(string Title, IReadOnlyList<string> Paragraphs);
 
+public sealed record CatalogCharacterCreationFacts(
+    int? HitDie,
+    IReadOnlyList<CatalogReference> GrantedProficiencies);
+
 public sealed record CatalogItemDetail(
     string Id,
     string Name,
@@ -30,6 +34,7 @@ public sealed record CatalogItemDetail(
     IReadOnlyList<CatalogAttribute> Attributes,
     IReadOnlyList<CatalogSection> Sections,
     IReadOnlyList<CatalogTextSection>? TextSections = null,
+    CatalogCharacterCreationFacts? CharacterCreation = null,
     CatalogSource? Source = null);
 
 public sealed record CatalogPage(

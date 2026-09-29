@@ -30,7 +30,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** Phase 1 and the endpoint inventory in `SRD-API-RESEARCH.md`.
 
-## Phase 3 — Character Domain (next)
+## Phase 3 — Character Domain (in progress)
 
 **Objectives:** model a versioned character, ability scores, one initial class, species, background, proficiencies, derived statistics, and small cohesive rules.
 

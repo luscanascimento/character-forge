@@ -31,6 +31,11 @@ public sealed class SrdApiClientTests
         Assert.Equal("classes", item.Category);
         Assert.Contains(item.Attributes, attribute => attribute is { Label: "Hit Die", Value: "d6" });
         Assert.Contains(item.Sections, section => section.Title == "Subclasses");
+        Assert.NotNull(item.CharacterCreation);
+        Assert.Equal(6, item.CharacterCreation.HitDie);
+        Assert.Contains(
+            item.CharacterCreation.GrantedProficiencies,
+            proficiency => proficiency.Id == "daggers");
     }
 
     [Fact]
@@ -41,6 +46,32 @@ public sealed class SrdApiClientTests
         var item = await client.GetItemAsync(CatalogCategory.Feats, "missing", CancellationToken.None);
 
         Assert.Null(item);
+    }
+
+    [Fact]
+    public async Task GetBackground_PreservesMachineReadableProficiencyFacts()
+    {
+        const string json = """
+            {
+              "index": "acolyte",
+              "name": "Acolyte",
+              "ability_scores": [{ "index": "int", "name": "INT" }],
+              "feat": { "index": "magic-initiate", "name": "Magic Initiate" },
+              "proficiencies": [
+                { "index": "skill-insight", "name": "Skill: Insight" },
+                { "index": "tool-calligraphers-supplies", "name": "Tool: Calligrapher's Supplies" }
+              ]
+            }
+            """;
+        var client = CreateClient(_ => Json(json));
+
+        var item = await client.GetItemAsync(CatalogCategory.Backgrounds, "acolyte", CancellationToken.None);
+
+        Assert.NotNull(item?.CharacterCreation);
+        Assert.Null(item.CharacterCreation.HitDie);
+        Assert.Equal(
+            ["skill-insight", "tool-calligraphers-supplies"],
+            item.CharacterCreation.GrantedProficiencies.Select(proficiency => proficiency.Id));
     }
 
     [Theory]

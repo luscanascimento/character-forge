@@ -1,4 +1,5 @@
 using CharacterForge.Api.Features.Catalog;
+using CharacterForge.Api.Features.Characters;
 using CharacterForge.Api.Features.Meta;
 using CharacterForge.Api.Infrastructure;
 using CharacterForge.Api.Infrastructure.Srd;
@@ -49,6 +50,7 @@ builder.Services.AddHttpClient<ISrdContentSource, SrdApiClient>((services, clien
     client.DefaultRequestHeaders.UserAgent.ParseAdd("CharacterForge/1.0");
 });
 builder.Services.AddScoped<CatalogService>();
+builder.Services.AddScoped<CharacterEvaluationService>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
@@ -61,7 +63,7 @@ builder.Services.AddCors(options =>
         if (allowedOrigins.Length > 0)
         {
             policy.WithOrigins(allowedOrigins)
-                .WithMethods("GET")
+                .WithMethods("GET", "POST")
                 .AllowAnyHeader();
         }
     });
@@ -88,6 +90,7 @@ app.UseRateLimiter();
 app.MapHealthChecks("/health");
 app.MapMetaEndpoints();
 app.MapCatalogEndpoints();
+app.MapCharacterEndpoints();
 
 app.Run();
 

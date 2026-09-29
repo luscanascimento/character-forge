@@ -19,7 +19,10 @@ internal static class SrdCatalogMapper
             Section("Proficiencies", item.Proficiencies),
             Section("Saving Throws", item.SavingThrows),
             Section("Subclasses", item.Subclasses)
-        ]));
+        ]),
+        CharacterCreation: new CatalogCharacterCreationFacts(
+            item.HitDie,
+            References(item.Proficiencies)));
 
     public static CatalogItemDetail Map(SrdSpeciesDetail item) => new(
         item.Index,
@@ -34,7 +37,10 @@ internal static class SrdCatalogMapper
         CompactSections([
             Section("Traits", item.Traits),
             Section("Subspecies", item.Subspecies)
-        ]));
+        ]),
+        CharacterCreation: new CatalogCharacterCreationFacts(
+            HitDie: null,
+            References(item.Proficiencies)));
 
     public static CatalogItemDetail Map(SrdBackgroundDetail item) => new(
         item.Index,
@@ -50,7 +56,10 @@ internal static class SrdCatalogMapper
         CompactSections([
             Section("Proficiencies", item.Proficiencies),
             Section("Feat", item.Feat is null ? [] : [item.Feat])
-        ]));
+        ]),
+        CharacterCreation: new CatalogCharacterCreationFacts(
+            HitDie: null,
+            References(item.Proficiencies)));
 
     public static CatalogItemDetail Map(SrdFeatDetail item) => new(
         item.Index,
@@ -131,8 +140,11 @@ internal static class SrdCatalogMapper
 
     private static CatalogSection Section(string title, IReadOnlyList<SrdReference>? references) => new(
         title,
+        References(references));
+
+    private static IReadOnlyList<CatalogReference> References(IReadOnlyList<SrdReference>? references) =>
         references?.Select(reference => new CatalogReference(reference.Index, reference.Name, reference.Note)).ToArray()
-        ?? []);
+        ?? [];
 
     private static string JoinNames(IReadOnlyList<SrdReference>? references) =>
         references is null ? string.Empty : string.Join(", ", references.Select(reference => reference.Name));

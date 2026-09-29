@@ -11,7 +11,7 @@ Browser
        │ Character Forge REST contracts
        ▼
 ASP.NET Core API
-  Feature endpoints ── Rule Engine (future)
+  Feature endpoints ── Character rules
        │
        └── SRD content adapter ── D&D 5e SRD API 2024
 ```
@@ -51,6 +51,7 @@ New catalog functionality should live in its feature area, with shared infrastru
 - `GET /api/catalog/{category}` for normalized, searched, filtered, and paginated summaries
 - `GET /api/catalog/{category}/{id}` for normalized detail
 - `GET /health`
+- `POST /api/characters/validate` for non-persisting draft validation and calculations
 - `/openapi/v1.json` in Development
 - centralized exception handling with safe Problem Details
 - configured-origin CORS (deny-by-default when no origins are configured)
@@ -63,7 +64,7 @@ The SRD adapter uses a typed `HttpClient` created by `HttpClientFactory`, an eig
 
 ## Domain
 
-The domain does not exist yet; it begins in Phase 3 now that normalized catalog contracts are stable. The central aggregate will carry explicit rules identity:
+The Phase 3 domain is in progress. Its central aggregate carries explicit rules identity:
 
 ```text
 ruleset: "2024"
@@ -71,7 +72,11 @@ rulesVersion: "SRD-5.2.1"
 classProgressions: [ ... ]
 ```
 
-The initial UI supports one class, but the persisted/domain shape must avoid making one-class-only an irreversible invariant. It should not implement multiclass behavior prematurely.
+The aggregate is draft-capable: incomplete or invalid choices remain representable and are explained by a structured `ValidationResult`. Catalog selections are retained as references with ids and display names. `classProgressions` is a collection so the document shape does not make one class irreversible, while the current validator explicitly requires exactly one entry and implements no multiclass behavior.
+
+Pure ability-modifier and proficiency-bonus calculators enforce their numeric bounds. `POST /api/characters/validate` is the canonical rule boundary: it does not persist data and emits derived values only when the complete document is valid for 2024 / SRD 5.2.1. See ADR-004 for the distinction between a persisted draft and trusted domain state.
+
+Character evaluation resolves the selected class, species, and background through `CatalogService` before calculating. Normalized catalog detail carries typed character-creation facts—currently hit die and direct proficiency grants—so the domain never parses presentation strings or accepts client-supplied rule facts. The evaluator calculates unarmored AC and level-1 HP, merges duplicate proficiency grants, and retains every content source that supplied a grant. Proficiency choices nested under class options or species traits remain a separate unfinished rule seam.
 
 External API DTOs, domain models, and public response contracts may differ when the boundary protects rules or stability. They should not be triplicated when their shapes and reasons to change are genuinely identical.
 

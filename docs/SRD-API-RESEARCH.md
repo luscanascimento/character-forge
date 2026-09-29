@@ -71,6 +71,12 @@ This does **not** prove every paragraph or table in the SRD PDF has a structured
 3. Missing SRD content will be recorded, not invented or copied from non-SRD books.
 4. Character Forge will expose its own stable contracts instead of forwarding upstream JSON.
 
+## Phase 3 character-creation facts
+
+Live verification on 2026-09-29 confirmed that class detail exposes numeric `hit_die`, direct `proficiencies`, and nested `proficiency_choices`; background detail exposes direct proficiencies; and species proficiency choices can be nested inside referenced trait details. For example, Elf references the Keen Senses trait, whose detail contains a one-of-three skill choice.
+
+Character Forge now normalizes numeric hit dice and direct proficiency grants as typed character-creation facts. Domain evaluation consumes only those normalized facts. Variable proficiency choices are deliberately deferred to the next domain slice because supporting them correctly requires a stable choice contract and trait resolution; display descriptions will not be parsed as rules.
+
 ## Upstream documentation status
 
 The current official documentation has a dedicated [2024 introduction](https://docs.dnd5eapi.co/2024/introduction) and identifies `https://www.dnd5eapi.co/api/2024` as its base URL. Some repository prose encountered during initial discovery was older than the live/versioned definitions. Character Forge therefore keeps adapter tests around the exact schemas it consumes and treats observed resource counts as informational rather than contractual.
