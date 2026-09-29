@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 3 — Character Domain: complete.**
+**Phase 4 — Character Builder MVP: in progress.**
 
-Phases 0–3 are implemented. Work must resume at **Phase 4 — Character Builder MVP** without expanding class progression, equipment, or spellcasting early.
+Phases 0–3 are implemented. The Phase 4 storage boundary is complete; work must continue with the local character-list experience without expanding later rules early.
 
 ## Last completed work
 
@@ -24,31 +24,37 @@ Phases 0–3 are implemented. Work must resume at **Phase 4 — Character Builde
 - Canonicalized selected proficiency names from trusted content and documented why SRD 5.2.1 duplicates are rejected rather than replaced by a rule carried over from 2014.
 - Extended the frontend catalog schema so normalized creation facts survive the API boundary for Phase 4.
 - Live-smoke-tested the complete Wizard/Elf/Acolyte choice flow and recorded the normalization decision in ADR-005.
+- Defined the schema-version-1 local envelope with UUID, fixed rules identity, timestamps, and structurally validated draft data.
+- Added Zod schemas for stored drafts, canonical validation requests, and character evaluation responses.
+- Added a native IndexedDB module with list/get/save/delete operations, update-time ordering, injected `IDBFactory`, and an explicit migration seam.
+- Added typed failures for unavailable storage, malformed records, and unsupported schema versions without silently discarding or guessing data.
+- Added a tested API adapter that strips persistence metadata before canonical server validation.
+- Added `fake-indexeddb` as a test-only implementation of the native browser API; production has no storage wrapper dependency.
 
 ## Work in progress
 
-None. The working checkpoint is the end of Phase 3.
+Phase 4 remains open. The persistence and validation boundary is implemented; My Characters, the progressive builder, auto-save, duplication, and deletion UI are not.
 
 ## Next step
 
-Start Phase 4 with a narrow, storage-first slice:
+Continue Phase 4 with a narrow My Characters slice:
 
-1. Re-read ADR-002 and define the frontend schema-version-1 storage envelope with UUID, rules identity, created/updated timestamps, and character draft data.
-2. Add Zod schemas at the API/local-storage boundaries and treat all IndexedDB reads as untrusted.
-3. Implement a small IndexedDB persistence module with list/get/save/delete operations and an explicit migration seam.
-4. Add focused tests for round trips, malformed records, unavailable storage, and the version-1 migration path.
-5. Do not build the progressive form, auto-save UI, duplication flow, later-level progression, equipment effects, or spellcasting until the storage boundary is proven.
+1. Replace the `/characters` placeholder with a responsive My Characters page backed by the storage module.
+2. Add loading, empty, malformed/unavailable-storage, and populated states without hiding recoverable local-data failures.
+3. Add a minimal create-draft action that generates the UUID/timestamps and opens the future builder route.
+4. Cover list ordering, navigation, and error recovery with focused frontend tests.
+5. Do not build the full progressive form, auto-save, duplication/deletion actions, later-level progression, equipment effects, or spellcasting in the same slice.
 
 ## Pending decisions
 
 - Whether the frontend should mirror any presentation-only calculation remains deferred; the canonical server result must stay authoritative.
-- The exact IndexedDB wrapper and test double should be selected only after the version-1 envelope is defined.
+- The auto-save debounce and conflict behavior across multiple open tabs remain to be defined when editing begins.
 - A project source-code license remains to be selected before public portfolio release.
 - Checked-in provider snapshots are not currently justified; small representative inline fixtures cover consumed schema variants. Revisit only if upstream contract testing becomes hard to understand.
 
 ## Known issues and limitations
 
-- Armored/equipment AC, HP after level 1, builder, IndexedDB, import/export, and print functionality are not implemented yet.
+- Armored/equipment AC, HP after level 1, builder UI, auto-save, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -58,7 +64,7 @@ Start Phase 4 with a narrow, storage-first slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 7 passing across 4 files (`vitest run`)
+- Frontend unit tests: 14 passing across 6 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors

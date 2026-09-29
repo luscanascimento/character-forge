@@ -143,7 +143,9 @@ The SRD adapter owns HTTP behavior and external DTO normalization. The Rule Engi
 
 ## Local storage
 
-Characters will use IndexedDB in Phase 4. Each stored/exported document includes a UUID, rules identity, `schemaVersion`, timestamps, and validated character data. Access will go through a small persistence module that owns migrations and treats IndexedDB content as untrusted input.
+Phase 4 stores character drafts in IndexedDB through a small native persistence module. The version-1 envelope contains a UUID, fixed rules identity, `schemaVersion`, creation/update timestamps, and structurally validated draft data. Domain-invalid but well-formed drafts remain representable; canonical legality still comes from `POST /api/characters/validate`.
+
+All reads pass through Zod and an explicit `migrateStoredCharacter` seam before application code receives them. Unknown versions and malformed records fail with typed errors instead of being guessed or silently rewritten. The module exposes only list/get/save/delete operations, sorts lists by update time, and reports unavailable or blocked IndexedDB predictably. Production uses the browser API directly; tests inject an in-memory standards-compatible `IDBFactory`.
 
 No character data is stored on the server in the initial product. No account or token infrastructure will be created.
 

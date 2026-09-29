@@ -2,7 +2,7 @@
 
 Character Forge is a mobile-first, rule-aware character builder for the modern fifth-edition rules available in **SRD 5.2.1**. It aims to feel like an adventurer's workshop rather than a themed business form, while keeping the codebase straightforward and production-minded.
 
-The project currently contains the completed discovery, foundation, SRD catalog, and character-domain phases: a responsive dark-fantasy landing experience, a searchable compendium, and canonical validation/calculation for a baseline SRD 5.2.1 character. The builder is intentionally not implemented yet.
+The project currently contains the completed discovery, foundation, SRD catalog, and character-domain phases: a responsive dark-fantasy landing experience, a searchable compendium, and canonical validation/calculation for a baseline SRD 5.2.1 character. Character Builder work has started with a schema-versioned IndexedDB persistence boundary; its UI is intentionally not implemented yet.
 
 ## Stack
 
@@ -11,7 +11,7 @@ The project currently contains the completed discovery, foundation, SRD catalog,
 - ASP.NET Core on .NET 10, typed `HttpClient`, memory cache, minimal REST endpoints, OpenAPI, Problem Details
 - xUnit and ASP.NET Core integration testing
 - Vitest and Testing Library
-- IndexedDB is planned for local character storage; there is no server database or authentication
+- IndexedDB stores versioned character drafts locally; there is no server database or authentication
 
 ## Repository layout
 
@@ -83,7 +83,7 @@ Draft characters can be submitted to `POST /api/characters/validate` for canonic
 
 ## Current limitations
 
-- Armor/equipment AC, HP after level 1, complete progression rules, builder, IndexedDB storage, import/export, and print layouts are future work.
+- Builder UI, auto-save, armor/equipment AC, HP after level 1, complete progression rules, import/export, and print layouts are future work.
 - Spell list filtering currently supports name, level, school, and class. Ritual/concentration filters require a richer local index because the upstream 2024 list contract does not expose those fields; that index is deferred until spellcasting work justifies it.
 - The API exposes no immutable content snapshot identifier in its normal resource responses; Character Forge must retain its own provider-observation metadata when caching catalog content.
 
