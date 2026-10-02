@@ -27,6 +27,7 @@ export async function getCatalogPage(
   const query = new URLSearchParams()
   setQuery(query, 'search', filters.search)
   setQuery(query, 'page', filters.page)
+  setQuery(query, 'pageSize', filters.pageSize)
   setQuery(query, 'level', filters.level)
   setQuery(query, 'school', filters.school)
   setQuery(query, 'class', filters.characterClass)

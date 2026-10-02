@@ -342,6 +342,145 @@
   color: var(--color-danger);
 }
 
+.origin-state {
+  display: flex;
+  min-height: 20rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2rem;
+  padding: 2rem 1rem;
+  border: 1px dashed var(--color-border-bright);
+  border-radius: var(--radius-sm);
+  color: var(--color-bronze);
+  text-align: center;
+}
+
+.origin-state > span {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  animation: rune-pulse 1.5s ease-in-out infinite;
+}
+
+.origin-state > strong {
+  margin-top: 0.65rem;
+  color: var(--color-parchment-bright);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.origin-state p {
+  max-width: 30rem;
+  margin: 0.25rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.origin-state .button {
+  margin-top: 1.25rem;
+  cursor: pointer;
+}
+
+.origin-state--error > svg {
+  color: var(--color-danger);
+}
+
+.origin-choices {
+  padding: 0;
+  border: 0;
+  margin: 0 0 1.75rem;
+}
+
+.origin-choices > legend {
+  margin-bottom: 0.65rem;
+  color: var(--color-parchment);
+  font-family: var(--font-label);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.origin-options {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.origin-options label {
+  display: grid;
+  min-height: 3.3rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--color-coal);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) ease,
+    background var(--duration-fast) ease;
+}
+
+.origin-options label:hover,
+.origin-options label:has(input:checked) {
+  border-color: var(--color-bronze);
+  background: rgb(183 137 82 / 8%);
+}
+
+.origin-options label:focus-within {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+.origin-options input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.origin-options label > span {
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  border: 1px solid var(--color-border-bright);
+  border-radius: 50%;
+  color: var(--color-success);
+}
+
+.origin-options label:has(input:checked) > span {
+  border-color: var(--color-success);
+}
+
+.origin-options strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.origin-choices > small {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--color-danger);
+  font-size: 0.74rem;
+}
+
+.origin-choices--error .origin-options {
+  padding: 0.25rem;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+}
+
+.origin-source {
+  margin: -0.5rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
 .builder-form__privacy {
   display: flex;
   gap: 0.75rem;
@@ -451,6 +590,10 @@
 
 @media (min-width: 40rem) {
   .ability-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .origin-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

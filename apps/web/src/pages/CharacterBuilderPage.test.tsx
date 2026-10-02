@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
+import type { CatalogCategory, CatalogFilters, CatalogPage } from '../features/catalog/catalog'
 import {
   CharacterStorageDataError,
   CharacterStorageUnavailableError,
@@ -14,6 +15,48 @@ import CharacterBuilderPage from './CharacterBuilderPage'
 type CharacterRepository = {
   get: (id: string) => Promise<StoredCharacterV1 | null>
   save: (document: unknown) => Promise<StoredCharacterV1>
+}
+
+type CatalogLoader = (
+  category: CatalogCategory,
+  filters: CatalogFilters,
+  signal?: AbortSignal,
+) => Promise<CatalogPage>
+
+const catalogItems = {
+  species: [
+    { id: 'elf', name: 'Elf', category: 'species' as const },
+    { id: 'human', name: 'Human', category: 'species' as const },
+  ],
+  backgrounds: [
+    { id: 'acolyte', name: 'Acolyte', category: 'backgrounds' as const },
+    { id: 'sage', name: 'Sage', category: 'backgrounds' as const },
+  ],
+}
+
+function catalogPage(category: 'species' | 'backgrounds'): CatalogPage {
+  return {
+    items: catalogItems[category],
+    page: 1,
+    pageSize: 48,
+    total: catalogItems[category].length,
+    totalPages: 1,
+    source: {
+      provider: 'D&D 5e SRD API',
+      ruleset: '2024',
+      rulesVersion: 'SRD-5.2.1',
+      fetchedAt: '2026-10-02T12:00:00Z',
+    },
+  }
+}
+
+function defaultCatalogLoader(): CatalogLoader {
+  return vi.fn((category: CatalogCategory) => {
+    if (category !== 'species' && category !== 'backgrounds') {
+      return Promise.reject(new Error(`Unexpected category: ${category}`))
+    }
+    return Promise.resolve(catalogPage(category))
+  })
 }
 
 function repository(overrides: Partial<CharacterRepository> = {}): CharacterRepository {
@@ -36,9 +79,22 @@ function blankCharacter(): StoredCharacterV1 {
   }
 }
 
+function originlessCharacter(): StoredCharacterV1 {
+  const character = createStoredCharacter()
+  return {
+    ...character,
+    character: {
+      ...character.character,
+      species: null,
+      background: null,
+    },
+  }
+}
+
 function renderPage(
   storage: CharacterRepository,
   now: () => Date = () => new Date('2026-10-01T15:00:00.000Z'),
+  catalogLoader: CatalogLoader = defaultCatalogLoader(),
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const character = createStoredCharacter()
@@ -49,7 +105,9 @@ function renderPage(
         <Routes>
           <Route
             path="/forge/:characterId"
-            element={<CharacterBuilderPage storage={storage} now={now} />}
+            element={
+              <CharacterBuilderPage storage={storage} now={now} catalogLoader={catalogLoader} />
+            }
           />
         </Routes>
       </MemoryRouter>
@@ -64,21 +122,21 @@ describe('CharacterBuilderPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Opening your draft')
   })
 
-  it('resumes a named character at the abilities step', async () => {
+  it('resumes a character with abilities at the origins step', async () => {
     const storage = repository()
     const character = createStoredCharacter()
-    renderPage(storage)
+    const loader = defaultCatalogLoader()
+    renderPage(storage, undefined, loader)
 
-    expect(
-      await screen.findByRole('heading', { name: 'Shape their abilities' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Choose their origins' })).toBeInTheDocument()
     expect(storage.get).toHaveBeenCalledWith(character.id)
-    expect(screen.getByRole('spinbutton', { name: /strength/i })).toHaveValue(8)
+    expect(await screen.findByRole('radio', { name: 'Elf' })).toBeChecked()
 
     const steps = within(screen.getByRole('navigation', { name: 'Character creation steps' }))
     expect(steps.getAllByRole('listitem')).toHaveLength(6)
     expect(steps.getByRole('button', { name: 'Name' })).not.toHaveAttribute('aria-current')
-    expect(steps.getByRole('button', { name: 'Abilities' })).toHaveAttribute('aria-current', 'step')
+    expect(steps.getByRole('button', { name: 'Origins' })).toHaveAttribute('aria-current', 'step')
+    expect(loader).toHaveBeenCalledWith('species', { page: 1, pageSize: 48 }, expect.anything())
   })
 
   it('shows a safe missing-character state', async () => {
@@ -117,9 +175,7 @@ describe('CharacterBuilderPage', () => {
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(
-      await screen.findByRole('heading', { name: 'Shape their abilities' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Choose their origins' })).toBeInTheDocument()
     expect(get).toHaveBeenCalledTimes(2)
   })
 
@@ -154,6 +210,7 @@ describe('CharacterBuilderPage', () => {
     const storage = repository()
     renderPage(storage)
 
+    await user.click(await screen.findByRole('button', { name: 'Abilities' }))
     const strength = await screen.findByRole('spinbutton', { name: /strength/i })
     expect(strength).toHaveAccessibleDescription('Modifier -1')
 
@@ -173,6 +230,7 @@ describe('CharacterBuilderPage', () => {
     const storage = repository()
     renderPage(storage)
 
+    await user.click(await screen.findByRole('button', { name: 'Abilities' }))
     const strength = await screen.findByRole('spinbutton', { name: /strength/i })
     await user.clear(strength)
     await user.type(strength, '15')
@@ -195,7 +253,7 @@ describe('CharacterBuilderPage', () => {
         }),
       }),
     )
-    expect(await screen.findByText('Draft saved locally.')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Choose their origins' })).toBeInTheDocument()
   })
 
   it('keeps the previous ability draft when explicit saving fails', async () => {
@@ -203,10 +261,67 @@ describe('CharacterBuilderPage', () => {
     const storage = repository({ save: vi.fn().mockRejectedValue(new Error('quota exceeded')) })
     renderPage(storage)
 
+    await user.click(await screen.findByRole('button', { name: 'Abilities' }))
     await screen.findByRole('heading', { name: 'Shape their abilities' })
     await user.click(screen.getByRole('button', { name: 'Save abilities' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('The previous draft remains intact')
     expect(screen.getByRole('spinbutton', { name: /strength/i })).toHaveValue(8)
+  })
+
+  it('persists canonical species and background references from catalog choices', async () => {
+    const user = userEvent.setup()
+    const storage = repository()
+    renderPage(storage)
+
+    await user.click(await screen.findByRole('radio', { name: 'Human' }))
+    await user.click(screen.getByRole('radio', { name: 'Sage' }))
+    await user.click(screen.getByRole('button', { name: 'Save origins' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          species: { id: 'human', name: 'Human' },
+          background: { id: 'sage', name: 'Sage' },
+        }),
+      }),
+    )
+    expect(await screen.findByText('Draft saved locally.')).toBeInTheDocument()
+  })
+
+  it('requires both origin selections before saving', async () => {
+    const user = userEvent.setup()
+    const storage = repository({ get: vi.fn().mockResolvedValue(originlessCharacter()) })
+    renderPage(storage)
+
+    await screen.findByRole('radio', { name: 'Elf' })
+    await user.click(screen.getByRole('button', { name: 'Save origins' }))
+
+    expect(screen.getByText('Choose an available species.')).toBeInTheDocument()
+    expect(screen.getByText('Choose an available background.')).toBeInTheDocument()
+    expect(storage.save).not.toHaveBeenCalled()
+  })
+
+  it('recovers both origin lists after a provider failure', async () => {
+    const user = userEvent.setup()
+    const attempts = new Map<CatalogCategory, number>()
+    const loader = vi.fn((category: CatalogCategory) => {
+      if (category !== 'species' && category !== 'backgrounds') {
+        return Promise.reject(new Error('unexpected category'))
+      }
+      const attempt = (attempts.get(category) ?? 0) + 1
+      attempts.set(category, attempt)
+      return attempt === 1
+        ? Promise.reject(new Error('provider unavailable'))
+        : Promise.resolve(catalogPage(category))
+    })
+    renderPage(repository(), undefined, loader)
+
+    expect(await screen.findByText('The origins archive is unavailable')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+
+    expect(await screen.findByRole('radio', { name: 'Human' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Sage' })).toBeInTheDocument()
   })
 })

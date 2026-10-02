@@ -80,6 +80,7 @@ export type CatalogItem = z.infer<typeof catalogItemSchema>
 export interface CatalogFilters {
   search?: string
   page?: number
+  pageSize?: number
   level?: number
   school?: string
   characterClass?: string

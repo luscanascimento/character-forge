@@ -4,7 +4,7 @@
 
 **Phase 4 — Character Builder MVP: in progress.**
 
-Phases 0–3 are implemented. The Phase 4 storage boundary, local character list, and first two builder steps are complete; work must continue through the remaining progressive steps without expanding later rules early.
+Phases 0–3 are implemented. The Phase 4 storage boundary, local character list, and first three builder steps are complete; work must continue through the remaining progressive steps without expanding later rules early.
 
 ## Last completed work
 
@@ -42,20 +42,24 @@ Phases 0–3 are implemented. The Phase 4 storage boundary, local character list
 - Added six accessible integer inputs with complete 1–30 bounds feedback, modifier previews, and explicit all-at-once persistence.
 - Kept modifier previews presentation-only and documented that canonical validity and derived values remain owned by server evaluation.
 - Added focused coverage for resume/navigation behavior, incomplete and out-of-range values, negative floor-division previews, formatted modifiers, and saved ability sets.
+- Added a resumable Origins step that unlocks after abilities and fetches species/background choices through the normalized catalog client.
+- Requested the complete bounded origin lists, exposed honest loading/provider-error states with retry, and retained the local draft when the catalog is unavailable.
+- Persisted only canonical id/name references selected from trusted catalog results, with both choices required and existing choices restored on reopen.
+- Added focused coverage for origin resume, catalog query bounds, required choices, stable reference persistence, and provider recovery.
 
 ## Work in progress
 
-Phase 4 remains open. Persistence, My Characters, the builder shell, name, and abilities are implemented; content-selection steps, auto-save, duplication, and deletion UI are not.
+Phase 4 remains open. Persistence, My Characters, the builder shell, name, abilities, and origins are implemented; class/proficiency selection, auto-save, duplication, and deletion UI are not.
 
 ## Next step
 
-Continue Phase 4 with a narrow origins slice:
+Continue Phase 4 with a narrow class-selection slice:
 
-1. Unlock Origins after a complete saved ability set and resume existing drafts at the first unfinished supported step.
-2. Load species and background choices through the normalized catalog boundary with honest loading and provider-error states.
-3. Persist stable id/name references explicitly without copying rule facts into the draft.
-4. Cover navigation, selection, provider failures, and saved references with focused frontend tests.
-5. Do not add class/proficiency selection, auto-save, duplication/deletion actions, later-level progression, equipment effects, or spellcasting in the same slice.
+1. Unlock Class after saved origins and resume existing drafts at the first unfinished supported step.
+2. Load class choices through the normalized catalog boundary with honest loading and provider-error states.
+3. Persist exactly one stable class reference at level 1 without copying class rule facts into the draft.
+4. Cover navigation, selection, provider failures, and saved progression with focused frontend tests.
+5. Do not add proficiency selection, auto-save, duplication/deletion actions, later-level progression, equipment effects, or spellcasting in the same slice.
 
 ## Pending decisions
 
@@ -75,7 +79,7 @@ Continue Phase 4 with a narrow origins slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 42 passing across 10 files (`vitest run`)
+- Frontend unit tests: 45 passing across 10 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors

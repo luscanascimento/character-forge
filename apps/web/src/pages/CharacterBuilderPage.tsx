@@ -10,6 +10,8 @@ import {
 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import type { CatalogCategory, CatalogFilters, CatalogPage } from '../features/catalog/catalog'
+import { getCatalogPage } from '../features/catalog/catalogApi'
 import {
   abilityModifierPreview,
   formatModifier,
@@ -28,7 +30,14 @@ type CharacterRepository = Pick<CharacterStorage, 'get' | 'save'>
 type CharacterBuilderPageProps = {
   storage?: CharacterRepository
   now?: () => Date
+  catalogLoader?: CatalogLoader
 }
+
+type CatalogLoader = (
+  category: CatalogCategory,
+  filters: CatalogFilters,
+  signal?: AbortSignal,
+) => Promise<CatalogPage>
 
 const defaultStorage = new CharacterStorage()
 const defaultNow = () => new Date()
@@ -42,7 +51,7 @@ const builderSteps = [
   ['Review', 'Validate the finished character'],
 ] as const
 
-type BuilderStep = 'name' | 'abilities'
+type BuilderStep = 'name' | 'abilities' | 'origins'
 type AbilityScores = NonNullable<StoredCharacterV1['character']['abilities']>
 type AbilityKey = keyof AbilityScores
 type AbilityInputs = Record<AbilityKey, string>
@@ -60,6 +69,7 @@ const abilityFields: ReadonlyArray<[AbilityKey, string, string]> = [
 export default function CharacterBuilderPage({
   storage = defaultStorage,
   now = defaultNow,
+  catalogLoader = getCatalogPage,
 }: CharacterBuilderPageProps) {
   const { characterId } = useParams()
   const characterQuery = useQuery({
@@ -90,7 +100,12 @@ export default function CharacterBuilderPage({
       )}
       {characterQuery.isSuccess && characterQuery.data === null && <CharacterMissingState />}
       {characterQuery.isSuccess && characterQuery.data !== null && (
-        <BuilderWorkspace document={characterQuery.data} storage={storage} now={now} />
+        <BuilderWorkspace
+          document={characterQuery.data}
+          storage={storage}
+          now={now}
+          catalogLoader={catalogLoader}
+        />
       )}
     </div>
   )
@@ -100,23 +115,41 @@ function BuilderWorkspace({
   document,
   storage,
   now,
+  catalogLoader,
 }: {
   document: StoredCharacterV1
   storage: CharacterRepository
   now: () => Date
+  catalogLoader: CatalogLoader
 }) {
   const queryClient = useQueryClient()
-  const [activeStep, setActiveStep] = useState<BuilderStep>(
-    document.character.name.trim() ? 'abilities' : 'name',
-  )
+  const [activeStep, setActiveStep] = useState<BuilderStep>(() => resumeStep(document))
   const [name, setName] = useState(document.character.name)
   const [nameError, setNameError] = useState<string | null>(null)
   const [abilities, setAbilities] = useState<AbilityInputs>(() =>
     abilityInputsFrom(document.character.abilities),
   )
   const [abilityErrors, setAbilityErrors] = useState<AbilityErrors>({})
+  const [speciesId, setSpeciesId] = useState(document.character.species?.id ?? '')
+  const [backgroundId, setBackgroundId] = useState(document.character.background?.id ?? '')
+  const [originErrors, setOriginErrors] = useState<{ species?: string; background?: string }>({})
   const nameComplete = Boolean(document.character.name.trim())
   const abilitiesComplete = document.character.abilities !== null
+  const originsComplete =
+    document.character.species !== null && document.character.background !== null
+
+  const speciesQuery = useQuery({
+    queryKey: ['builder-options', 'species'],
+    queryFn: ({ signal }) => catalogLoader('species', { page: 1, pageSize: 48 }, signal),
+    enabled: activeStep === 'origins',
+    retry: false,
+  })
+  const backgroundsQuery = useQuery({
+    queryKey: ['builder-options', 'backgrounds'],
+    queryFn: ({ signal }) => catalogLoader('backgrounds', { page: 1, pageSize: 48 }, signal),
+    enabled: activeStep === 'origins',
+    retry: false,
+  })
 
   function cacheSavedDocument(saved: StoredCharacterV1) {
     queryClient.setQueryData(['character', saved.id], saved)
@@ -150,6 +183,26 @@ function BuilderWorkspace({
     onSuccess: (saved) => {
       setAbilities(abilityInputsFrom(saved.character.abilities))
       cacheSavedDocument(saved)
+      setActiveStep('origins')
+    },
+  })
+  const originsMutation = useMutation({
+    mutationFn: ({
+      species,
+      background,
+    }: {
+      species: { id: string; name: string }
+      background: { id: string; name: string }
+    }) =>
+      storage.save({
+        ...document,
+        updatedAt: now().toISOString(),
+        character: { ...document.character, species, background },
+      }),
+    onSuccess: (saved) => {
+      setSpeciesId(saved.character.species?.id ?? '')
+      setBackgroundId(saved.character.background?.id ?? '')
+      cacheSavedDocument(saved)
     },
   })
 
@@ -177,6 +230,26 @@ function BuilderWorkspace({
     abilitiesMutation.mutate(result.scores)
   }
 
+  function saveOrigins(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const species = speciesQuery.data?.items.find((item) => item.id === speciesId)
+    const background = backgroundsQuery.data?.items.find((item) => item.id === backgroundId)
+    const errors = {
+      species: species ? undefined : 'Choose an available species.',
+      background: background ? undefined : 'Choose an available background.',
+    }
+    if (!species || !background) {
+      setOriginErrors(errors)
+      return
+    }
+
+    setOriginErrors({})
+    originsMutation.mutate({
+      species: { id: species.id, name: species.name },
+      background: { id: background.id, name: background.name },
+    })
+  }
+
   return (
     <div className="builder-layout">
       <aside className="builder-progress">
@@ -189,10 +262,20 @@ function BuilderWorkspace({
           <ol>
             {builderSteps.map(([label, description], index) => {
               const step: BuilderStep | null =
-                index === 0 ? 'name' : index === 1 ? 'abilities' : null
-              const available = step === 'name' || (step === 'abilities' && nameComplete)
+                index === 0 ? 'name' : index === 1 ? 'abilities' : index === 2 ? 'origins' : null
+              const available =
+                step === 'name' ||
+                (step === 'abilities' && nameComplete) ||
+                (step === 'origins' && nameComplete && abilitiesComplete)
               const active = step === activeStep
-              const complete = index === 0 ? nameComplete : index === 1 ? abilitiesComplete : false
+              const complete =
+                index === 0
+                  ? nameComplete
+                  : index === 1
+                    ? abilitiesComplete
+                    : index === 2
+                      ? originsComplete
+                      : false
               return (
                 <li
                   className={[
@@ -280,7 +363,7 @@ function BuilderWorkspace({
               />
             </form>
           </>
-        ) : (
+        ) : activeStep === 'abilities' ? (
           <>
             <BuilderStepHeading
               step={2}
@@ -345,9 +428,165 @@ function BuilderWorkspace({
               />
             </form>
           </>
+        ) : (
+          <>
+            <BuilderStepHeading
+              step={3}
+              title="Choose their origins"
+              description="Select a species and background from the active SRD 5.2.1 catalog."
+            />
+            <OriginsStep
+              speciesPage={speciesQuery.data}
+              backgroundsPage={backgroundsQuery.data}
+              pending={speciesQuery.isPending || backgroundsQuery.isPending}
+              failed={speciesQuery.isError || backgroundsQuery.isError}
+              speciesId={speciesId}
+              backgroundId={backgroundId}
+              errors={originErrors}
+              saved={originsMutation.isSuccess}
+              saving={originsMutation.isPending}
+              saveFailed={originsMutation.isError}
+              onSpeciesChange={(id) => {
+                setSpeciesId(id)
+                setOriginErrors((current) => ({ ...current, species: undefined }))
+                if (originsMutation.isError || originsMutation.isSuccess) originsMutation.reset()
+              }}
+              onBackgroundChange={(id) => {
+                setBackgroundId(id)
+                setOriginErrors((current) => ({ ...current, background: undefined }))
+                if (originsMutation.isError || originsMutation.isSuccess) originsMutation.reset()
+              }}
+              onRetry={() => {
+                void speciesQuery.refetch()
+                void backgroundsQuery.refetch()
+              }}
+              onSubmit={saveOrigins}
+            />
+          </>
         )}
       </section>
     </div>
+  )
+}
+
+function OriginsStep({
+  speciesPage,
+  backgroundsPage,
+  pending,
+  failed,
+  speciesId,
+  backgroundId,
+  errors,
+  saved,
+  saving,
+  saveFailed,
+  onSpeciesChange,
+  onBackgroundChange,
+  onRetry,
+  onSubmit,
+}: {
+  speciesPage?: CatalogPage
+  backgroundsPage?: CatalogPage
+  pending: boolean
+  failed: boolean
+  speciesId: string
+  backgroundId: string
+  errors: { species?: string; background?: string }
+  saved: boolean
+  saving: boolean
+  saveFailed: boolean
+  onSpeciesChange: (id: string) => void
+  onBackgroundChange: (id: string) => void
+  onRetry: () => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) {
+  if (pending) {
+    return (
+      <div className="origin-state" role="status">
+        <span aria-hidden="true">✦</span>
+        <strong>Opening the origins archive…</strong>
+        <p>Loading species and backgrounds from the active rules catalog.</p>
+      </div>
+    )
+  }
+
+  if (failed || !speciesPage || !backgroundsPage) {
+    return (
+      <div className="origin-state origin-state--error" role="alert">
+        <AlertTriangle aria-hidden="true" size={30} />
+        <strong>The origins archive is unavailable</strong>
+        <p>Your local draft is safe. Reopen the catalog when the provider is ready.</p>
+        <button className="button button--secondary" type="button" onClick={onRetry}>
+          <RefreshCw aria-hidden="true" size={17} />
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <form className="builder-form builder-form--wide" onSubmit={onSubmit} noValidate>
+      <OriginChoices
+        legend="Species"
+        name="species"
+        items={speciesPage.items}
+        selectedId={speciesId}
+        error={errors.species}
+        onChange={onSpeciesChange}
+      />
+      <OriginChoices
+        legend="Background"
+        name="background"
+        items={backgroundsPage.items}
+        selectedId={backgroundId}
+        error={errors.background}
+        onChange={onBackgroundChange}
+      />
+      <p className="origin-source">
+        Source: {speciesPage.source.rulesVersion} · {speciesPage.source.provider}
+      </p>
+      <LocalStorageNotice />
+      <SaveError visible={saveFailed} />
+      <BuilderActions saved={saved} pending={saving} label="Save origins" />
+    </form>
+  )
+}
+
+function OriginChoices({
+  legend,
+  name,
+  items,
+  selectedId,
+  error,
+  onChange,
+}: {
+  legend: string
+  name: string
+  items: CatalogPage['items']
+  selectedId: string
+  error?: string
+  onChange: (id: string) => void
+}) {
+  return (
+    <fieldset className={error ? 'origin-choices origin-choices--error' : 'origin-choices'}>
+      <legend>{legend}</legend>
+      <div className="origin-options">
+        {items.map((item) => (
+          <label key={item.id}>
+            <input
+              type="radio"
+              name={name}
+              value={item.id}
+              checked={selectedId === item.id}
+              onChange={() => onChange(item.id)}
+            />
+            <span aria-hidden="true">{selectedId === item.id ? <Check size={15} /> : null}</span>
+            <strong>{item.name}</strong>
+          </label>
+        ))}
+      </div>
+      {error && <small role="alert">{error}</small>}
+    </fieldset>
   )
 }
 
@@ -412,6 +651,12 @@ function BuilderActions({
       </button>
     </div>
   )
+}
+
+function resumeStep(document: StoredCharacterV1): BuilderStep {
+  if (!document.character.name.trim()) return 'name'
+  if (document.character.abilities === null) return 'abilities'
+  return 'origins'
 }
 
 function abilityInputsFrom(scores: AbilityScores | null): AbilityInputs {
