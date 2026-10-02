@@ -4,7 +4,7 @@
 
 **Phase 4 — Character Builder MVP: in progress.**
 
-Phases 0–3 are implemented. The Phase 4 storage boundary and local character-list experience are complete; work must continue with the progressive builder without expanding later rules early.
+Phases 0–3 are implemented. The Phase 4 storage boundary, local character list, and first builder step are complete; work must continue through the remaining progressive steps without expanding later rules early.
 
 ## Last completed work
 
@@ -34,20 +34,24 @@ Phases 0–3 are implemented. The Phase 4 storage boundary and local character-l
 - Added explicit loading, empty, malformed-record, unavailable-storage, and create-failure states with retry behavior that never silently deletes local data.
 - Added a minimal versioned draft factory and create action that persists a UUID/timestamped blank character before opening its future builder route.
 - Added focused UI coverage for roster ordering, builder navigation, draft creation, local-data messaging, and storage recovery.
+- Replaced the character-specific forge placeholder with a responsive builder shell that loads the requested local draft and distinguishes loading, missing, malformed, and unavailable-storage states.
+- Established an accessible six-step creation sequence while keeping unfinished steps visibly locked instead of pretending they are available.
+- Implemented the first character-name step with explicit local saving, whitespace normalization, update timestamps, failure feedback, and roster-cache synchronization without introducing auto-save early.
+- Added focused coverage for draft loading, progressive navigation, missing/error recovery, required-name behavior, and explicit persistence.
 
 ## Work in progress
 
-Phase 4 remains open. Persistence and My Characters are implemented; the progressive builder, auto-save, duplication, and deletion UI are not.
+Phase 4 remains open. Persistence, My Characters, the builder shell, and its name step are implemented; abilities and content-selection steps, auto-save, duplication, and deletion UI are not.
 
 ## Next step
 
-Continue Phase 4 with a narrow builder-foundation slice:
+Continue Phase 4 with a narrow ability-scores slice:
 
-1. Replace the `/forge/:characterId` placeholder with a builder shell that loads the requested local draft.
-2. Add missing-character, malformed/unavailable-storage, and loading states without mutating the stored draft.
-3. Establish accessible progressive navigation and implement only the first basic-details step.
-4. Keep server validation canonical and cover draft loading/navigation with focused frontend tests.
-5. Do not add auto-save, duplication/deletion actions, later-level progression, equipment effects, or spellcasting in the same slice.
+1. Unlock the Abilities step after a valid saved name and preserve direct reopening of the current draft.
+2. Capture all six integer scores within the domain's supported 1–30 bounds, with clear field-level errors and modifier previews.
+3. Persist the completed ability set explicitly while keeping server validation canonical.
+4. Cover step navigation, bounds, modifiers, and save failures with focused frontend tests.
+5. Do not add origins, class/proficiency selection, auto-save, duplication/deletion actions, later-level progression, equipment effects, or spellcasting in the same slice.
 
 ## Pending decisions
 
@@ -68,7 +72,7 @@ Continue Phase 4 with a narrow builder-foundation slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 21 passing across 8 files (`vitest run`)
+- Frontend unit tests: 27 passing across 9 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
