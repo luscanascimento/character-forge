@@ -22,6 +22,8 @@ The collection keeps the document extensible, but the current validator requires
 
 `POST /api/characters/validate` is the canonical validation/calculation boundary. It never stores character data and returns derived values only for a wholly valid document. The browser may retain invalid drafts in Phase 4, but it must not treat them as validated domain state.
 
+The builder may calculate a bounded ability-modifier preview for scores from 1–30 so users can understand an input before the full draft is valid. The UI must label that value as a preview, use the same pure floor-division formula, and never treat it as a canonical evaluated result. Server validation remains authoritative.
+
 Rule facts are not part of the draft. The application resolves selected catalog references into a trusted `CharacterRulesContext` before evaluation, preventing a client from changing values such as a class hit die.
 
 ## Consequences
@@ -30,3 +32,4 @@ Rule facts are not part of the draft. The application resolves selected catalog 
 - A saved document and a validated character use the same shape but have different trust levels.
 - Multiclassing remains representable as future data without being implemented or accepted today.
 - Adding timestamps and `schemaVersion` remains a Phase 4 persistence-envelope concern.
+- Small presentation previews can make incomplete drafts understandable without moving character validity into the browser.

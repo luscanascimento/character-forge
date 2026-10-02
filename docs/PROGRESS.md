@@ -4,7 +4,7 @@
 
 **Phase 4 — Character Builder MVP: in progress.**
 
-Phases 0–3 are implemented. The Phase 4 storage boundary, local character list, and first builder step are complete; work must continue through the remaining progressive steps without expanding later rules early.
+Phases 0–3 are implemented. The Phase 4 storage boundary, local character list, and first two builder steps are complete; work must continue through the remaining progressive steps without expanding later rules early.
 
 ## Last completed work
 
@@ -38,24 +38,27 @@ Phases 0–3 are implemented. The Phase 4 storage boundary, local character list
 - Established an accessible six-step creation sequence while keeping unfinished steps visibly locked instead of pretending they are available.
 - Implemented the first character-name step with explicit local saving, whitespace normalization, update timestamps, failure feedback, and roster-cache synchronization without introducing auto-save early.
 - Added focused coverage for draft loading, progressive navigation, missing/error recovery, required-name behavior, and explicit persistence.
+- Added a resumable Abilities step that unlocks after a saved name and keeps completed earlier steps editable.
+- Added six accessible integer inputs with complete 1–30 bounds feedback, modifier previews, and explicit all-at-once persistence.
+- Kept modifier previews presentation-only and documented that canonical validity and derived values remain owned by server evaluation.
+- Added focused coverage for resume/navigation behavior, incomplete and out-of-range values, negative floor-division previews, formatted modifiers, and saved ability sets.
 
 ## Work in progress
 
-Phase 4 remains open. Persistence, My Characters, the builder shell, and its name step are implemented; abilities and content-selection steps, auto-save, duplication, and deletion UI are not.
+Phase 4 remains open. Persistence, My Characters, the builder shell, name, and abilities are implemented; content-selection steps, auto-save, duplication, and deletion UI are not.
 
 ## Next step
 
-Continue Phase 4 with a narrow ability-scores slice:
+Continue Phase 4 with a narrow origins slice:
 
-1. Unlock the Abilities step after a valid saved name and preserve direct reopening of the current draft.
-2. Capture all six integer scores within the domain's supported 1–30 bounds, with clear field-level errors and modifier previews.
-3. Persist the completed ability set explicitly while keeping server validation canonical.
-4. Cover step navigation, bounds, modifiers, and save failures with focused frontend tests.
-5. Do not add origins, class/proficiency selection, auto-save, duplication/deletion actions, later-level progression, equipment effects, or spellcasting in the same slice.
+1. Unlock Origins after a complete saved ability set and resume existing drafts at the first unfinished supported step.
+2. Load species and background choices through the normalized catalog boundary with honest loading and provider-error states.
+3. Persist stable id/name references explicitly without copying rule facts into the draft.
+4. Cover navigation, selection, provider failures, and saved references with focused frontend tests.
+5. Do not add class/proficiency selection, auto-save, duplication/deletion actions, later-level progression, equipment effects, or spellcasting in the same slice.
 
 ## Pending decisions
 
-- Whether the frontend should mirror any presentation-only calculation remains deferred; the canonical server result must stay authoritative.
 - The auto-save debounce and conflict behavior across multiple open tabs remain to be defined when editing begins.
 - A project source-code license remains to be selected before public portfolio release.
 - Checked-in provider snapshots are not currently justified; small representative inline fixtures cover consumed schema variants. Revisit only if upstream contract testing becomes hard to understand.
@@ -72,7 +75,7 @@ Continue Phase 4 with a narrow ability-scores slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 27 passing across 9 files (`vitest run`)
+- Frontend unit tests: 42 passing across 10 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
@@ -83,4 +86,4 @@ Continue Phase 4 with a narrow ability-scores slice:
 
 ## Last checkpoint
 
-2026-10-01 (America/Sao_Paulo)
+2026-10-02 (America/Sao_Paulo)

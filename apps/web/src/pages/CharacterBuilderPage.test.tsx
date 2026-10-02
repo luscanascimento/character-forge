@@ -24,6 +24,18 @@ function repository(overrides: Partial<CharacterRepository> = {}): CharacterRepo
   }
 }
 
+function blankCharacter(): StoredCharacterV1 {
+  const character = createStoredCharacter()
+  return {
+    ...character,
+    character: {
+      ...character.character,
+      name: '',
+      abilities: null,
+    },
+  }
+}
+
 function renderPage(
   storage: CharacterRepository,
   now: () => Date = () => new Date('2026-10-01T15:00:00.000Z'),
@@ -52,19 +64,21 @@ describe('CharacterBuilderPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Opening your draft')
   })
 
-  it('loads the requested character into the first progressive step', async () => {
+  it('resumes a named character at the abilities step', async () => {
     const storage = repository()
     const character = createStoredCharacter()
     renderPage(storage)
 
-    expect(await screen.findByRole('heading', { name: 'Name your hero' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Shape their abilities' }),
+    ).toBeInTheDocument()
     expect(storage.get).toHaveBeenCalledWith(character.id)
-    expect(screen.getByRole('textbox', { name: 'Character name' })).toHaveValue('Arannis')
+    expect(screen.getByRole('spinbutton', { name: /strength/i })).toHaveValue(8)
 
     const steps = within(screen.getByRole('navigation', { name: 'Character creation steps' }))
     expect(steps.getAllByRole('listitem')).toHaveLength(6)
-    expect(steps.getByText('Name')).toHaveAttribute('aria-current', 'step')
-    expect(steps.getByText('Abilities')).not.toHaveAttribute('aria-current')
+    expect(steps.getByRole('button', { name: 'Name' })).not.toHaveAttribute('aria-current')
+    expect(steps.getByRole('button', { name: 'Abilities' })).toHaveAttribute('aria-current', 'step')
   })
 
   it('shows a safe missing-character state', async () => {
@@ -103,24 +117,25 @@ describe('CharacterBuilderPage', () => {
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByRole('heading', { name: 'Name your hero' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Shape their abilities' }),
+    ).toBeInTheDocument()
     expect(get).toHaveBeenCalledTimes(2)
   })
 
   it('requires a name and explicitly saves a trimmed update with a new timestamp', async () => {
     const user = userEvent.setup()
-    const storage = repository()
+    const storage = repository({ get: vi.fn().mockResolvedValue(blankCharacter()) })
     renderPage(storage)
 
     const input = await screen.findByRole('textbox', { name: 'Character name' })
-    await user.clear(input)
-    await user.click(screen.getByRole('button', { name: 'Save draft' }))
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent('Choose a name')
     expect(storage.save).not.toHaveBeenCalled()
 
     await user.type(input, '  Lyra  ')
-    await user.click(screen.getByRole('button', { name: 'Save draft' }))
+    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
 
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(storage.save).toHaveBeenCalledWith(
@@ -129,7 +144,69 @@ describe('CharacterBuilderPage', () => {
         character: expect.objectContaining({ name: 'Lyra' }),
       }),
     )
+    expect(
+      await screen.findByRole('heading', { name: 'Shape their abilities' }),
+    ).toBeInTheDocument()
+  })
+
+  it('previews bounded modifiers and reports incomplete or out-of-range scores', async () => {
+    const user = userEvent.setup()
+    const storage = repository()
+    renderPage(storage)
+
+    const strength = await screen.findByRole('spinbutton', { name: /strength/i })
+    expect(strength).toHaveAccessibleDescription('Modifier -1')
+
+    await user.clear(strength)
+    await user.type(strength, '31')
+    const dexterity = screen.getByRole('spinbutton', { name: /dexterity/i })
+    await user.clear(dexterity)
+    await user.click(screen.getByRole('button', { name: 'Save abilities' }))
+
+    expect(screen.getByText('Use 1–30.')).toBeInTheDocument()
+    expect(screen.getByText('Enter a score.')).toBeInTheDocument()
+    expect(storage.save).not.toHaveBeenCalled()
+  })
+
+  it('persists all six integer scores and their updated timestamp', async () => {
+    const user = userEvent.setup()
+    const storage = repository()
+    renderPage(storage)
+
+    const strength = await screen.findByRole('spinbutton', { name: /strength/i })
+    await user.clear(strength)
+    await user.type(strength, '15')
+    expect(strength).toHaveAccessibleDescription('Modifier +2')
+    await user.click(screen.getByRole('button', { name: 'Save abilities' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        updatedAt: '2026-10-01T15:00:00.000Z',
+        character: expect.objectContaining({
+          abilities: {
+            strength: 15,
+            dexterity: 14,
+            constitution: 13,
+            intelligence: 12,
+            wisdom: 10,
+            charisma: 16,
+          },
+        }),
+      }),
+    )
     expect(await screen.findByText('Draft saved locally.')).toBeInTheDocument()
-    expect(input).toHaveValue('Lyra')
+  })
+
+  it('keeps the previous ability draft when explicit saving fails', async () => {
+    const user = userEvent.setup()
+    const storage = repository({ save: vi.fn().mockRejectedValue(new Error('quota exceeded')) })
+    renderPage(storage)
+
+    await screen.findByRole('heading', { name: 'Shape their abilities' })
+    await user.click(screen.getByRole('button', { name: 'Save abilities' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('The previous draft remains intact')
+    expect(screen.getByRole('spinbutton', { name: /strength/i })).toHaveValue(8)
   })
 })
