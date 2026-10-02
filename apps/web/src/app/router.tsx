@@ -8,6 +8,7 @@ const HomePage = lazy(() => import('../pages/HomePage'))
 const CompendiumPage = lazy(() => import('../pages/CompendiumPage'))
 const CatalogDetailPage = lazy(() => import('../pages/CatalogDetailPage'))
 const ComingSoonPage = lazy(() => import('../pages/ComingSoonPage'))
+const MyCharactersPage = lazy(() => import('../pages/MyCharactersPage'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'))
 const AttributionsPage = lazy(() => import('../pages/AttributionsPage'))
 
@@ -34,6 +35,16 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: '/forge/:characterId',
+        element: withSuspense(
+          <ComingSoonPage
+            eyebrow="Draft secured"
+            title="The forge is warming"
+            description="This character is safely stored. The guided builder is the next step in the journey."
+          />,
+        ),
+      },
+      {
         path: '/compendium',
         element: withSuspense(<CompendiumPage />),
       },
@@ -47,13 +58,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/characters',
-        element: withSuspense(
-          <ComingSoonPage
-            eyebrow="No names in the ledger"
-            title="My characters"
-            description="Locally saved heroes will appear here when the builder and IndexedDB storage are introduced."
-          />,
-        ),
+        element: withSuspense(<MyCharactersPage />),
       },
       {
         path: '/attributions',

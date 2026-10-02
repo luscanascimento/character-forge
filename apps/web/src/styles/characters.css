@@ -1,0 +1,287 @@
+.characters-page {
+  min-height: 100svh;
+  padding-top: 5rem;
+  background:
+    radial-gradient(circle at 82% 7rem, rgb(182 64 36 / 14%), transparent 24rem),
+    linear-gradient(180deg, rgb(36 29 23 / 48%), transparent 27rem);
+}
+
+.characters-hero {
+  display: flex;
+  width: min(100% - 2rem, var(--content-width));
+  flex-direction: column;
+  gap: 2rem;
+  align-items: flex-start;
+  margin-inline: auto;
+  padding: clamp(3.5rem, 9vw, 6.5rem) 0 clamp(2.5rem, 6vw, 4.5rem);
+}
+
+.characters-hero p,
+.characters-heading p,
+.character-card__body > p {
+  margin: 0;
+  color: var(--color-bronze);
+  font-family: var(--font-label);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.characters-hero h1 {
+  margin: 0.35rem 0 0.7rem;
+  color: var(--color-parchment-bright);
+  font-family: var(--font-display);
+  font-size: clamp(3.2rem, 12vw, 6.4rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 0.92;
+}
+
+.characters-hero > div > span {
+  display: block;
+  max-width: 38rem;
+  color: var(--color-text-muted);
+}
+
+.characters-hero button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+  transform: none;
+}
+
+.characters-workspace {
+  width: min(100% - 2rem, var(--content-width));
+  min-height: 32rem;
+  margin-inline: auto;
+  padding: clamp(1.75rem, 5vw, 3rem) 0 5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.characters-heading {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.characters-heading h2 {
+  margin: 0.25rem 0 0;
+  color: var(--color-parchment-bright);
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 7vw, 3.5rem);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.characters-heading strong {
+  flex: 0 0 auto;
+  color: var(--color-bronze);
+  font-family: var(--font-label);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.characters-inline-error {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgb(199 90 79 / 42%);
+  border-radius: var(--radius-sm);
+  color: var(--color-parchment);
+  background: rgb(93 27 30 / 28%);
+  font-size: 0.86rem;
+}
+
+.characters-inline-error svg {
+  flex: 0 0 auto;
+  color: var(--color-danger);
+}
+
+.characters-state {
+  display: flex;
+  min-height: 20rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  border: 1px dashed var(--color-border-bright);
+  border-radius: var(--radius-md);
+  color: var(--color-bronze);
+  text-align: center;
+  background: rgb(27 23 19 / 62%);
+}
+
+.characters-state__rune {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  animation: rune-pulse 1.5s ease-in-out infinite;
+}
+
+.characters-state h3 {
+  margin: 0.9rem 0 0.35rem;
+  color: var(--color-parchment-bright);
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 6vw, 2.3rem);
+  font-weight: 500;
+}
+
+.characters-state p {
+  max-width: 32rem;
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.characters-state .button {
+  margin-top: 1.4rem;
+  cursor: pointer;
+}
+
+.characters-state--error {
+  border-color: rgb(199 90 79 / 45%);
+}
+
+.characters-state--error > svg {
+  color: var(--color-danger);
+}
+
+.character-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.character-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 1.2rem;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgb(255 255 255 / 2%), transparent 55%), var(--color-surface);
+  transition:
+    border-color var(--duration-normal) ease,
+    transform var(--duration-normal) ease;
+}
+
+.character-card:hover {
+  border-color: var(--color-border-bright);
+  transform: translateY(-2px);
+}
+
+.character-card__sigil {
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  place-items: center;
+  border: 1px solid var(--color-border-bright);
+  border-radius: 50%;
+  color: var(--color-gold);
+  background: var(--color-coal);
+}
+
+.character-card__body {
+  min-width: 0;
+}
+
+.character-card h3 {
+  margin: 0.15rem 0 0.25rem;
+  overflow: hidden;
+  color: var(--color-parchment-bright);
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 500;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-card__body > span {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.character-card > a {
+  display: inline-flex;
+  grid-column: 1 / -1;
+  gap: 0.45rem;
+  align-items: center;
+  justify-self: start;
+  color: var(--color-parchment);
+  font-family: var(--font-label);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.character-card > a::before {
+  position: absolute;
+  inset: 0;
+  content: '';
+}
+
+@media (min-width: 40rem) {
+  .characters-hero {
+    flex-direction: row;
+    align-items: end;
+    justify-content: space-between;
+  }
+
+  .characters-hero .button {
+    flex: 0 0 auto;
+    margin-bottom: 0.25rem;
+  }
+
+  .character-card {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 1.4rem;
+  }
+
+  .character-card > a {
+    grid-column: auto;
+  }
+}
+
+@media (min-width: 48rem) {
+  .characters-page {
+    padding-top: 5.5rem;
+  }
+
+  .characters-hero,
+  .characters-workspace {
+    width: min(100% - 4rem, var(--content-width));
+  }
+
+  .character-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .character-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .character-card > a {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 70rem) {
+  .character-card {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .character-card > a {
+    grid-column: auto;
+  }
+}

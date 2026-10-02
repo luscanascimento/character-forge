@@ -97,6 +97,35 @@ export type StoredCharacterV1 = z.infer<typeof storedCharacterV1Schema>
 export type CharacterRequest = z.infer<typeof characterRequestSchema>
 export type CharacterEvaluation = z.infer<typeof characterEvaluationSchema>
 
+type NewStoredCharacterOptions = {
+  id?: string
+  now?: Date
+}
+
+export function createStoredCharacterDraft({
+  id = globalThis.crypto.randomUUID(),
+  now = new Date(),
+}: NewStoredCharacterOptions = {}): StoredCharacterV1 {
+  const timestamp = now.toISOString()
+
+  return storedCharacterV1Schema.parse({
+    schemaVersion: currentCharacterSchemaVersion,
+    id,
+    ruleset: activeRuleset,
+    rulesVersion: activeRulesVersion,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    character: {
+      name: '',
+      abilities: null,
+      species: null,
+      background: null,
+      classProgressions: [{ class: null, level: 1 }],
+      proficiencyChoices: [],
+    },
+  })
+}
+
 export function toCharacterRequest(document: StoredCharacterV1): CharacterRequest {
   return characterRequestSchema.parse({
     id: document.id,

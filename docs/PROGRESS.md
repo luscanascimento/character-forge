@@ -4,7 +4,7 @@
 
 **Phase 4 — Character Builder MVP: in progress.**
 
-Phases 0–3 are implemented. The Phase 4 storage boundary is complete; work must continue with the local character-list experience without expanding later rules early.
+Phases 0–3 are implemented. The Phase 4 storage boundary and local character-list experience are complete; work must continue with the progressive builder without expanding later rules early.
 
 ## Last completed work
 
@@ -30,20 +30,24 @@ Phases 0–3 are implemented. The Phase 4 storage boundary is complete; work mus
 - Added typed failures for unavailable storage, malformed records, and unsupported schema versions without silently discarding or guessing data.
 - Added a tested API adapter that strips persistence metadata before canonical server validation.
 - Added `fake-indexeddb` as a test-only implementation of the native browser API; production has no storage wrapper dependency.
+- Replaced the My Characters placeholder with a responsive, IndexedDB-backed local roster ordered by most recently updated.
+- Added explicit loading, empty, malformed-record, unavailable-storage, and create-failure states with retry behavior that never silently deletes local data.
+- Added a minimal versioned draft factory and create action that persists a UUID/timestamped blank character before opening its future builder route.
+- Added focused UI coverage for roster ordering, builder navigation, draft creation, local-data messaging, and storage recovery.
 
 ## Work in progress
 
-Phase 4 remains open. The persistence and validation boundary is implemented; My Characters, the progressive builder, auto-save, duplication, and deletion UI are not.
+Phase 4 remains open. Persistence and My Characters are implemented; the progressive builder, auto-save, duplication, and deletion UI are not.
 
 ## Next step
 
-Continue Phase 4 with a narrow My Characters slice:
+Continue Phase 4 with a narrow builder-foundation slice:
 
-1. Replace the `/characters` placeholder with a responsive My Characters page backed by the storage module.
-2. Add loading, empty, malformed/unavailable-storage, and populated states without hiding recoverable local-data failures.
-3. Add a minimal create-draft action that generates the UUID/timestamps and opens the future builder route.
-4. Cover list ordering, navigation, and error recovery with focused frontend tests.
-5. Do not build the full progressive form, auto-save, duplication/deletion actions, later-level progression, equipment effects, or spellcasting in the same slice.
+1. Replace the `/forge/:characterId` placeholder with a builder shell that loads the requested local draft.
+2. Add missing-character, malformed/unavailable-storage, and loading states without mutating the stored draft.
+3. Establish accessible progressive navigation and implement only the first basic-details step.
+4. Keep server validation canonical and cover draft loading/navigation with focused frontend tests.
+5. Do not add auto-save, duplication/deletion actions, later-level progression, equipment effects, or spellcasting in the same slice.
 
 ## Pending decisions
 
@@ -64,7 +68,7 @@ Continue Phase 4 with a narrow My Characters slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 14 passing across 6 files (`vitest run`)
+- Frontend unit tests: 21 passing across 8 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
@@ -75,4 +79,4 @@ Continue Phase 4 with a narrow My Characters slice:
 
 ## Last checkpoint
 
-2026-09-29 (America/Sao_Paulo)
+2026-10-01 (America/Sao_Paulo)
