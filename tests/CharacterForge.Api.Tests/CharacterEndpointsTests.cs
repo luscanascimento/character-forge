@@ -138,7 +138,7 @@ public sealed class CharacterEndpointsTests : IDisposable
     }
 
     [Fact]
-    public async Task Validate_DoesNotClaimLevelOneHitPointsForHigherLevelCharacter()
+    public async Task Validate_ReturnsFixedHitPointsForAHigherLevelCharacter()
     {
         var response = await _client.PostAsJsonAsync(
             "/api/characters/validate",
@@ -150,7 +150,7 @@ public sealed class CharacterEndpointsTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(evaluation?.Derived);
         Assert.Equal(3, evaluation.Derived.ProficiencyBonus);
-        Assert.Null(evaluation.Derived.HitPointMaximum);
+        Assert.Equal(27, evaluation.Derived.HitPointMaximum);
     }
 
     [Fact]

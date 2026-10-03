@@ -78,9 +78,10 @@ public static class CharacterEvaluator
                     AbilityRules.GetModifier(abilities.Charisma)),
                 ProficiencyRules.GetBonus(progression.Level),
                 ArmorClassRules.GetUnarmored(abilities.Dexterity),
-                progression.Level == 1
-                    ? HitPointRules.GetLevelOneMaximum(context.HitDie, abilities.Constitution)
-                    : null,
+                HitPointRules.GetFixedMaximum(
+                    context.HitDie,
+                    abilities.Constitution,
+                    progression.Level),
                 context.HitDie,
                 ProficiencyRules.MergeGrants(proficiencyResolution.Grants)));
     }

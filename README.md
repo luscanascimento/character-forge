@@ -72,7 +72,7 @@ The selected rules contract is `ruleset: "2024"` and `rulesVersion: "SRD-5.2.1"`
 
 Only legally redistributable SRD material is in scope. Do not add content from non-SRD sourcebooks or scrape D&D Beyond. The catalog exposes classes, species, backgrounds, feats, spells, and equipment through `/api/catalog/{category}` and `/api/catalog/{category}/{id}`. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) and the [API research checkpoint](docs/SRD-API-RESEARCH.md).
 
-Draft characters can be submitted to `POST /api/characters/validate` for canonical rule validation and derived ability/proficiency values, unarmored AC, level-1 HP, fixed proficiency grants, and required proficiency choices. The endpoint does not persist character data and returns calculations only for a valid 2024 / SRD 5.2.1 document within the rules currently implemented.
+Draft characters can be submitted to `POST /api/characters/validate` for canonical rule validation and derived ability/proficiency values, unarmored AC, fixed HP progression through level 20, fixed proficiency grants, and required proficiency choices. The endpoint does not persist character data and returns calculations only for a valid 2024 / SRD 5.2.1 document within the rules currently implemented.
 
 ## Architecture and roadmap
 

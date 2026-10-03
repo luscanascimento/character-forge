@@ -73,13 +73,22 @@ public static class HitPointRules
     private static readonly HashSet<int> SupportedHitDice = [6, 8, 10, 12];
 
     public static int GetLevelOneMaximum(int hitDie, int constitutionScore)
+        => GetFixedMaximum(hitDie, constitutionScore, CharacterRules.MinimumLevel);
+
+    public static int GetFixedMaximum(int hitDie, int constitutionScore, int level)
     {
         if (!IsSupportedHitDie(hitDie))
         {
             throw new ArgumentOutOfRangeException(nameof(hitDie), hitDie, "Hit die must be d6, d8, d10, or d12.");
         }
 
-        return hitDie + AbilityRules.GetModifier(constitutionScore);
+        ArgumentOutOfRangeException.ThrowIfLessThan(level, CharacterRules.MinimumLevel);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(level, CharacterRules.MaximumLevel);
+
+        var constitutionModifier = AbilityRules.GetModifier(constitutionScore);
+        var levelOneMaximum = hitDie + constitutionModifier;
+        var fixedIncrease = Math.Max(1, (hitDie / 2) + 1 + constitutionModifier);
+        return levelOneMaximum + ((level - 1) * fixedIncrease);
     }
 
     public static bool IsSupportedHitDie(int hitDie) => SupportedHitDice.Contains(hitDie);

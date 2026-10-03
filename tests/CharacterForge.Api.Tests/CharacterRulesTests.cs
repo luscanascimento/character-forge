@@ -80,6 +80,30 @@ public sealed class CharacterRulesTests
             HitPointRules.GetLevelOneMaximum(20, 10));
     }
 
+    [Theory]
+    [InlineData(6, 10, 2, 10)]
+    [InlineData(8, 14, 5, 38)]
+    [InlineData(10, 18, 8, 84)]
+    [InlineData(12, 1, 3, 11)]
+    [InlineData(6, 1, 20, 20)]
+    public void FixedHitPoints_UseTheClassValueAndMinimumOneIncrease(
+        int hitDie,
+        int constitutionScore,
+        int level,
+        int expected)
+    {
+        Assert.Equal(expected, HitPointRules.GetFixedMaximum(hitDie, constitutionScore, level));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(21)]
+    public void FixedHitPoints_RejectLevelsOutsideRulesBounds(int level)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            HitPointRules.GetFixedMaximum(8, 10, level));
+    }
+
     [Fact]
     public void ProficiencyGrants_MergeDuplicateProficienciesAndKeepTheirSources()
     {

@@ -74,10 +74,12 @@ Phases 0–4 are implemented. Phase 5 has begun with a normalized class/subclass
 - Added `GET /api/classes/{classId}/progression` with configured memory caching, source/rules metadata, slug validation, predictable not-found/provider failures, and no upstream DTO leakage.
 - Rejected incomplete tables, unsupported hit dice, invalid proficiency bonuses, duplicate subclass levels, and mismatched class/subclass references at the provider boundary.
 - Recorded scope and non-destructive level-change policy in ADR-007 and added focused adapter/endpoint/cache coverage.
+- Added canonical fixed Hit Point progression for levels 1–20, using the class fixed die value, Constitution modifier, and the minimum-one increase for later levels.
+- Extended character evaluation to return deterministic higher-level HP, documented the fixed-over-rolled product decision in ADR-008, and covered supported dice, low Constitution, level bounds, and endpoint output.
 
 ## Work in progress
 
-Phase 5 is open. The trusted class/subclass timeline contract is implemented; level-dependent feature choices, higher-level HP validation, persisted subclass selection, and builder controls are not.
+Phase 5 is open. The trusted class/subclass timeline and fixed 1–20 HP rules are implemented; level-dependent feature choices, persisted subclass selection, and builder controls are not.
 
 ## Next step
 
@@ -86,8 +88,7 @@ Continue Phase 5 with the feature-requirement and level-change rule slice:
 1. Inventory representative feature-detail shapes that encode an actual choice or prerequisite instead of relying on display names.
 2. Define persisted subclass and feature-choice references without breaking schema-version-1 drafts.
 3. Extend canonical validation so a lower level retains but explicitly invalidates unavailable selections.
-4. Add higher-level HP progression rules with focused 1–20 tests before exposing builder controls.
-5. Keep spellcasting, feats, equipment effects, export, and print out of this slice.
+4. Keep spellcasting, feats, equipment effects, export, and print out of this slice.
 
 ## Pending decisions
 
@@ -96,7 +97,7 @@ Continue Phase 5 with the feature-requirement and level-change rule slice:
 
 ## Known issues and limitations
 
-- Armored/equipment AC, HP after level 1, class progression beyond the baseline level, import/export, and print functionality are not implemented yet.
+- Armored/equipment AC, rolled/manual HP, class progression controls beyond the baseline level, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -110,7 +111,7 @@ Continue Phase 5 with the feature-requirement and level-change rule slice:
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 78 passing
+- Backend unit/integration tests: 85 passing
 - Live provider smoke checks: classes, class/subclass progression, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
