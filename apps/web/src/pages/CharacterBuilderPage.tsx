@@ -10,8 +10,13 @@ import {
 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import type { CatalogCategory, CatalogFilters, CatalogPage } from '../features/catalog/catalog'
-import { getCatalogPage } from '../features/catalog/catalogApi'
+import type {
+  CatalogCategory,
+  CatalogFilters,
+  CatalogItem,
+  CatalogPage,
+} from '../features/catalog/catalog'
+import { getCatalogItem, getCatalogPage } from '../features/catalog/catalogApi'
 import {
   abilityModifierPreview,
   formatModifier,
@@ -31,6 +36,7 @@ type CharacterBuilderPageProps = {
   storage?: CharacterRepository
   now?: () => Date
   catalogLoader?: CatalogLoader
+  catalogItemLoader?: CatalogItemLoader
 }
 
 type CatalogLoader = (
@@ -38,6 +44,12 @@ type CatalogLoader = (
   filters: CatalogFilters,
   signal?: AbortSignal,
 ) => Promise<CatalogPage>
+
+type CatalogItemLoader = (
+  category: CatalogCategory,
+  id: string,
+  signal?: AbortSignal,
+) => Promise<CatalogItem>
 
 const defaultStorage = new CharacterStorage()
 const defaultNow = () => new Date()
@@ -51,11 +63,28 @@ const builderSteps = [
   ['Review', 'Validate the finished character'],
 ] as const
 
-type BuilderStep = 'name' | 'abilities' | 'origins'
+type BuilderStep = 'name' | 'abilities' | 'origins' | 'class' | 'proficiencies'
 type AbilityScores = NonNullable<StoredCharacterV1['character']['abilities']>
 type AbilityKey = keyof AbilityScores
 type AbilityInputs = Record<AbilityKey, string>
 type AbilityErrors = Partial<Record<AbilityKey, string>>
+type ProficiencyInputs = Record<string, string[]>
+type ProficiencyErrors = Record<string, string>
+type SavedProficiencyChoices = StoredCharacterV1['character']['proficiencyChoices']
+
+type ProficiencyRule = {
+  id: string
+  prompt: string
+  count: number
+  options: Array<{ id: string; name: string }>
+  sourceName: string
+}
+
+type FixedProficiency = {
+  id: string
+  name: string
+  sourceName: string
+}
 
 const abilityFields: ReadonlyArray<[AbilityKey, string, string]> = [
   ['strength', 'Strength', 'STR'],
@@ -70,6 +99,7 @@ export default function CharacterBuilderPage({
   storage = defaultStorage,
   now = defaultNow,
   catalogLoader = getCatalogPage,
+  catalogItemLoader = getCatalogItem,
 }: CharacterBuilderPageProps) {
   const { characterId } = useParams()
   const characterQuery = useQuery({
@@ -105,6 +135,7 @@ export default function CharacterBuilderPage({
           storage={storage}
           now={now}
           catalogLoader={catalogLoader}
+          catalogItemLoader={catalogItemLoader}
         />
       )}
     </div>
@@ -116,11 +147,13 @@ function BuilderWorkspace({
   storage,
   now,
   catalogLoader,
+  catalogItemLoader,
 }: {
   document: StoredCharacterV1
   storage: CharacterRepository
   now: () => Date
   catalogLoader: CatalogLoader
+  catalogItemLoader: CatalogItemLoader
 }) {
   const queryClient = useQueryClient()
   const [activeStep, setActiveStep] = useState<BuilderStep>(() => resumeStep(document))
@@ -133,10 +166,18 @@ function BuilderWorkspace({
   const [speciesId, setSpeciesId] = useState(document.character.species?.id ?? '')
   const [backgroundId, setBackgroundId] = useState(document.character.background?.id ?? '')
   const [originErrors, setOriginErrors] = useState<{ species?: string; background?: string }>({})
+  const [classId, setClassId] = useState(document.character.classProgressions[0]?.class?.id ?? '')
+  const [classError, setClassError] = useState<string | null>(null)
+  const [proficiencyInputs, setProficiencyInputs] = useState<ProficiencyInputs>(() =>
+    proficiencyInputsFrom(document.character.proficiencyChoices),
+  )
+  const [proficiencyErrors, setProficiencyErrors] = useState<ProficiencyErrors>({})
   const nameComplete = Boolean(document.character.name.trim())
   const abilitiesComplete = document.character.abilities !== null
   const originsComplete =
     document.character.species !== null && document.character.background !== null
+  const classComplete = Boolean(document.character.classProgressions[0]?.class)
+  const selectedClass = document.character.classProgressions[0]?.class
 
   const speciesQuery = useQuery({
     queryKey: ['builder-options', 'species'],
@@ -150,6 +191,47 @@ function BuilderWorkspace({
     enabled: activeStep === 'origins',
     retry: false,
   })
+  const classesQuery = useQuery({
+    queryKey: ['builder-options', 'classes'],
+    queryFn: ({ signal }) => catalogLoader('classes', { page: 1, pageSize: 48 }, signal),
+    enabled: activeStep === 'class',
+    retry: false,
+  })
+  const classDetailQuery = useQuery({
+    queryKey: ['catalog-item', 'classes', selectedClass?.id],
+    queryFn: ({ signal }) => catalogItemLoader('classes', selectedClass!.id, signal),
+    enabled: activeStep === 'proficiencies' && Boolean(selectedClass),
+    retry: false,
+  })
+  const speciesDetailQuery = useQuery({
+    queryKey: ['catalog-item', 'species', document.character.species?.id],
+    queryFn: ({ signal }) => catalogItemLoader('species', document.character.species!.id, signal),
+    enabled: activeStep === 'proficiencies' && Boolean(document.character.species),
+    retry: false,
+  })
+  const backgroundDetailQuery = useQuery({
+    queryKey: ['catalog-item', 'backgrounds', document.character.background?.id],
+    queryFn: ({ signal }) =>
+      catalogItemLoader('backgrounds', document.character.background!.id, signal),
+    enabled: activeStep === 'proficiencies' && Boolean(document.character.background),
+    retry: false,
+  })
+  const creationItems = [
+    classDetailQuery.data,
+    speciesDetailQuery.data,
+    backgroundDetailQuery.data,
+  ].filter((item): item is CatalogItem => item !== undefined)
+  const proficiencyRules = proficiencyRulesFrom(creationItems)
+  const fixedProficiencies = fixedProficienciesFrom(creationItems)
+  const proficiencyDetailsReady =
+    creationItems.length === 3 && creationItems.every((item) => item.characterCreation)
+  const proficiencyComplete =
+    proficiencyDetailsReady &&
+    validateProficiencyInputs(
+      proficiencyRules,
+      fixedProficiencies,
+      proficiencyInputsFrom(document.character.proficiencyChoices),
+    ).success
 
   function cacheSavedDocument(saved: StoredCharacterV1) {
     queryClient.setQueryData(['character', saved.id], saved)
@@ -203,6 +285,35 @@ function BuilderWorkspace({
       setSpeciesId(saved.character.species?.id ?? '')
       setBackgroundId(saved.character.background?.id ?? '')
       cacheSavedDocument(saved)
+      setActiveStep('class')
+    },
+  })
+  const classMutation = useMutation({
+    mutationFn: (selectedClass: { id: string; name: string }) =>
+      storage.save({
+        ...document,
+        updatedAt: now().toISOString(),
+        character: {
+          ...document.character,
+          classProgressions: [{ class: selectedClass, level: 1 }],
+        },
+      }),
+    onSuccess: (saved) => {
+      setClassId(saved.character.classProgressions[0]?.class?.id ?? '')
+      cacheSavedDocument(saved)
+      setActiveStep('proficiencies')
+    },
+  })
+  const proficienciesMutation = useMutation({
+    mutationFn: (proficiencyChoices: SavedProficiencyChoices) =>
+      storage.save({
+        ...document,
+        updatedAt: now().toISOString(),
+        character: { ...document.character, proficiencyChoices },
+      }),
+    onSuccess: (saved) => {
+      setProficiencyInputs(proficiencyInputsFrom(saved.character.proficiencyChoices))
+      cacheSavedDocument(saved)
     },
   })
 
@@ -250,6 +361,34 @@ function BuilderWorkspace({
     })
   }
 
+  function saveClass(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const selectedClass = classesQuery.data?.items.find((item) => item.id === classId)
+    if (!selectedClass) {
+      setClassError('Choose an available class.')
+      return
+    }
+
+    setClassError(null)
+    classMutation.mutate({ id: selectedClass.id, name: selectedClass.name })
+  }
+
+  function saveProficiencies(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const result = validateProficiencyInputs(
+      proficiencyRules,
+      fixedProficiencies,
+      proficiencyInputs,
+    )
+    if (!result.success) {
+      setProficiencyErrors(result.errors)
+      return
+    }
+
+    setProficiencyErrors({})
+    proficienciesMutation.mutate(result.choices)
+  }
+
   return (
     <div className="builder-layout">
       <aside className="builder-progress">
@@ -262,11 +401,27 @@ function BuilderWorkspace({
           <ol>
             {builderSteps.map(([label, description], index) => {
               const step: BuilderStep | null =
-                index === 0 ? 'name' : index === 1 ? 'abilities' : index === 2 ? 'origins' : null
+                index === 0
+                  ? 'name'
+                  : index === 1
+                    ? 'abilities'
+                    : index === 2
+                      ? 'origins'
+                      : index === 3
+                        ? 'class'
+                        : index === 4
+                          ? 'proficiencies'
+                          : null
               const available =
                 step === 'name' ||
                 (step === 'abilities' && nameComplete) ||
-                (step === 'origins' && nameComplete && abilitiesComplete)
+                (step === 'origins' && nameComplete && abilitiesComplete) ||
+                (step === 'class' && nameComplete && abilitiesComplete && originsComplete) ||
+                (step === 'proficiencies' &&
+                  nameComplete &&
+                  abilitiesComplete &&
+                  originsComplete &&
+                  classComplete)
               const active = step === activeStep
               const complete =
                 index === 0
@@ -275,7 +430,11 @@ function BuilderWorkspace({
                     ? abilitiesComplete
                     : index === 2
                       ? originsComplete
-                      : false
+                      : index === 3
+                        ? classComplete
+                        : index === 4
+                          ? proficiencyComplete
+                          : false
               return (
                 <li
                   className={[
@@ -428,7 +587,7 @@ function BuilderWorkspace({
               />
             </form>
           </>
-        ) : (
+        ) : activeStep === 'origins' ? (
           <>
             <BuilderStepHeading
               step={3}
@@ -463,9 +622,330 @@ function BuilderWorkspace({
               onSubmit={saveOrigins}
             />
           </>
+        ) : activeStep === 'class' ? (
+          <>
+            <BuilderStepHeading
+              step={4}
+              title="Choose their class"
+              description="Choose the path this character begins at level 1 from the active SRD 5.2.1 catalog."
+            />
+            <ClassStep
+              page={classesQuery.data}
+              pending={classesQuery.isPending}
+              failed={classesQuery.isError}
+              classId={classId}
+              error={classError}
+              saved={classMutation.isSuccess}
+              saving={classMutation.isPending}
+              saveFailed={classMutation.isError}
+              onClassChange={(id) => {
+                setClassId(id)
+                setClassError(null)
+                if (classMutation.isError || classMutation.isSuccess) classMutation.reset()
+              }}
+              onRetry={() => void classesQuery.refetch()}
+              onSubmit={saveClass}
+            />
+          </>
+        ) : (
+          <>
+            <BuilderStepHeading
+              step={5}
+              title="Choose their proficiencies"
+              description="Complete every required choice from the selected class and origins. Fixed proficiencies are already included."
+            />
+            <ProficienciesStep
+              rules={proficiencyRules}
+              fixedProficiencies={fixedProficiencies}
+              savedChoiceNames={savedProficiencyNames(document.character.proficiencyChoices)}
+              inputs={proficiencyInputs}
+              errors={proficiencyErrors}
+              pending={
+                classDetailQuery.isPending ||
+                speciesDetailQuery.isPending ||
+                backgroundDetailQuery.isPending
+              }
+              failed={
+                classDetailQuery.isError ||
+                speciesDetailQuery.isError ||
+                backgroundDetailQuery.isError ||
+                (creationItems.length === 3 && !proficiencyDetailsReady)
+              }
+              saved={proficienciesMutation.isSuccess}
+              saving={proficienciesMutation.isPending}
+              saveFailed={proficienciesMutation.isError}
+              onToggle={(choiceId, optionId, checked) => {
+                setProficiencyInputs((current) => {
+                  const selections = current[choiceId] ?? []
+                  return {
+                    ...current,
+                    [choiceId]: checked
+                      ? [...new Set([...selections, optionId])]
+                      : selections.filter((id) => id !== optionId),
+                  }
+                })
+                setProficiencyErrors((current) => omitKey(omitKey(current, choiceId), '_form'))
+                if (proficienciesMutation.isError || proficienciesMutation.isSuccess) {
+                  proficienciesMutation.reset()
+                }
+              }}
+              onRemoveChoice={(choiceId) => {
+                setProficiencyInputs((current) => omitKey(current, choiceId))
+                setProficiencyErrors((current) => omitKey(omitKey(current, choiceId), '_form'))
+                if (proficienciesMutation.isError || proficienciesMutation.isSuccess) {
+                  proficienciesMutation.reset()
+                }
+              }}
+              onRetry={() => {
+                void classDetailQuery.refetch()
+                void speciesDetailQuery.refetch()
+                void backgroundDetailQuery.refetch()
+              }}
+              onSubmit={saveProficiencies}
+            />
+          </>
         )}
       </section>
     </div>
+  )
+}
+
+function ProficienciesStep({
+  rules,
+  fixedProficiencies,
+  savedChoiceNames,
+  inputs,
+  errors,
+  pending,
+  failed,
+  saved,
+  saving,
+  saveFailed,
+  onToggle,
+  onRemoveChoice,
+  onRetry,
+  onSubmit,
+}: {
+  rules: ProficiencyRule[]
+  fixedProficiencies: FixedProficiency[]
+  savedChoiceNames: Record<string, Record<string, string>>
+  inputs: ProficiencyInputs
+  errors: ProficiencyErrors
+  pending: boolean
+  failed: boolean
+  saved: boolean
+  saving: boolean
+  saveFailed: boolean
+  onToggle: (choiceId: string, optionId: string, checked: boolean) => void
+  onRemoveChoice: (choiceId: string) => void
+  onRetry: () => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) {
+  if (pending) {
+    return (
+      <div className="origin-state" role="status">
+        <span aria-hidden="true">✦</span>
+        <strong>Gathering proficiency choices…</strong>
+        <p>Resolving the selected class, species, and background from the active catalog.</p>
+      </div>
+    )
+  }
+
+  if (failed) {
+    return (
+      <div className="origin-state origin-state--error" role="alert">
+        <AlertTriangle aria-hidden="true" size={30} />
+        <strong>The proficiency rules are unavailable</strong>
+        <p>Your local draft is safe. Try resolving its class and origins again.</p>
+        <button className="button button--secondary" type="button" onClick={onRetry}>
+          <RefreshCw aria-hidden="true" size={17} />
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  const ruleIds = new Set(rules.map((rule) => rule.id))
+  const staleChoiceIds = Object.keys(inputs).filter((choiceId) => !ruleIds.has(choiceId))
+
+  return (
+    <form className="builder-form builder-form--wide" onSubmit={onSubmit} noValidate>
+      {fixedProficiencies.length > 0 && (
+        <section className="proficiency-grants" aria-labelledby="fixed-proficiencies-heading">
+          <h3 id="fixed-proficiencies-heading">Already granted</h3>
+          <ul>
+            {fixedProficiencies.map((proficiency) => (
+              <li key={`${proficiency.sourceName}-${proficiency.id}`}>
+                <Check aria-hidden="true" size={14} />
+                <span>
+                  <strong>{proficiency.name}</strong>
+                  <small>{proficiency.sourceName}</small>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {staleChoiceIds.map((choiceId) => (
+        <div className="proficiency-stale" key={choiceId} role="alert">
+          <AlertTriangle aria-hidden="true" size={18} />
+          <div>
+            <strong>An earlier proficiency choice is no longer required.</strong>
+            <span>
+              {(inputs[choiceId] ?? [])
+                .map((id) => savedChoiceNames[choiceId]?.[id] ?? id)
+                .join(', ') || choiceId}
+            </span>
+          </div>
+          <button type="button" onClick={() => onRemoveChoice(choiceId)}>
+            Remove outdated choice
+          </button>
+        </div>
+      ))}
+
+      {rules.length === 0 ? (
+        <div className="proficiency-empty">
+          <Check aria-hidden="true" size={20} />
+          <p>
+            <strong>No additional choices are required.</strong>
+            Fixed proficiencies from the selected class and origins are applied automatically.
+          </p>
+        </div>
+      ) : (
+        <div className="proficiency-rules">
+          {rules.map((rule) => {
+            const selectedIds = inputs[rule.id] ?? []
+            const optionIds = new Set(rule.options.map((option) => option.id))
+            const invalidIds = [...new Set(selectedIds.filter((id) => !optionIds.has(id)))]
+            return (
+              <fieldset
+                className={
+                  errors[rule.id] ? 'proficiency-rule proficiency-rule--error' : 'proficiency-rule'
+                }
+                key={rule.id}
+              >
+                <legend>{rule.prompt}</legend>
+                <p>
+                  {rule.sourceName} · Choose exactly {rule.count}
+                </p>
+                <div className="proficiency-options">
+                  {invalidIds.map((id) => (
+                    <label className="proficiency-option--stale" key={id}>
+                      <input
+                        type="checkbox"
+                        checked
+                        onChange={() => onToggle(rule.id, id, false)}
+                      />
+                      <span aria-hidden="true">
+                        <AlertTriangle size={14} />
+                      </span>
+                      <span>
+                        <strong>{savedChoiceNames[rule.id]?.[id] ?? id}</strong>
+                        <small>No longer available — uncheck to remove</small>
+                      </span>
+                    </label>
+                  ))}
+                  {rule.options.map((option) => (
+                    <label key={option.id}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(option.id)}
+                        onChange={(event) => onToggle(rule.id, option.id, event.target.checked)}
+                      />
+                      <span aria-hidden="true">
+                        {selectedIds.includes(option.id) ? <Check size={14} /> : null}
+                      </span>
+                      <strong>{option.name}</strong>
+                    </label>
+                  ))}
+                </div>
+                {errors[rule.id] && <small role="alert">{errors[rule.id]}</small>}
+              </fieldset>
+            )
+          })}
+        </div>
+      )}
+
+      {errors._form && (
+        <div className="builder-save-error" role="alert">
+          <AlertTriangle aria-hidden="true" size={18} />
+          {errors._form}
+        </div>
+      )}
+      <LocalStorageNotice />
+      <SaveError visible={saveFailed} />
+      <BuilderActions saved={saved} pending={saving} label="Save proficiencies" />
+    </form>
+  )
+}
+
+function ClassStep({
+  page,
+  pending,
+  failed,
+  classId,
+  error,
+  saved,
+  saving,
+  saveFailed,
+  onClassChange,
+  onRetry,
+  onSubmit,
+}: {
+  page?: CatalogPage
+  pending: boolean
+  failed: boolean
+  classId: string
+  error: string | null
+  saved: boolean
+  saving: boolean
+  saveFailed: boolean
+  onClassChange: (id: string) => void
+  onRetry: () => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) {
+  if (pending) {
+    return (
+      <div className="origin-state" role="status">
+        <span aria-hidden="true">✦</span>
+        <strong>Opening the class archive…</strong>
+        <p>Loading first-level classes from the active rules catalog.</p>
+      </div>
+    )
+  }
+
+  if (failed || !page) {
+    return (
+      <div className="origin-state origin-state--error" role="alert">
+        <AlertTriangle aria-hidden="true" size={30} />
+        <strong>The class archive is unavailable</strong>
+        <p>Your local draft is safe. Reopen the catalog when the provider is ready.</p>
+        <button className="button button--secondary" type="button" onClick={onRetry}>
+          <RefreshCw aria-hidden="true" size={17} />
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <form className="builder-form builder-form--wide" onSubmit={onSubmit} noValidate>
+      <OriginChoices
+        legend="Class"
+        name="class"
+        items={page.items}
+        selectedId={classId}
+        error={error ?? undefined}
+        onChange={onClassChange}
+      />
+      <p className="origin-source">
+        Starting level: 1 · Source: {page.source.rulesVersion} · {page.source.provider}
+      </p>
+      <LocalStorageNotice />
+      <SaveError visible={saveFailed} />
+      <BuilderActions saved={saved} pending={saving} label="Save class" />
+    </form>
   )
 }
 
@@ -656,7 +1136,101 @@ function BuilderActions({
 function resumeStep(document: StoredCharacterV1): BuilderStep {
   if (!document.character.name.trim()) return 'name'
   if (document.character.abilities === null) return 'abilities'
-  return 'origins'
+  if (document.character.species === null || document.character.background === null)
+    return 'origins'
+  if (!document.character.classProgressions[0]?.class) return 'class'
+  return 'proficiencies'
+}
+
+function proficiencyInputsFrom(choices: SavedProficiencyChoices): ProficiencyInputs {
+  return Object.fromEntries(
+    choices.map((choice) => [choice.choiceId, choice.selections.map((selection) => selection.id)]),
+  )
+}
+
+function savedProficiencyNames(
+  choices: SavedProficiencyChoices,
+): Record<string, Record<string, string>> {
+  return Object.fromEntries(
+    choices.map((choice) => [
+      choice.choiceId,
+      Object.fromEntries(choice.selections.map((selection) => [selection.id, selection.name])),
+    ]),
+  )
+}
+
+function proficiencyRulesFrom(items: CatalogItem[]): ProficiencyRule[] {
+  return items.flatMap((item) =>
+    (item.characterCreation?.proficiencyChoices ?? []).map((choice) => ({
+      ...choice,
+      options: choice.options.map((option) => ({ id: option.id, name: option.name })),
+      sourceName: item.name,
+    })),
+  )
+}
+
+function fixedProficienciesFrom(items: CatalogItem[]): FixedProficiency[] {
+  return items.flatMap((item) =>
+    (item.characterCreation?.grantedProficiencies ?? []).map((proficiency) => ({
+      id: proficiency.id,
+      name: proficiency.name,
+      sourceName: item.name,
+    })),
+  )
+}
+
+function validateProficiencyInputs(
+  rules: ProficiencyRule[],
+  fixedProficiencies: FixedProficiency[],
+  inputs: ProficiencyInputs,
+):
+  | { success: true; choices: SavedProficiencyChoices }
+  | { success: false; errors: ProficiencyErrors } {
+  const errors: ProficiencyErrors = {}
+  const rulesById = new Map(rules.map((rule) => [rule.id, rule]))
+  const staleChoiceIds = Object.keys(inputs).filter((choiceId) => !rulesById.has(choiceId))
+  if (staleChoiceIds.length > 0) {
+    errors._form = 'Remove outdated choices before saving these proficiencies.'
+  }
+
+  const knownIds = new Set(fixedProficiencies.map((proficiency) => proficiency.id.toLowerCase()))
+  const choices: SavedProficiencyChoices = []
+
+  for (const rule of rules) {
+    const selectedIds = inputs[rule.id] ?? []
+    const optionsById = new Map(rule.options.map((option) => [option.id, option]))
+    const uniqueIds = [...new Set(selectedIds)]
+    const invalidIds = uniqueIds.filter((id) => !optionsById.has(id))
+
+    if (invalidIds.length > 0) {
+      errors[rule.id] = 'Remove selections that are no longer available.'
+      continue
+    }
+    if (uniqueIds.length !== selectedIds.length || uniqueIds.length !== rule.count) {
+      errors[rule.id] =
+        `Choose exactly ${rule.count} distinct option${rule.count === 1 ? '' : 's'}.`
+      continue
+    }
+
+    const selections = uniqueIds.map((id) => optionsById.get(id)!)
+    const duplicate = selections.find((selection) => knownIds.has(selection.id.toLowerCase()))
+    if (duplicate) {
+      errors[rule.id] = `${duplicate.name} is already granted or selected elsewhere.`
+      continue
+    }
+
+    selections.forEach((selection) => knownIds.add(selection.id.toLowerCase()))
+    choices.push({
+      choiceId: rule.id,
+      selections: selections.map((selection) => ({ id: selection.id, name: selection.name })),
+    })
+  }
+
+  return Object.keys(errors).length > 0 ? { success: false, errors } : { success: true, choices }
+}
+
+function omitKey<T>(record: Record<string, T>, key: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).filter(([entryKey]) => entryKey !== key))
 }
 
 function abilityInputsFrom(scores: AbilityScores | null): AbilityInputs {

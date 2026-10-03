@@ -4,7 +4,7 @@
 
 **Phase 4 — Character Builder MVP: in progress.**
 
-Phases 0–3 are implemented. The Phase 4 storage boundary, local character list, and first three builder steps are complete; work must continue through the remaining progressive steps without expanding later rules early.
+Phases 0–3 are implemented. The Phase 4 storage boundary, local character list, and first five builder steps are complete; work must continue through the remaining progressive steps without expanding later rules early.
 
 ## Last completed work
 
@@ -46,20 +46,30 @@ Phases 0–3 are implemented. The Phase 4 storage boundary, local character list
 - Requested the complete bounded origin lists, exposed honest loading/provider-error states with retry, and retained the local draft when the catalog is unavailable.
 - Persisted only canonical id/name references selected from trusted catalog results, with both choices required and existing choices restored on reopen.
 - Added focused coverage for origin resume, catalog query bounds, required choices, stable reference persistence, and provider recovery.
+- Added a resumable Class step that unlocks after saved origins and loads the complete bounded class list through the normalized catalog client.
+- Persisted exactly one canonical class reference at level 1 without copying class rule facts into the local draft.
+- Advanced saved origins into class selection while keeping every completed earlier step editable and existing class choices restored on reopen.
+- Added focused coverage for class navigation, required selection, stable level-1 persistence, catalog query bounds, and provider recovery.
+- Added a resumable Proficiencies step that unlocks after class selection and resolves the selected class, species, and background through normalized catalog details in parallel.
+- Presented fixed proficiency grants separately and enforced every trusted choice id, exact count, allowed option, and cross-source duplicate constraint before local persistence.
+- Preserved still-valid saved selections while surfacing stale choices and disallowed saved options with explicit removal controls instead of silently replacing local data.
+- Persisted only canonical option ids and names from the current catalog requirements and added honest loading, incomplete-facts, provider-error, retry, and save-failure states.
+- Added focused coverage for resume, navigation, canonical persistence, exact counts, duplicate selection, stale/disallowed data, detail query bounds, and provider recovery.
 
 ## Work in progress
 
-Phase 4 remains open. Persistence, My Characters, the builder shell, name, abilities, and origins are implemented; class/proficiency selection, auto-save, duplication, and deletion UI are not.
+Phase 4 remains open. Persistence, My Characters, the builder shell, name, abilities, origins, class, and proficiency selection are implemented; review/validation, auto-save, duplication, and deletion UI are not.
 
 ## Next step
 
-Continue Phase 4 with a narrow class-selection slice:
+Continue Phase 4 with a narrow review-and-validation slice:
 
-1. Unlock Class after saved origins and resume existing drafts at the first unfinished supported step.
-2. Load class choices through the normalized catalog boundary with honest loading and provider-error states.
-3. Persist exactly one stable class reference at level 1 without copying class rule facts into the draft.
-4. Cover navigation, selection, provider failures, and saved progression with focused frontend tests.
-5. Do not add proficiency selection, auto-save, duplication/deletion actions, later-level progression, equipment effects, or spellcasting in the same slice.
+1. Unlock Review only after the current proficiency requirements are saved and resume complete baseline drafts there.
+2. Send the local document through the existing canonical validation adapter without introducing a second client-side rules engine.
+3. Present the chosen identity, origins, class, ability scores, and trusted derived values with honest validation and provider-error states.
+4. Route structured violations back to the relevant editable steps while retaining the local draft unchanged.
+5. Cover resume, validation success, structured invalid results, request failures, retry, and backward navigation with focused frontend tests.
+6. Do not add auto-save, duplication/deletion actions, later-level progression, equipment effects, spellcasting, export, or print in the same slice.
 
 ## Pending decisions
 
@@ -69,7 +79,7 @@ Continue Phase 4 with a narrow class-selection slice:
 
 ## Known issues and limitations
 
-- Armored/equipment AC, HP after level 1, builder UI, auto-save, import/export, and print functionality are not implemented yet.
+- Armored/equipment AC, HP after level 1, the Review builder step, auto-save, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -79,7 +89,7 @@ Continue Phase 4 with a narrow class-selection slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 45 passing across 10 files (`vitest run`)
+- Frontend unit tests: 54 passing across 10 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
@@ -90,4 +100,4 @@ Continue Phase 4 with a narrow class-selection slice:
 
 ## Last checkpoint
 
-2026-10-02 (America/Sao_Paulo)
+2026-10-03 (America/Sao_Paulo)

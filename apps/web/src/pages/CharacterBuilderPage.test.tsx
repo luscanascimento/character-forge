@@ -3,7 +3,12 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
-import type { CatalogCategory, CatalogFilters, CatalogPage } from '../features/catalog/catalog'
+import type {
+  CatalogCategory,
+  CatalogFilters,
+  CatalogItem,
+  CatalogPage,
+} from '../features/catalog/catalog'
 import {
   CharacterStorageDataError,
   CharacterStorageUnavailableError,
@@ -23,7 +28,17 @@ type CatalogLoader = (
   signal?: AbortSignal,
 ) => Promise<CatalogPage>
 
+type CatalogItemLoader = (
+  category: CatalogCategory,
+  id: string,
+  signal?: AbortSignal,
+) => Promise<CatalogItem>
+
 const catalogItems = {
+  classes: [
+    { id: 'fighter', name: 'Fighter', category: 'classes' as const },
+    { id: 'wizard', name: 'Wizard', category: 'classes' as const },
+  ],
   species: [
     { id: 'elf', name: 'Elf', category: 'species' as const },
     { id: 'human', name: 'Human', category: 'species' as const },
@@ -34,7 +49,7 @@ const catalogItems = {
   ],
 }
 
-function catalogPage(category: 'species' | 'backgrounds'): CatalogPage {
+function catalogPage(category: 'classes' | 'species' | 'backgrounds'): CatalogPage {
   return {
     items: catalogItems[category],
     page: 1,
@@ -52,10 +67,92 @@ function catalogPage(category: 'species' | 'backgrounds'): CatalogPage {
 
 function defaultCatalogLoader(): CatalogLoader {
   return vi.fn((category: CatalogCategory) => {
-    if (category !== 'species' && category !== 'backgrounds') {
+    if (category !== 'classes' && category !== 'species' && category !== 'backgrounds') {
       return Promise.reject(new Error(`Unexpected category: ${category}`))
     }
     return Promise.resolve(catalogPage(category))
+  })
+}
+
+function catalogItem(category: 'classes' | 'species' | 'backgrounds', id: string): CatalogItem {
+  const names: Record<string, string> = {
+    wizard: 'Wizard',
+    fighter: 'Fighter',
+    elf: 'Elf',
+    human: 'Human',
+    acolyte: 'Acolyte',
+    sage: 'Sage',
+  }
+  const proficiencyChoices =
+    category === 'classes' && id === 'wizard'
+      ? [
+          {
+            id: 'classes/wizard/proficiencies/0',
+            prompt: 'Choose two class skills',
+            count: 2,
+            options: [
+              { id: 'skill-arcana', name: 'Skill: Arcana' },
+              { id: 'skill-history', name: 'Skill: History' },
+              { id: 'skill-perception', name: 'Skill: Perception' },
+            ],
+          },
+        ]
+      : category === 'classes' && id === 'fighter'
+        ? [
+            {
+              id: 'classes/fighter/proficiencies/0',
+              prompt: 'Choose two fighter skills',
+              count: 2,
+              options: [
+                { id: 'skill-athletics', name: 'Skill: Athletics' },
+                { id: 'skill-perception', name: 'Skill: Perception' },
+                { id: 'skill-survival', name: 'Skill: Survival' },
+              ],
+            },
+          ]
+        : category === 'species' && id === 'elf'
+          ? [
+              {
+                id: 'species/elf/traits/keen-senses/proficiencies/0',
+                prompt: 'Choose one keen sense',
+                count: 1,
+                options: [
+                  { id: 'skill-insight', name: 'Skill: Insight' },
+                  { id: 'skill-perception', name: 'Skill: Perception' },
+                ],
+              },
+            ]
+          : []
+
+  return {
+    id,
+    name: names[id] ?? id,
+    category,
+    description: [],
+    attributes: [],
+    sections: [],
+    textSections: [],
+    characterCreation: {
+      hitDie: category === 'classes' ? 8 : null,
+      grantedProficiencies:
+        category === 'classes' ? [{ id: 'simple-weapons', name: 'Simple Weapons' }] : [],
+      proficiencyChoices,
+    },
+    source: {
+      provider: 'D&D 5e SRD API',
+      ruleset: '2024',
+      rulesVersion: 'SRD-5.2.1',
+      fetchedAt: '2026-10-03T12:00:00Z',
+    },
+  }
+}
+
+function defaultCatalogItemLoader(): CatalogItemLoader {
+  return vi.fn((category: CatalogCategory, id: string) => {
+    if (category !== 'classes' && category !== 'species' && category !== 'backgrounds') {
+      return Promise.reject(new Error(`Unexpected category: ${category}`))
+    }
+    return Promise.resolve(catalogItem(category, id))
   })
 }
 
@@ -91,10 +188,34 @@ function originlessCharacter(): StoredCharacterV1 {
   }
 }
 
+function classlessCharacter(): StoredCharacterV1 {
+  const character = createStoredCharacter()
+  return {
+    ...character,
+    character: {
+      ...character.character,
+      classProgressions: [{ class: null, level: 1 }],
+      proficiencyChoices: [],
+    },
+  }
+}
+
+function proficiencylessCharacter(): StoredCharacterV1 {
+  const character = createStoredCharacter()
+  return {
+    ...character,
+    character: {
+      ...character.character,
+      proficiencyChoices: [],
+    },
+  }
+}
+
 function renderPage(
   storage: CharacterRepository,
   now: () => Date = () => new Date('2026-10-01T15:00:00.000Z'),
   catalogLoader: CatalogLoader = defaultCatalogLoader(),
+  catalogItemLoader: CatalogItemLoader = defaultCatalogItemLoader(),
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const character = createStoredCharacter()
@@ -106,7 +227,12 @@ function renderPage(
           <Route
             path="/forge/:characterId"
             element={
-              <CharacterBuilderPage storage={storage} now={now} catalogLoader={catalogLoader} />
+              <CharacterBuilderPage
+                storage={storage}
+                now={now}
+                catalogLoader={catalogLoader}
+                catalogItemLoader={catalogItemLoader}
+              />
             }
           />
         </Routes>
@@ -122,15 +248,15 @@ describe('CharacterBuilderPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Opening your draft')
   })
 
-  it('resumes a character with abilities at the origins step', async () => {
-    const storage = repository()
+  it('resumes a character with unfinished origins at the origins step', async () => {
+    const storage = repository({ get: vi.fn().mockResolvedValue(originlessCharacter()) })
     const character = createStoredCharacter()
     const loader = defaultCatalogLoader()
     renderPage(storage, undefined, loader)
 
     expect(await screen.findByRole('heading', { name: 'Choose their origins' })).toBeInTheDocument()
     expect(storage.get).toHaveBeenCalledWith(character.id)
-    expect(await screen.findByRole('radio', { name: 'Elf' })).toBeChecked()
+    expect(await screen.findByRole('radio', { name: 'Elf' })).not.toBeChecked()
 
     const steps = within(screen.getByRole('navigation', { name: 'Character creation steps' }))
     expect(steps.getAllByRole('listitem')).toHaveLength(6)
@@ -175,7 +301,9 @@ describe('CharacterBuilderPage', () => {
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByRole('heading', { name: 'Choose their origins' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Choose their proficiencies' }),
+    ).toBeInTheDocument()
     expect(get).toHaveBeenCalledTimes(2)
   })
 
@@ -274,6 +402,7 @@ describe('CharacterBuilderPage', () => {
     const storage = repository()
     renderPage(storage)
 
+    await user.click(await screen.findByRole('button', { name: 'Origins' }))
     await user.click(await screen.findByRole('radio', { name: 'Human' }))
     await user.click(screen.getByRole('radio', { name: 'Sage' }))
     await user.click(screen.getByRole('button', { name: 'Save origins' }))
@@ -287,7 +416,7 @@ describe('CharacterBuilderPage', () => {
         }),
       }),
     )
-    expect(await screen.findByText('Draft saved locally.')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Choose their class' })).toBeInTheDocument()
   })
 
   it('requires both origin selections before saving', async () => {
@@ -316,12 +445,218 @@ describe('CharacterBuilderPage', () => {
         ? Promise.reject(new Error('provider unavailable'))
         : Promise.resolve(catalogPage(category))
     })
-    renderPage(repository(), undefined, loader)
+    renderPage(
+      repository({ get: vi.fn().mockResolvedValue(originlessCharacter()) }),
+      undefined,
+      loader,
+    )
 
     expect(await screen.findByText('The origins archive is unavailable')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Try again' }))
 
     expect(await screen.findByRole('radio', { name: 'Human' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Sage' })).toBeInTheDocument()
+  })
+
+  it('resumes a saved class and keeps completed earlier steps editable', async () => {
+    renderPage(repository())
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Class' }))
+    expect(await screen.findByRole('heading', { name: 'Choose their class' })).toBeInTheDocument()
+    expect(await screen.findByRole('radio', { name: 'Wizard' })).toBeChecked()
+
+    const steps = within(screen.getByRole('navigation', { name: 'Character creation steps' }))
+    expect(steps.getByRole('button', { name: 'Class' })).toHaveAttribute('aria-current', 'step')
+    await userEvent.setup().click(steps.getByRole('button', { name: 'Origins' }))
+    expect(await screen.findByRole('heading', { name: 'Choose their origins' })).toBeInTheDocument()
+  })
+
+  it('persists exactly one stable first-level class reference', async () => {
+    const user = userEvent.setup()
+    const storage = repository({ get: vi.fn().mockResolvedValue(classlessCharacter()) })
+    renderPage(storage)
+
+    await user.click(await screen.findByRole('radio', { name: 'Fighter' }))
+    await user.click(screen.getByRole('button', { name: 'Save class' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        updatedAt: '2026-10-01T15:00:00.000Z',
+        character: expect.objectContaining({
+          classProgressions: [{ class: { id: 'fighter', name: 'Fighter' }, level: 1 }],
+        }),
+      }),
+    )
+    expect(
+      await screen.findByRole('heading', { name: 'Choose their proficiencies' }),
+    ).toBeInTheDocument()
+  })
+
+  it('requires a catalog class before saving', async () => {
+    const user = userEvent.setup()
+    const storage = repository({ get: vi.fn().mockResolvedValue(classlessCharacter()) })
+    renderPage(storage)
+
+    await screen.findByRole('radio', { name: 'Fighter' })
+    await user.click(screen.getByRole('button', { name: 'Save class' }))
+
+    expect(screen.getByText('Choose an available class.')).toBeInTheDocument()
+    expect(storage.save).not.toHaveBeenCalled()
+  })
+
+  it('recovers the class list after a provider failure', async () => {
+    const user = userEvent.setup()
+    const loader = vi
+      .fn<CatalogLoader>()
+      .mockRejectedValueOnce(new Error('provider unavailable'))
+      .mockResolvedValue(catalogPage('classes'))
+    renderPage(
+      repository({ get: vi.fn().mockResolvedValue(classlessCharacter()) }),
+      undefined,
+      loader,
+    )
+
+    expect(await screen.findByText('The class archive is unavailable')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+
+    expect(await screen.findByRole('radio', { name: 'Fighter' })).toBeInTheDocument()
+    expect(loader).toHaveBeenCalledWith('classes', { page: 1, pageSize: 48 }, expect.anything())
+  })
+
+  it('resumes saved proficiency choices from all selected catalog details', async () => {
+    const itemLoader = defaultCatalogItemLoader()
+    renderPage(repository(), undefined, undefined, itemLoader)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Choose their proficiencies' }),
+    ).toBeInTheDocument()
+    const classChoice = await screen.findByRole('group', { name: 'Choose two class skills' })
+    const speciesChoice = screen.getByRole('group', { name: 'Choose one keen sense' })
+    expect(within(classChoice).getByRole('checkbox', { name: 'Skill: Arcana' })).toBeChecked()
+    expect(within(classChoice).getByRole('checkbox', { name: 'Skill: History' })).toBeChecked()
+    expect(within(speciesChoice).getByRole('checkbox', { name: 'Skill: Perception' })).toBeChecked()
+    expect(screen.getByText('Simple Weapons')).toBeInTheDocument()
+    expect(itemLoader).toHaveBeenCalledWith('classes', 'wizard', expect.anything())
+    expect(itemLoader).toHaveBeenCalledWith('species', 'elf', expect.anything())
+    expect(itemLoader).toHaveBeenCalledWith('backgrounds', 'acolyte', expect.anything())
+  })
+
+  it('persists canonical proficiency choice ids, names, and a new timestamp', async () => {
+    const user = userEvent.setup()
+    const storage = repository({ get: vi.fn().mockResolvedValue(proficiencylessCharacter()) })
+    renderPage(storage)
+
+    const classChoice = await screen.findByRole('group', { name: 'Choose two class skills' })
+    const speciesChoice = screen.getByRole('group', { name: 'Choose one keen sense' })
+    await user.click(within(classChoice).getByRole('checkbox', { name: 'Skill: Arcana' }))
+    await user.click(within(classChoice).getByRole('checkbox', { name: 'Skill: History' }))
+    await user.click(within(speciesChoice).getByRole('checkbox', { name: 'Skill: Perception' }))
+    await user.click(screen.getByRole('button', { name: 'Save proficiencies' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        updatedAt: '2026-10-01T15:00:00.000Z',
+        character: expect.objectContaining({
+          proficiencyChoices: [
+            {
+              choiceId: 'classes/wizard/proficiencies/0',
+              selections: [
+                { id: 'skill-arcana', name: 'Skill: Arcana' },
+                { id: 'skill-history', name: 'Skill: History' },
+              ],
+            },
+            {
+              choiceId: 'species/elf/traits/keen-senses/proficiencies/0',
+              selections: [{ id: 'skill-perception', name: 'Skill: Perception' }],
+            },
+          ],
+        }),
+      }),
+    )
+    expect(await screen.findByText('Draft saved locally.')).toBeInTheDocument()
+  })
+
+  it('requires exact counts and rejects a proficiency selected from two sources', async () => {
+    const user = userEvent.setup()
+    const storage = repository({ get: vi.fn().mockResolvedValue(proficiencylessCharacter()) })
+    renderPage(storage)
+
+    const classChoice = await screen.findByRole('group', { name: 'Choose two class skills' })
+    const speciesChoice = screen.getByRole('group', { name: 'Choose one keen sense' })
+    await user.click(screen.getByRole('button', { name: 'Save proficiencies' }))
+    expect(screen.getByText('Choose exactly 2 distinct options.')).toBeInTheDocument()
+    expect(screen.getByText('Choose exactly 1 distinct option.')).toBeInTheDocument()
+
+    await user.click(within(classChoice).getByRole('checkbox', { name: 'Skill: History' }))
+    await user.click(within(classChoice).getByRole('checkbox', { name: 'Skill: Perception' }))
+    await user.click(within(speciesChoice).getByRole('checkbox', { name: 'Skill: Perception' }))
+    await user.click(screen.getByRole('button', { name: 'Save proficiencies' }))
+
+    expect(
+      screen.getByText('Skill: Perception is already granted or selected elsewhere.'),
+    ).toBeInTheDocument()
+    expect(storage.save).not.toHaveBeenCalled()
+  })
+
+  it('surfaces stale choices and disallowed saved options until explicitly removed', async () => {
+    const user = userEvent.setup()
+    const character = proficiencylessCharacter()
+    character.character.proficiencyChoices = [
+      {
+        choiceId: 'classes/wizard/proficiencies/0',
+        selections: [{ id: 'skill-old-lore', name: 'Skill: Old Lore' }],
+      },
+      {
+        choiceId: 'classes/old-class/proficiencies/0',
+        selections: [{ id: 'skill-stealth', name: 'Skill: Stealth' }],
+      },
+    ]
+    const storage = repository({ get: vi.fn().mockResolvedValue(character) })
+    renderPage(storage)
+
+    expect(await screen.findByText('Skill: Old Lore')).toBeInTheDocument()
+    expect(screen.getByText('No longer available — uncheck to remove')).toBeInTheDocument()
+    expect(
+      screen.getByText('An earlier proficiency choice is no longer required.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Skill: Stealth')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Save proficiencies' }))
+    expect(
+      screen.getByText('Remove outdated choices before saving these proficiencies.'),
+    ).toBeInTheDocument()
+    expect(storage.save).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Remove outdated choice' }))
+    await user.click(screen.getByRole('checkbox', { name: /Skill: Old Lore/i }))
+    expect(screen.queryByText('Skill: Stealth')).not.toBeInTheDocument()
+    expect(screen.queryByText('Skill: Old Lore')).not.toBeInTheDocument()
+  })
+
+  it('recovers all proficiency details after provider failures', async () => {
+    const user = userEvent.setup()
+    const attempts = new Map<string, number>()
+    const itemLoader = vi.fn((category: CatalogCategory, id: string) => {
+      if (category !== 'classes' && category !== 'species' && category !== 'backgrounds') {
+        return Promise.reject(new Error('unexpected category'))
+      }
+      const key = `${category}/${id}`
+      const attempt = (attempts.get(key) ?? 0) + 1
+      attempts.set(key, attempt)
+      return attempt === 1
+        ? Promise.reject(new Error('provider unavailable'))
+        : Promise.resolve(catalogItem(category, id))
+    })
+    renderPage(repository(), undefined, undefined, itemLoader)
+
+    expect(await screen.findByText('The proficiency rules are unavailable')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+
+    expect(
+      await screen.findByRole('group', { name: 'Choose two class skills' }),
+    ).toBeInTheDocument()
+    expect(itemLoader).toHaveBeenCalledTimes(6)
   })
 })
