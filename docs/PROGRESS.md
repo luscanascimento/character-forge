@@ -60,25 +60,29 @@ Phases 0–3 are implemented. The Phase 4 storage boundary, local character list
 - Presented structured rule violations without mutating the draft and linked recognized violation sources back to the relevant editable builder step.
 - Added honest validation loading, incomplete-response, request-failure, and retry states plus a responsive review layout for identity, origins, class, abilities, derived statistics, and proficiencies.
 - Added focused coverage for successful resume, trusted derived values, review unlocking, structured invalid results, retry, unchanged local persistence, and backward navigation.
+- Added a schema-validated duplication helper that preserves the complete character while assigning a new UUID, fresh creation/update timestamps, and an intentional copied name.
+- Added per-character Duplicate and Delete actions to the local roster, with successful copies ordered first and React Query caches synchronized after each operation.
+- Added an accessible destructive confirmation for deletion; cancellation and storage failures retain the original card, and no optimistic deletion can hide unsaved failure state.
+- Added focused schema, navigation, duplication, cancellation, deletion, and storage-failure coverage while retaining the existing malformed-record and unavailable-storage boundaries.
 
 ## Work in progress
 
-Phase 4 remains open. Persistence, My Characters, all six progressive builder steps, and canonical review/validation are implemented; auto-save, duplication, and deletion UI are not.
+Phase 4 remains open. Persistence, My Characters, duplication/deletion, all six progressive builder steps, and canonical review/validation are implemented; auto-save is not.
 
 ## Next step
 
-Continue Phase 4 with a narrow local roster-management slice:
+Complete Phase 4 with a narrow auto-save slice:
 
-1. Add explicit duplicate and delete actions to My Characters without weakening the existing malformed-record and unavailable-storage safety boundaries.
-2. Duplicate into a new UUID with fresh timestamps and an intentional copied name while retaining the source character unchanged.
-3. Require an accessible destructive confirmation before deletion and keep failures visible without optimistically removing the roster entry.
-4. Keep roster ordering and React Query caches synchronized after successful operations.
-5. Cover duplicate/delete success, cancellation, storage failures, and navigation with focused frontend and storage tests.
-6. Do not add auto-save, progression, equipment effects, spellcasting, export, or print in the same slice.
+1. Record the debounce, explicit progression, and multi-tab conflict policy before changing the current explicit-save behavior.
+2. Auto-save valid edits without silently persisting incomplete selections or advancing the active builder step.
+3. Keep an explicit Continue action where progression needs clear user intent and expose saving, saved, and failure states without blocking further local editing.
+4. Prevent an older pending write from overwriting a newer edit in the same tab and define honest behavior for concurrent tabs.
+5. Cover debounce, ordering, unchanged invalid drafts, save failures/recovery, and step progression with focused frontend tests.
+6. Do not add class progression, equipment effects, spellcasting, export, or print in the same slice.
 
 ## Pending decisions
 
-- The auto-save debounce and conflict behavior across multiple open tabs remain to be defined when editing begins.
+- The auto-save debounce and conflict behavior across multiple open tabs must be resolved in the final Phase 4 slice.
 - A project source-code license remains to be selected before public portfolio release.
 - Checked-in provider snapshots are not currently justified; small representative inline fixtures cover consumed schema variants. Revisit only if upstream contract testing becomes hard to understand.
 
@@ -94,7 +98,7 @@ Continue Phase 4 with a narrow local roster-management slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 58 passing across 10 files (`vitest run`)
+- Frontend unit tests: 65 passing across 10 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors

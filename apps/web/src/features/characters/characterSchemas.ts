@@ -126,6 +126,25 @@ export function createStoredCharacterDraft({
   })
 }
 
+export function duplicateStoredCharacter(
+  source: StoredCharacterV1,
+  { id = globalThis.crypto.randomUUID(), now = new Date() }: NewStoredCharacterOptions = {},
+): StoredCharacterV1 {
+  const timestamp = now.toISOString()
+  const sourceName = source.character.name.trim()
+
+  return storedCharacterV1Schema.parse({
+    ...source,
+    id,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    character: {
+      ...source.character,
+      name: `${sourceName || 'Untitled character'} (Copy)`,
+    },
+  })
+}
+
 export function toCharacterRequest(document: StoredCharacterV1): CharacterRequest {
   return characterRequestSchema.parse({
     id: document.id,
