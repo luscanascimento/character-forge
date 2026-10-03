@@ -13,7 +13,10 @@ import {
   CharacterStorageDataError,
   CharacterStorageUnavailableError,
 } from '../features/characters/characterStorage'
-import type { StoredCharacterV1 } from '../features/characters/characterSchemas'
+import type {
+  CharacterEvaluation,
+  StoredCharacterV1,
+} from '../features/characters/characterSchemas'
 import { createStoredCharacter } from '../test/characterFixture'
 import CharacterBuilderPage from './CharacterBuilderPage'
 
@@ -33,6 +36,11 @@ type CatalogItemLoader = (
   id: string,
   signal?: AbortSignal,
 ) => Promise<CatalogItem>
+
+type CharacterValidationLoader = (
+  document: StoredCharacterV1,
+  signal?: AbortSignal,
+) => Promise<CharacterEvaluation>
 
 const catalogItems = {
   classes: [
@@ -133,7 +141,7 @@ function catalogItem(category: 'classes' | 'species' | 'backgrounds', id: string
     sections: [],
     textSections: [],
     characterCreation: {
-      hitDie: category === 'classes' ? 8 : null,
+      hitDie: category === 'classes' ? (id === 'wizard' ? 6 : 10) : null,
       grantedProficiencies:
         category === 'classes' ? [{ id: 'simple-weapons', name: 'Simple Weapons' }] : [],
       proficiencyChoices,
@@ -154,6 +162,50 @@ function defaultCatalogItemLoader(): CatalogItemLoader {
     }
     return Promise.resolve(catalogItem(category, id))
   })
+}
+
+function validEvaluation(): CharacterEvaluation {
+  return {
+    validation: { violations: [], isValid: true },
+    derived: {
+      abilityModifiers: {
+        strength: -1,
+        dexterity: 2,
+        constitution: 1,
+        intelligence: 1,
+        wisdom: 0,
+        charisma: 3,
+      },
+      proficiencyBonus: 2,
+      armorClass: 12,
+      hitPointMaximum: 7,
+      hitDie: 6,
+      grantedProficiencies: [
+        {
+          proficiency: { id: 'simple-weapons', name: 'Simple Weapons' },
+          sources: [
+            {
+              category: 'classes',
+              selection: { id: 'wizard', name: 'Wizard' },
+            },
+          ],
+        },
+        {
+          proficiency: { id: 'skill-arcana', name: 'Skill: Arcana' },
+          sources: [
+            {
+              category: 'classes',
+              selection: { id: 'wizard', name: 'Wizard' },
+            },
+          ],
+        },
+      ],
+    },
+  }
+}
+
+function defaultValidationLoader(): CharacterValidationLoader {
+  return vi.fn().mockResolvedValue(validEvaluation())
 }
 
 function repository(overrides: Partial<CharacterRepository> = {}): CharacterRepository {
@@ -216,6 +268,7 @@ function renderPage(
   now: () => Date = () => new Date('2026-10-01T15:00:00.000Z'),
   catalogLoader: CatalogLoader = defaultCatalogLoader(),
   catalogItemLoader: CatalogItemLoader = defaultCatalogItemLoader(),
+  validationLoader: CharacterValidationLoader = defaultValidationLoader(),
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const character = createStoredCharacter()
@@ -232,6 +285,7 @@ function renderPage(
                 now={now}
                 catalogLoader={catalogLoader}
                 catalogItemLoader={catalogItemLoader}
+                validationLoader={validationLoader}
               />
             }
           />
@@ -302,7 +356,7 @@ describe('CharacterBuilderPage', () => {
     await user.click(screen.getByRole('button', { name: 'Try again' }))
 
     expect(
-      await screen.findByRole('heading', { name: 'Choose their proficiencies' }),
+      await screen.findByRole('heading', { name: 'Review your character' }),
     ).toBeInTheDocument()
     expect(get).toHaveBeenCalledTimes(2)
   })
@@ -525,12 +579,12 @@ describe('CharacterBuilderPage', () => {
   })
 
   it('resumes saved proficiency choices from all selected catalog details', async () => {
+    const user = userEvent.setup()
     const itemLoader = defaultCatalogItemLoader()
     renderPage(repository(), undefined, undefined, itemLoader)
 
-    expect(
-      await screen.findByRole('heading', { name: 'Choose their proficiencies' }),
-    ).toBeInTheDocument()
+    await screen.findByRole('heading', { name: 'Review your character' })
+    await user.click(screen.getByRole('button', { name: 'Proficiencies' }))
     const classChoice = await screen.findByRole('group', { name: 'Choose two class skills' })
     const speciesChoice = screen.getByRole('group', { name: 'Choose one keen sense' })
     expect(within(classChoice).getByRole('checkbox', { name: 'Skill: Arcana' })).toBeChecked()
@@ -575,7 +629,9 @@ describe('CharacterBuilderPage', () => {
         }),
       }),
     )
-    expect(await screen.findByText('Draft saved locally.')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Review your character' }),
+    ).toBeInTheDocument()
   })
 
   it('requires exact counts and rejects a proficiency selected from two sources', async () => {
@@ -585,6 +641,7 @@ describe('CharacterBuilderPage', () => {
 
     const classChoice = await screen.findByRole('group', { name: 'Choose two class skills' })
     const speciesChoice = screen.getByRole('group', { name: 'Choose one keen sense' })
+    expect(screen.queryByRole('button', { name: 'Review' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Save proficiencies' }))
     expect(screen.getByText('Choose exactly 2 distinct options.')).toBeInTheDocument()
     expect(screen.getByText('Choose exactly 1 distinct option.')).toBeInTheDocument()
@@ -649,7 +706,12 @@ describe('CharacterBuilderPage', () => {
         ? Promise.reject(new Error('provider unavailable'))
         : Promise.resolve(catalogItem(category, id))
     })
-    renderPage(repository(), undefined, undefined, itemLoader)
+    renderPage(
+      repository({ get: vi.fn().mockResolvedValue(proficiencylessCharacter()) }),
+      undefined,
+      undefined,
+      itemLoader,
+    )
 
     expect(await screen.findByText('The proficiency rules are unavailable')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Try again' }))
@@ -658,5 +720,85 @@ describe('CharacterBuilderPage', () => {
       await screen.findByRole('group', { name: 'Choose two class skills' }),
     ).toBeInTheDocument()
     expect(itemLoader).toHaveBeenCalledTimes(6)
+  })
+
+  it('resumes a complete draft at Review and presents trusted derived values', async () => {
+    const validationLoader = defaultValidationLoader()
+    const character = createStoredCharacter()
+    renderPage(repository(), undefined, undefined, undefined, validationLoader)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Review your character' }),
+    ).toBeInTheDocument()
+    expect(await screen.findByText(/Validated against SRD-5.2.1/)).toBeInTheDocument()
+    const derived = screen.getByRole('region', { name: 'Derived statistics' })
+    expect(within(derived).getByText('Armor class')).toBeInTheDocument()
+    expect(within(derived).getByText('12')).toBeInTheDocument()
+    expect(within(derived).getByText('7')).toBeInTheDocument()
+    expect(within(derived).getByText('+2')).toBeInTheDocument()
+    expect(within(derived).getAllByText('d6')).toHaveLength(2)
+    expect(screen.getByText('Skill: Arcana')).toBeInTheDocument()
+    expect(validationLoader).toHaveBeenCalledWith(character, expect.anything())
+
+    const steps = within(screen.getByRole('navigation', { name: 'Character creation steps' }))
+    expect(steps.getByRole('button', { name: 'Review' })).toHaveAttribute('aria-current', 'step')
+  })
+
+  it('routes structured validation feedback back to its editable builder step', async () => {
+    const user = userEvent.setup()
+    const validationLoader = vi.fn().mockResolvedValue({
+      validation: {
+        isValid: false,
+        violations: [
+          {
+            code: 'character.proficiencyChoice.selection.duplicate',
+            message: 'Skill: Perception is already granted.',
+            source: 'proficiencyChoices[1].selections[0]',
+            severity: 'error',
+            requirement: 'Choose a different allowed proficiency.',
+          },
+        ],
+      },
+      derived: null,
+    } satisfies CharacterEvaluation)
+    const storage = repository()
+    renderPage(storage, undefined, undefined, undefined, validationLoader)
+
+    expect(await screen.findByText('This character still needs attention')).toBeInTheDocument()
+    expect(screen.getByText('Skill: Perception is already granted.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Edit Proficiencies' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Choose their proficiencies' }),
+    ).toBeInTheDocument()
+    expect(storage.save).not.toHaveBeenCalled()
+  })
+
+  it('retries canonical validation without changing the local draft', async () => {
+    const user = userEvent.setup()
+    const validationLoader = vi
+      .fn<CharacterValidationLoader>()
+      .mockRejectedValueOnce(new Error('provider unavailable'))
+      .mockResolvedValue(validEvaluation())
+    const storage = repository()
+    renderPage(storage, undefined, undefined, undefined, validationLoader)
+
+    expect(await screen.findByText('The character could not be validated')).toBeInTheDocument()
+    expect(screen.getByText(/Your local draft is unchanged/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+
+    expect(await screen.findByText(/Validated against SRD-5.2.1/)).toBeInTheDocument()
+    expect(validationLoader).toHaveBeenCalledTimes(2)
+    expect(storage.save).not.toHaveBeenCalled()
+  })
+
+  it('keeps completed steps editable from the validated review', async () => {
+    const user = userEvent.setup()
+    renderPage(repository())
+
+    await screen.findByText(/Validated against SRD-5.2.1/)
+    await user.click(screen.getByRole('button', { name: 'Edit origins' }))
+
+    expect(await screen.findByRole('heading', { name: 'Choose their origins' })).toBeInTheDocument()
   })
 })

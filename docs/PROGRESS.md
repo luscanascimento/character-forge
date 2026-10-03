@@ -4,7 +4,7 @@
 
 **Phase 4 — Character Builder MVP: in progress.**
 
-Phases 0–3 are implemented. The Phase 4 storage boundary, local character list, and first five builder steps are complete; work must continue through the remaining progressive steps without expanding later rules early.
+Phases 0–3 are implemented. The Phase 4 storage boundary, local character list, and all six baseline builder steps are complete; work must continue through the remaining local-management behavior without expanding later rules early.
 
 ## Last completed work
 
@@ -55,21 +55,26 @@ Phases 0–3 are implemented. The Phase 4 storage boundary, local character list
 - Preserved still-valid saved selections while surfacing stale choices and disallowed saved options with explicit removal controls instead of silently replacing local data.
 - Persisted only canonical option ids and names from the current catalog requirements and added honest loading, incomplete-facts, provider-error, retry, and save-failure states.
 - Added focused coverage for resume, navigation, canonical persistence, exact counts, duplicate selection, stale/disallowed data, detail query bounds, and provider recovery.
+- Added a Review step that unlocks only after the currently resolved proficiency requirements are satisfied and resumes complete baseline drafts automatically.
+- Routed the local document through the existing canonical validation adapter and presented trusted ability modifiers, proficiency bonus, unarmored AC, level-1 HP, hit die, and resolved proficiency sources.
+- Presented structured rule violations without mutating the draft and linked recognized violation sources back to the relevant editable builder step.
+- Added honest validation loading, incomplete-response, request-failure, and retry states plus a responsive review layout for identity, origins, class, abilities, derived statistics, and proficiencies.
+- Added focused coverage for successful resume, trusted derived values, review unlocking, structured invalid results, retry, unchanged local persistence, and backward navigation.
 
 ## Work in progress
 
-Phase 4 remains open. Persistence, My Characters, the builder shell, name, abilities, origins, class, and proficiency selection are implemented; review/validation, auto-save, duplication, and deletion UI are not.
+Phase 4 remains open. Persistence, My Characters, all six progressive builder steps, and canonical review/validation are implemented; auto-save, duplication, and deletion UI are not.
 
 ## Next step
 
-Continue Phase 4 with a narrow review-and-validation slice:
+Continue Phase 4 with a narrow local roster-management slice:
 
-1. Unlock Review only after the current proficiency requirements are saved and resume complete baseline drafts there.
-2. Send the local document through the existing canonical validation adapter without introducing a second client-side rules engine.
-3. Present the chosen identity, origins, class, ability scores, and trusted derived values with honest validation and provider-error states.
-4. Route structured violations back to the relevant editable steps while retaining the local draft unchanged.
-5. Cover resume, validation success, structured invalid results, request failures, retry, and backward navigation with focused frontend tests.
-6. Do not add auto-save, duplication/deletion actions, later-level progression, equipment effects, spellcasting, export, or print in the same slice.
+1. Add explicit duplicate and delete actions to My Characters without weakening the existing malformed-record and unavailable-storage safety boundaries.
+2. Duplicate into a new UUID with fresh timestamps and an intentional copied name while retaining the source character unchanged.
+3. Require an accessible destructive confirmation before deletion and keep failures visible without optimistically removing the roster entry.
+4. Keep roster ordering and React Query caches synchronized after successful operations.
+5. Cover duplicate/delete success, cancellation, storage failures, and navigation with focused frontend and storage tests.
+6. Do not add auto-save, progression, equipment effects, spellcasting, export, or print in the same slice.
 
 ## Pending decisions
 
@@ -79,7 +84,7 @@ Continue Phase 4 with a narrow review-and-validation slice:
 
 ## Known issues and limitations
 
-- Armored/equipment AC, HP after level 1, the Review builder step, auto-save, import/export, and print functionality are not implemented yet.
+- Armored/equipment AC, HP after level 1, auto-save, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -89,7 +94,7 @@ Continue Phase 4 with a narrow review-and-validation slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 54 passing across 10 files (`vitest run`)
+- Frontend unit tests: 58 passing across 10 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors

@@ -3,10 +3,12 @@ import {
   AlertTriangle,
   Check,
   ChevronLeft,
+  HeartPulse,
   LockKeyhole,
   RefreshCw,
   Save,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -27,7 +29,11 @@ import {
   CharacterStorage,
   CharacterStorageDataError,
 } from '../features/characters/characterStorage'
-import type { StoredCharacterV1 } from '../features/characters/characterSchemas'
+import { validateCharacter } from '../features/characters/characterApi'
+import type {
+  CharacterEvaluation,
+  StoredCharacterV1,
+} from '../features/characters/characterSchemas'
 import '../styles/builder.css'
 
 type CharacterRepository = Pick<CharacterStorage, 'get' | 'save'>
@@ -37,6 +43,7 @@ type CharacterBuilderPageProps = {
   now?: () => Date
   catalogLoader?: CatalogLoader
   catalogItemLoader?: CatalogItemLoader
+  validationLoader?: CharacterValidationLoader
 }
 
 type CatalogLoader = (
@@ -51,6 +58,11 @@ type CatalogItemLoader = (
   signal?: AbortSignal,
 ) => Promise<CatalogItem>
 
+type CharacterValidationLoader = (
+  document: StoredCharacterV1,
+  signal?: AbortSignal,
+) => Promise<CharacterEvaluation>
+
 const defaultStorage = new CharacterStorage()
 const defaultNow = () => new Date()
 
@@ -63,7 +75,7 @@ const builderSteps = [
   ['Review', 'Validate the finished character'],
 ] as const
 
-type BuilderStep = 'name' | 'abilities' | 'origins' | 'class' | 'proficiencies'
+type BuilderStep = 'name' | 'abilities' | 'origins' | 'class' | 'proficiencies' | 'review'
 type AbilityScores = NonNullable<StoredCharacterV1['character']['abilities']>
 type AbilityKey = keyof AbilityScores
 type AbilityInputs = Record<AbilityKey, string>
@@ -100,6 +112,7 @@ export default function CharacterBuilderPage({
   now = defaultNow,
   catalogLoader = getCatalogPage,
   catalogItemLoader = getCatalogItem,
+  validationLoader = validateCharacter,
 }: CharacterBuilderPageProps) {
   const { characterId } = useParams()
   const characterQuery = useQuery({
@@ -136,6 +149,7 @@ export default function CharacterBuilderPage({
           now={now}
           catalogLoader={catalogLoader}
           catalogItemLoader={catalogItemLoader}
+          validationLoader={validationLoader}
         />
       )}
     </div>
@@ -148,15 +162,20 @@ function BuilderWorkspace({
   now,
   catalogLoader,
   catalogItemLoader,
+  validationLoader,
 }: {
   document: StoredCharacterV1
   storage: CharacterRepository
   now: () => Date
   catalogLoader: CatalogLoader
   catalogItemLoader: CatalogItemLoader
+  validationLoader: CharacterValidationLoader
 }) {
   const queryClient = useQueryClient()
-  const [activeStep, setActiveStep] = useState<BuilderStep>(() => resumeStep(document))
+  const [selectedStep, setActiveStep] = useState<BuilderStep>(() => resumeStep(document))
+  const [reviewResumePending, setReviewResumePending] = useState(
+    () => resumeStep(document) === 'proficiencies',
+  )
   const [name, setName] = useState(document.character.name)
   const [nameError, setNameError] = useState<string | null>(null)
   const [abilities, setAbilities] = useState<AbilityInputs>(() =>
@@ -182,38 +201,38 @@ function BuilderWorkspace({
   const speciesQuery = useQuery({
     queryKey: ['builder-options', 'species'],
     queryFn: ({ signal }) => catalogLoader('species', { page: 1, pageSize: 48 }, signal),
-    enabled: activeStep === 'origins',
+    enabled: selectedStep === 'origins',
     retry: false,
   })
   const backgroundsQuery = useQuery({
     queryKey: ['builder-options', 'backgrounds'],
     queryFn: ({ signal }) => catalogLoader('backgrounds', { page: 1, pageSize: 48 }, signal),
-    enabled: activeStep === 'origins',
+    enabled: selectedStep === 'origins',
     retry: false,
   })
   const classesQuery = useQuery({
     queryKey: ['builder-options', 'classes'],
     queryFn: ({ signal }) => catalogLoader('classes', { page: 1, pageSize: 48 }, signal),
-    enabled: activeStep === 'class',
+    enabled: selectedStep === 'class',
     retry: false,
   })
   const classDetailQuery = useQuery({
     queryKey: ['catalog-item', 'classes', selectedClass?.id],
     queryFn: ({ signal }) => catalogItemLoader('classes', selectedClass!.id, signal),
-    enabled: activeStep === 'proficiencies' && Boolean(selectedClass),
+    enabled: selectedStep === 'proficiencies' && Boolean(selectedClass),
     retry: false,
   })
   const speciesDetailQuery = useQuery({
     queryKey: ['catalog-item', 'species', document.character.species?.id],
     queryFn: ({ signal }) => catalogItemLoader('species', document.character.species!.id, signal),
-    enabled: activeStep === 'proficiencies' && Boolean(document.character.species),
+    enabled: selectedStep === 'proficiencies' && Boolean(document.character.species),
     retry: false,
   })
   const backgroundDetailQuery = useQuery({
     queryKey: ['catalog-item', 'backgrounds', document.character.background?.id],
     queryFn: ({ signal }) =>
       catalogItemLoader('backgrounds', document.character.background!.id, signal),
-    enabled: activeStep === 'proficiencies' && Boolean(document.character.background),
+    enabled: selectedStep === 'proficiencies' && Boolean(document.character.background),
     retry: false,
   })
   const creationItems = [
@@ -232,6 +251,24 @@ function BuilderWorkspace({
       fixedProficiencies,
       proficiencyInputsFrom(document.character.proficiencyChoices),
     ).success
+  const activeStep: BuilderStep =
+    reviewResumePending &&
+    selectedStep === 'proficiencies' &&
+    proficiencyDetailsReady &&
+    proficiencyComplete
+      ? 'review'
+      : selectedStep
+  const validationQuery = useQuery({
+    queryKey: ['character-validation', document.id, document.updatedAt],
+    queryFn: ({ signal }) => validationLoader(document, signal),
+    enabled: activeStep === 'review' && proficiencyComplete,
+    retry: false,
+  })
+
+  function openStep(step: BuilderStep) {
+    setReviewResumePending(false)
+    setActiveStep(step)
+  }
 
   function cacheSavedDocument(saved: StoredCharacterV1) {
     queryClient.setQueryData(['character', saved.id], saved)
@@ -314,6 +351,8 @@ function BuilderWorkspace({
     onSuccess: (saved) => {
       setProficiencyInputs(proficiencyInputsFrom(saved.character.proficiencyChoices))
       cacheSavedDocument(saved)
+      setReviewResumePending(false)
+      setActiveStep('review')
     },
   })
 
@@ -411,7 +450,9 @@ function BuilderWorkspace({
                         ? 'class'
                         : index === 4
                           ? 'proficiencies'
-                          : null
+                          : index === 5
+                            ? 'review'
+                            : null
               const available =
                 step === 'name' ||
                 (step === 'abilities' && nameComplete) ||
@@ -421,7 +462,8 @@ function BuilderWorkspace({
                   nameComplete &&
                   abilitiesComplete &&
                   originsComplete &&
-                  classComplete)
+                  classComplete) ||
+                (step === 'review' && proficiencyComplete)
               const active = step === activeStep
               const complete =
                 index === 0
@@ -434,7 +476,9 @@ function BuilderWorkspace({
                         ? classComplete
                         : index === 4
                           ? proficiencyComplete
-                          : false
+                          : index === 5
+                            ? Boolean(validationQuery.data?.validation.isValid)
+                            : false
               return (
                 <li
                   className={[
@@ -460,7 +504,7 @@ function BuilderWorkspace({
                       <button
                         type="button"
                         aria-current={active ? 'step' : undefined}
-                        onClick={() => setActiveStep(step)}
+                        onClick={() => openStep(step)}
                       >
                         {label}
                       </button>
@@ -647,7 +691,7 @@ function BuilderWorkspace({
               onSubmit={saveClass}
             />
           </>
-        ) : (
+        ) : activeStep === 'proficiencies' ? (
           <>
             <BuilderStepHeading
               step={5}
@@ -704,8 +748,218 @@ function BuilderWorkspace({
               onSubmit={saveProficiencies}
             />
           </>
+        ) : (
+          <>
+            <BuilderStepHeading
+              step={6}
+              title="Review your character"
+              description="Character Forge validates this local draft against the active rules before presenting trusted derived values."
+            />
+            <ReviewStep
+              document={document}
+              evaluation={validationQuery.data}
+              pending={validationQuery.isPending}
+              failed={validationQuery.isError}
+              onRetry={() => void validationQuery.refetch()}
+              onEdit={openStep}
+            />
+          </>
         )}
       </section>
+    </div>
+  )
+}
+
+function ReviewStep({
+  document,
+  evaluation,
+  pending,
+  failed,
+  onRetry,
+  onEdit,
+}: {
+  document: StoredCharacterV1
+  evaluation?: CharacterEvaluation
+  pending: boolean
+  failed: boolean
+  onRetry: () => void
+  onEdit: (step: BuilderStep) => void
+}) {
+  if (pending) {
+    return (
+      <div className="origin-state" role="status">
+        <span aria-hidden="true">✦</span>
+        <strong>Validating your character…</strong>
+        <p>Checking this local draft against the active SRD 5.2.1 rules.</p>
+      </div>
+    )
+  }
+
+  if (failed || !evaluation) {
+    return (
+      <div className="origin-state origin-state--error" role="alert">
+        <AlertTriangle aria-hidden="true" size={30} />
+        <strong>The character could not be validated</strong>
+        <p>Your local draft is unchanged. Try the rules service again when it is available.</p>
+        <button className="button button--secondary" type="button" onClick={onRetry}>
+          <RefreshCw aria-hidden="true" size={17} />
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  if (evaluation.validation.isValid && !evaluation.derived) {
+    return (
+      <div className="origin-state origin-state--error" role="alert">
+        <AlertTriangle aria-hidden="true" size={30} />
+        <strong>Trusted character values are unavailable</strong>
+        <p>Your local draft is unchanged. Ask the rules service to validate it again.</p>
+        <button className="button button--secondary" type="button" onClick={onRetry}>
+          <RefreshCw aria-hidden="true" size={17} />
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  if (!evaluation.validation.isValid) {
+    return (
+      <div className="review-invalid" role="alert">
+        <AlertTriangle aria-hidden="true" size={28} />
+        <div>
+          <h3>This character still needs attention</h3>
+          <p>The draft remains saved locally. Review the rules feedback below.</p>
+        </div>
+        <ul>
+          {evaluation.validation.violations.map((violation, index) => {
+            const step = stepForViolation(violation.source)
+            return (
+              <li key={`${violation.code}-${violation.source}-${index}`}>
+                <div>
+                  <strong>{violation.message}</strong>
+                  <span>{violation.requirement}</span>
+                </div>
+                {step && (
+                  <button type="button" onClick={() => onEdit(step)}>
+                    Edit {builderStepLabel(step)}
+                  </button>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+    )
+  }
+
+  const derived = evaluation.derived!
+  const selectedClass = document.character.classProgressions[0]
+
+  return (
+    <div className="review-sheet">
+      <header className="review-hero">
+        <div>
+          <p>Level 1 character</p>
+          <h3>{document.character.name}</h3>
+          <span>
+            {document.character.species?.name} · {selectedClass?.class?.name}
+          </span>
+        </div>
+        <ShieldCheck aria-label="Valid character" size={38} />
+      </header>
+
+      <section className="review-section" aria-labelledby="review-identity-heading">
+        <div className="review-section__heading">
+          <h4 id="review-identity-heading">Character choices</h4>
+          <button type="button" onClick={() => onEdit('origins')}>
+            Edit origins
+          </button>
+        </div>
+        <dl className="review-choices">
+          <div>
+            <dt>Species</dt>
+            <dd>{document.character.species?.name}</dd>
+          </div>
+          <div>
+            <dt>Background</dt>
+            <dd>{document.character.background?.name}</dd>
+          </div>
+          <div>
+            <dt>Class</dt>
+            <dd>{selectedClass?.class?.name}</dd>
+          </div>
+          <div>
+            <dt>Level</dt>
+            <dd>{selectedClass?.level}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="review-section" aria-labelledby="review-abilities-heading">
+        <div className="review-section__heading">
+          <h4 id="review-abilities-heading">Ability scores</h4>
+          <button type="button" onClick={() => onEdit('abilities')}>
+            Edit abilities
+          </button>
+        </div>
+        <dl className="review-abilities">
+          {abilityFields.map(([key, , abbreviation]) => (
+            <div key={key}>
+              <dt>{abbreviation}</dt>
+              <dd>{document.character.abilities?.[key]}</dd>
+              <span>{formatModifier(derived.abilityModifiers[key])}</span>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section className="review-derived" aria-label="Derived statistics">
+        <div>
+          <ShieldCheck aria-hidden="true" size={20} />
+          <span>Armor class</span>
+          <strong>{derived.armorClass}</strong>
+        </div>
+        <div>
+          <HeartPulse aria-hidden="true" size={20} />
+          <span>Hit points</span>
+          <strong>{derived.hitPointMaximum ?? '—'}</strong>
+        </div>
+        <div>
+          <Sparkles aria-hidden="true" size={20} />
+          <span>Proficiency bonus</span>
+          <strong>{formatModifier(derived.proficiencyBonus)}</strong>
+        </div>
+        <div>
+          <span aria-hidden="true" className="review-derived__die">
+            d{derived.hitDie}
+          </span>
+          <span>Hit die</span>
+          <strong>d{derived.hitDie}</strong>
+        </div>
+      </section>
+
+      <section className="review-section" aria-labelledby="review-proficiencies-heading">
+        <div className="review-section__heading">
+          <h4 id="review-proficiencies-heading">Proficiencies</h4>
+          <button type="button" onClick={() => onEdit('proficiencies')}>
+            Edit proficiencies
+          </button>
+        </div>
+        <ul className="review-proficiencies">
+          {derived.grantedProficiencies.map((grant) => (
+            <li key={grant.proficiency.id}>
+              <strong>{grant.proficiency.name}</strong>
+              <span>{grant.sources.map((source) => source.selection.name).join(', ')}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <p className="review-trust">
+        <ShieldCheck aria-hidden="true" size={16} /> Validated against {document.rulesVersion}. Your
+        draft remains stored only in this browser.
+      </p>
     </div>
   )
 }
@@ -1131,6 +1385,29 @@ function BuilderActions({
       </button>
     </div>
   )
+}
+
+function stepForViolation(source: string): Exclude<BuilderStep, 'review'> | null {
+  if (source === 'name' || source.startsWith('name.')) return 'name'
+  if (source === 'abilities' || abilityFields.some(([key]) => source.includes(key))) {
+    return 'abilities'
+  }
+  if (source.startsWith('species') || source.startsWith('background')) return 'origins'
+  if (source.startsWith('classProgressions')) return 'class'
+  if (source.startsWith('proficiencyChoices')) return 'proficiencies'
+  return null
+}
+
+function builderStepLabel(step: Exclude<BuilderStep, 'review'>): string {
+  return builderSteps[
+    {
+      name: 0,
+      abilities: 1,
+      origins: 2,
+      class: 3,
+      proficiencies: 4,
+    }[step]
+  ][0]
 }
 
 function resumeStep(document: StoredCharacterV1): BuilderStep {
