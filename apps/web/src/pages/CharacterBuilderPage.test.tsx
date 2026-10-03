@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -10,6 +10,7 @@ import type {
   CatalogPage,
 } from '../features/catalog/catalog'
 import {
+  CharacterStorageConflictError,
   CharacterStorageDataError,
   CharacterStorageUnavailableError,
 } from '../features/characters/characterStorage'
@@ -22,7 +23,7 @@ import CharacterBuilderPage from './CharacterBuilderPage'
 
 type CharacterRepository = {
   get: (id: string) => Promise<StoredCharacterV1 | null>
-  save: (document: unknown) => Promise<StoredCharacterV1>
+  save: (document: unknown, expectedUpdatedAt?: string) => Promise<StoredCharacterV1>
 }
 
 type CatalogLoader = (
@@ -269,6 +270,7 @@ function renderPage(
   catalogLoader: CatalogLoader = defaultCatalogLoader(),
   catalogItemLoader: CatalogItemLoader = defaultCatalogItemLoader(),
   validationLoader: CharacterValidationLoader = defaultValidationLoader(),
+  autosaveDelay?: number,
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const character = createStoredCharacter()
@@ -283,6 +285,7 @@ function renderPage(
               <CharacterBuilderPage
                 storage={storage}
                 now={now}
+                autosaveDelay={autosaveDelay}
                 catalogLoader={catalogLoader}
                 catalogItemLoader={catalogItemLoader}
                 validationLoader={validationLoader}
@@ -367,13 +370,13 @@ describe('CharacterBuilderPage', () => {
     renderPage(storage)
 
     const input = await screen.findByRole('textbox', { name: 'Character name' })
-    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent('Choose a name')
     expect(storage.save).not.toHaveBeenCalled()
 
     await user.type(input, '  Lyra  ')
-    await user.click(screen.getByRole('button', { name: 'Save and continue' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(storage.save).toHaveBeenCalledWith(
@@ -381,6 +384,7 @@ describe('CharacterBuilderPage', () => {
         updatedAt: '2026-10-01T15:00:00.000Z',
         character: expect.objectContaining({ name: 'Lyra' }),
       }),
+      '2026-09-29T12:00:00.000Z',
     )
     expect(
       await screen.findByRole('heading', { name: 'Shape their abilities' }),
@@ -400,7 +404,7 @@ describe('CharacterBuilderPage', () => {
     await user.type(strength, '31')
     const dexterity = screen.getByRole('spinbutton', { name: /dexterity/i })
     await user.clear(dexterity)
-    await user.click(screen.getByRole('button', { name: 'Save abilities' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     expect(screen.getByText('Use 1–30.')).toBeInTheDocument()
     expect(screen.getByText('Enter a score.')).toBeInTheDocument()
@@ -417,7 +421,7 @@ describe('CharacterBuilderPage', () => {
     await user.clear(strength)
     await user.type(strength, '15')
     expect(strength).toHaveAccessibleDescription('Modifier +2')
-    await user.click(screen.getByRole('button', { name: 'Save abilities' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(storage.save).toHaveBeenCalledWith(
@@ -434,6 +438,7 @@ describe('CharacterBuilderPage', () => {
           },
         }),
       }),
+      '2026-09-29T12:00:00.000Z',
     )
     expect(await screen.findByRole('heading', { name: 'Choose their origins' })).toBeInTheDocument()
   })
@@ -445,10 +450,119 @@ describe('CharacterBuilderPage', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Abilities' }))
     await screen.findByRole('heading', { name: 'Shape their abilities' })
-    await user.click(screen.getByRole('button', { name: 'Save abilities' }))
+    const strength = screen.getByRole('spinbutton', { name: /strength/i })
+    await user.clear(strength)
+    await user.type(strength, '9')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('The previous draft remains intact')
-    expect(screen.getByRole('spinbutton', { name: /strength/i })).toHaveValue(8)
+    expect(strength).toHaveValue(9)
+  })
+
+  it('autosaves a valid edit after the debounce without advancing the step', async () => {
+    const user = userEvent.setup()
+    const storage = repository({ get: vi.fn().mockResolvedValue(blankCharacter()) })
+    renderPage(storage, undefined, undefined, undefined, undefined, 80)
+
+    await user.type(await screen.findByRole('textbox', { name: 'Character name' }), 'Lyra')
+
+    expect(storage.save).not.toHaveBeenCalled()
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({ character: expect.objectContaining({ name: 'Lyra' }) }),
+      '2026-09-29T12:00:00.000Z',
+    )
+    expect(screen.getByRole('heading', { name: 'Name your hero' })).toBeInTheDocument()
+    expect(screen.getByText('Draft saved locally.')).toBeInTheDocument()
+  })
+
+  it('retries autosave after another edit clears a transient failure', async () => {
+    const user = userEvent.setup()
+    const save = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('quota exceeded'))
+      .mockImplementation(async (document: unknown) => document as StoredCharacterV1)
+    const storage = repository({
+      get: vi.fn().mockResolvedValue(blankCharacter()),
+      save,
+    })
+    renderPage(storage, undefined, undefined, undefined, undefined, 20)
+
+    const input = await screen.findByRole('textbox', { name: 'Character name' })
+    await user.type(input, 'Lyra')
+    expect(await screen.findByRole('alert')).toHaveTextContent('previous draft remains intact')
+
+    await user.type(input, ' Moon')
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(input).toHaveValue('Lyra Moon')
+  })
+
+  it('does not autosave an incomplete step', async () => {
+    const user = userEvent.setup()
+    const storage = repository()
+    renderPage(storage, undefined, undefined, undefined, undefined, 20)
+
+    await user.click(await screen.findByRole('button', { name: 'Abilities' }))
+    await user.clear(await screen.findByRole('spinbutton', { name: /strength/i }))
+    await new Promise((resolve) => window.setTimeout(resolve, 60))
+
+    expect(storage.save).not.toHaveBeenCalled()
+  })
+
+  it('reports a conflicting tab without overwriting its newer draft', async () => {
+    const user = userEvent.setup()
+    const storage = repository({
+      get: vi.fn().mockResolvedValue(blankCharacter()),
+      save: vi.fn().mockRejectedValue(new CharacterStorageConflictError()),
+    })
+    renderPage(storage)
+
+    await user.type(await screen.findByRole('textbox', { name: 'Character name' }), 'Lyra')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A newer draft was saved in another tab',
+    )
+    expect(screen.getByRole('heading', { name: 'Name your hero' })).toBeInTheDocument()
+  })
+
+  it('serializes autosaves and preserves an edit made while a write is pending', async () => {
+    const user = userEvent.setup()
+    let resolveFirst: ((document: StoredCharacterV1) => void) | undefined
+    const save = vi.fn((document: unknown, _expectedUpdatedAt?: string) => {
+      const stored = document as StoredCharacterV1
+      if (!resolveFirst) {
+        return new Promise<StoredCharacterV1>((resolve) => {
+          resolveFirst = resolve
+        })
+      }
+      return Promise.resolve(stored)
+    })
+    const storage = repository({
+      get: vi.fn().mockResolvedValue(blankCharacter()),
+      save,
+    })
+    renderPage(storage, undefined, undefined, undefined, undefined, 20)
+
+    const input = await screen.findByRole('textbox', { name: 'Character name' })
+    await user.type(input, 'Lyra')
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1))
+
+    await user.type(input, ' Moon')
+    await new Promise((resolve) => window.setTimeout(resolve, 60))
+    expect(save).toHaveBeenCalledTimes(1)
+
+    const firstSaved = save.mock.calls[0][0] as StoredCharacterV1
+    await act(async () => resolveFirst?.(firstSaved))
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2))
+    expect(save.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ character: expect.objectContaining({ name: 'Lyra Moon' }) }),
+    )
+    expect(save.mock.calls[1][1]).toBe(firstSaved.updatedAt)
+    expect(input).toHaveValue('Lyra Moon')
   })
 
   it('persists canonical species and background references from catalog choices', async () => {
@@ -459,7 +573,7 @@ describe('CharacterBuilderPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Origins' }))
     await user.click(await screen.findByRole('radio', { name: 'Human' }))
     await user.click(screen.getByRole('radio', { name: 'Sage' }))
-    await user.click(screen.getByRole('button', { name: 'Save origins' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(storage.save).toHaveBeenCalledWith(
@@ -469,6 +583,7 @@ describe('CharacterBuilderPage', () => {
           background: { id: 'sage', name: 'Sage' },
         }),
       }),
+      '2026-09-29T12:00:00.000Z',
     )
     expect(await screen.findByRole('heading', { name: 'Choose their class' })).toBeInTheDocument()
   })
@@ -479,7 +594,7 @@ describe('CharacterBuilderPage', () => {
     renderPage(storage)
 
     await screen.findByRole('radio', { name: 'Elf' })
-    await user.click(screen.getByRole('button', { name: 'Save origins' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     expect(screen.getByText('Choose an available species.')).toBeInTheDocument()
     expect(screen.getByText('Choose an available background.')).toBeInTheDocument()
@@ -531,7 +646,7 @@ describe('CharacterBuilderPage', () => {
     renderPage(storage)
 
     await user.click(await screen.findByRole('radio', { name: 'Fighter' }))
-    await user.click(screen.getByRole('button', { name: 'Save class' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(storage.save).toHaveBeenCalledWith(
@@ -541,6 +656,7 @@ describe('CharacterBuilderPage', () => {
           classProgressions: [{ class: { id: 'fighter', name: 'Fighter' }, level: 1 }],
         }),
       }),
+      '2026-09-29T12:00:00.000Z',
     )
     expect(
       await screen.findByRole('heading', { name: 'Choose their proficiencies' }),
@@ -553,7 +669,7 @@ describe('CharacterBuilderPage', () => {
     renderPage(storage)
 
     await screen.findByRole('radio', { name: 'Fighter' })
-    await user.click(screen.getByRole('button', { name: 'Save class' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     expect(screen.getByText('Choose an available class.')).toBeInTheDocument()
     expect(storage.save).not.toHaveBeenCalled()
@@ -606,7 +722,7 @@ describe('CharacterBuilderPage', () => {
     await user.click(within(classChoice).getByRole('checkbox', { name: 'Skill: Arcana' }))
     await user.click(within(classChoice).getByRole('checkbox', { name: 'Skill: History' }))
     await user.click(within(speciesChoice).getByRole('checkbox', { name: 'Skill: Perception' }))
-    await user.click(screen.getByRole('button', { name: 'Save proficiencies' }))
+    await user.click(screen.getByRole('button', { name: 'Continue to review' }))
 
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(storage.save).toHaveBeenCalledWith(
@@ -628,6 +744,7 @@ describe('CharacterBuilderPage', () => {
           ],
         }),
       }),
+      '2026-09-29T12:00:00.000Z',
     )
     expect(
       await screen.findByRole('heading', { name: 'Review your character' }),
@@ -642,14 +759,14 @@ describe('CharacterBuilderPage', () => {
     const classChoice = await screen.findByRole('group', { name: 'Choose two class skills' })
     const speciesChoice = screen.getByRole('group', { name: 'Choose one keen sense' })
     expect(screen.queryByRole('button', { name: 'Review' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Save proficiencies' }))
+    await user.click(screen.getByRole('button', { name: 'Continue to review' }))
     expect(screen.getByText('Choose exactly 2 distinct options.')).toBeInTheDocument()
     expect(screen.getByText('Choose exactly 1 distinct option.')).toBeInTheDocument()
 
     await user.click(within(classChoice).getByRole('checkbox', { name: 'Skill: History' }))
     await user.click(within(classChoice).getByRole('checkbox', { name: 'Skill: Perception' }))
     await user.click(within(speciesChoice).getByRole('checkbox', { name: 'Skill: Perception' }))
-    await user.click(screen.getByRole('button', { name: 'Save proficiencies' }))
+    await user.click(screen.getByRole('button', { name: 'Continue to review' }))
 
     expect(
       screen.getByText('Skill: Perception is already granted or selected elsewhere.'),
@@ -680,7 +797,7 @@ describe('CharacterBuilderPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Skill: Stealth')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Save proficiencies' }))
+    await user.click(screen.getByRole('button', { name: 'Continue to review' }))
     expect(
       screen.getByText('Remove outdated choices before saving these proficiencies.'),
     ).toBeInTheDocument()

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
+  ArrowRight,
   Check,
   ChevronLeft,
   HeartPulse,
@@ -10,7 +11,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type {
   CatalogCategory,
@@ -27,11 +28,13 @@ import {
 } from '../features/characters/abilityScores'
 import {
   CharacterStorage,
+  CharacterStorageConflictError,
   CharacterStorageDataError,
 } from '../features/characters/characterStorage'
 import { validateCharacter } from '../features/characters/characterApi'
 import type {
   CharacterEvaluation,
+  CharacterDraft,
   StoredCharacterV1,
 } from '../features/characters/characterSchemas'
 import '../styles/builder.css'
@@ -41,6 +44,7 @@ type CharacterRepository = Pick<CharacterStorage, 'get' | 'save'>
 type CharacterBuilderPageProps = {
   storage?: CharacterRepository
   now?: () => Date
+  autosaveDelay?: number
   catalogLoader?: CatalogLoader
   catalogItemLoader?: CatalogItemLoader
   validationLoader?: CharacterValidationLoader
@@ -83,6 +87,14 @@ type AbilityErrors = Partial<Record<AbilityKey, string>>
 type ProficiencyInputs = Record<string, string[]>
 type ProficiencyErrors = Record<string, string>
 type SavedProficiencyChoices = StoredCharacterV1['character']['proficiencyChoices']
+type EditableBuilderStep = Exclude<BuilderStep, 'review'>
+type SaveIntent = {
+  step: EditableBuilderStep
+  character: CharacterDraft
+  advance: boolean
+}
+
+const defaultAutosaveDelayMs = 650
 
 type ProficiencyRule = {
   id: string
@@ -110,6 +122,7 @@ const abilityFields: ReadonlyArray<[AbilityKey, string, string]> = [
 export default function CharacterBuilderPage({
   storage = defaultStorage,
   now = defaultNow,
+  autosaveDelay = defaultAutosaveDelayMs,
   catalogLoader = getCatalogPage,
   catalogItemLoader = getCatalogItem,
   validationLoader = validateCharacter,
@@ -147,6 +160,7 @@ export default function CharacterBuilderPage({
           document={characterQuery.data}
           storage={storage}
           now={now}
+          autosaveDelay={autosaveDelay}
           catalogLoader={catalogLoader}
           catalogItemLoader={catalogItemLoader}
           validationLoader={validationLoader}
@@ -160,6 +174,7 @@ function BuilderWorkspace({
   document,
   storage,
   now,
+  autosaveDelay,
   catalogLoader,
   catalogItemLoader,
   validationLoader,
@@ -167,6 +182,7 @@ function BuilderWorkspace({
   document: StoredCharacterV1
   storage: CharacterRepository
   now: () => Date
+  autosaveDelay: number
   catalogLoader: CatalogLoader
   catalogItemLoader: CatalogItemLoader
   validationLoader: CharacterValidationLoader
@@ -279,82 +295,129 @@ function BuilderWorkspace({
     )
   }
 
-  const nameMutation = useMutation({
-    mutationFn: (nextName: string) =>
-      storage.save({
-        ...document,
-        updatedAt: now().toISOString(),
-        character: { ...document.character, name: nextName },
-      }),
-    onSuccess: (saved) => {
-      setName(saved.character.name)
-      cacheSavedDocument(saved)
-      setActiveStep('abilities')
-    },
-  })
-  const abilitiesMutation = useMutation({
-    mutationFn: (nextAbilities: AbilityScores) =>
-      storage.save({
-        ...document,
-        updatedAt: now().toISOString(),
-        character: { ...document.character, abilities: nextAbilities },
-      }),
-    onSuccess: (saved) => {
-      setAbilities(abilityInputsFrom(saved.character.abilities))
-      cacheSavedDocument(saved)
-      setActiveStep('origins')
-    },
-  })
-  const originsMutation = useMutation({
-    mutationFn: ({
-      species,
-      background,
-    }: {
-      species: { id: string; name: string }
-      background: { id: string; name: string }
-    }) =>
-      storage.save({
-        ...document,
-        updatedAt: now().toISOString(),
-        character: { ...document.character, species, background },
-      }),
-    onSuccess: (saved) => {
-      setSpeciesId(saved.character.species?.id ?? '')
-      setBackgroundId(saved.character.background?.id ?? '')
-      cacheSavedDocument(saved)
-      setActiveStep('class')
-    },
-  })
-  const classMutation = useMutation({
-    mutationFn: (selectedClass: { id: string; name: string }) =>
-      storage.save({
-        ...document,
-        updatedAt: now().toISOString(),
-        character: {
-          ...document.character,
-          classProgressions: [{ class: selectedClass, level: 1 }],
+  function changedCharacterForStep(step: BuilderStep): CharacterDraft | null {
+    if (step === 'name') {
+      const nextName = name.trim()
+      return nextName && nextName !== document.character.name
+        ? { ...document.character, name: nextName }
+        : null
+    }
+    if (step === 'abilities') {
+      const result = parseAbilityInputs(abilities)
+      return result.success && !sameValue(result.scores, document.character.abilities)
+        ? { ...document.character, abilities: result.scores }
+        : null
+    }
+    if (step === 'origins') {
+      const species = speciesQuery.data?.items.find((item) => item.id === speciesId)
+      const background = backgroundsQuery.data?.items.find((item) => item.id === backgroundId)
+      if (!species || !background) return null
+      const nextOrigins = {
+        species: { id: species.id, name: species.name },
+        background: { id: background.id, name: background.name },
+      }
+      return sameValue(nextOrigins.species, document.character.species) &&
+        sameValue(nextOrigins.background, document.character.background)
+        ? null
+        : { ...document.character, ...nextOrigins }
+    }
+    if (step === 'class') {
+      const selectedClass = classesQuery.data?.items.find((item) => item.id === classId)
+      const nextProgressions = selectedClass
+        ? [{ class: { id: selectedClass.id, name: selectedClass.name }, level: 1 }]
+        : null
+      return nextProgressions && !sameValue(nextProgressions, document.character.classProgressions)
+        ? { ...document.character, classProgressions: nextProgressions }
+        : null
+    }
+    if (step === 'proficiencies') {
+      const result = validateProficiencyInputs(
+        proficiencyRules,
+        fixedProficiencies,
+        proficiencyInputs,
+      )
+      return result.success && !sameValue(result.choices, document.character.proficiencyChoices)
+        ? { ...document.character, proficiencyChoices: result.choices }
+        : null
+    }
+    return null
+  }
+
+  const autosaveCharacter = changedCharacterForStep(activeStep)
+  const autosaveSnapshot = autosaveCharacter
+    ? JSON.stringify({ step: activeStep, character: autosaveCharacter })
+    : null
+  const saveMutation = useMutation({
+    mutationFn: (intent: SaveIntent) =>
+      storage.save(
+        {
+          ...document,
+          updatedAt: nextUpdatedAt(document.updatedAt, now()),
+          character: intent.character,
         },
-      }),
-    onSuccess: (saved) => {
-      setClassId(saved.character.classProgressions[0]?.class?.id ?? '')
+        document.updatedAt,
+      ),
+    onSuccess: (saved, intent) => {
+      if (intent.step === 'name') {
+        setName((current) =>
+          current.trim() === intent.character.name ? saved.character.name : current,
+        )
+      }
+      if (intent.step === 'abilities') {
+        setAbilities((current) => {
+          const parsed = parseAbilityInputs(current)
+          return parsed.success && sameValue(parsed.scores, intent.character.abilities)
+            ? abilityInputsFrom(saved.character.abilities)
+            : current
+        })
+      }
+      if (intent.step === 'origins') {
+        setSpeciesId((current) =>
+          current === intent.character.species?.id ? (saved.character.species?.id ?? '') : current,
+        )
+        setBackgroundId((current) =>
+          current === intent.character.background?.id
+            ? (saved.character.background?.id ?? '')
+            : current,
+        )
+      }
+      if (intent.step === 'class') {
+        setClassId((current) =>
+          current === intent.character.classProgressions[0]?.class?.id
+            ? (saved.character.classProgressions[0]?.class?.id ?? '')
+            : current,
+        )
+      }
+      if (intent.step === 'proficiencies') {
+        setProficiencyInputs((current) =>
+          sameValue(current, proficiencyInputsFrom(intent.character.proficiencyChoices))
+            ? proficiencyInputsFrom(saved.character.proficiencyChoices)
+            : current,
+        )
+      }
       cacheSavedDocument(saved)
-      setActiveStep('proficiencies')
+      if (intent.advance) openStep(nextBuilderStep(intent.step))
     },
   })
-  const proficienciesMutation = useMutation({
-    mutationFn: (proficiencyChoices: SavedProficiencyChoices) =>
-      storage.save({
-        ...document,
-        updatedAt: now().toISOString(),
-        character: { ...document.character, proficiencyChoices },
-      }),
-    onSuccess: (saved) => {
-      setProficiencyInputs(proficiencyInputsFrom(saved.character.proficiencyChoices))
-      cacheSavedDocument(saved)
-      setReviewResumePending(false)
-      setActiveStep('review')
-    },
-  })
+  const mutateSave = saveMutation.mutate
+
+  useEffect(() => {
+    if (!autosaveSnapshot || saveMutation.isPending || saveMutation.isError) return
+
+    const timeout = window.setTimeout(() => {
+      const candidate = JSON.parse(autosaveSnapshot) as Pick<SaveIntent, 'step' | 'character'>
+      mutateSave({ ...candidate, advance: false })
+    }, autosaveDelay)
+    return () => window.clearTimeout(timeout)
+  }, [autosaveDelay, autosaveSnapshot, mutateSave, saveMutation.isError, saveMutation.isPending])
+
+  function persistOrAdvance(step: EditableBuilderStep, character: CharacterDraft) {
+    if (sameValue(character, document.character)) {
+      openStep(nextBuilderStep(step))
+      return
+    }
+    saveMutation.mutate({ step, character, advance: true })
+  }
 
   function saveName(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -365,7 +428,7 @@ function BuilderWorkspace({
     }
 
     setNameError(null)
-    nameMutation.mutate(normalizedName)
+    persistOrAdvance('name', { ...document.character, name: normalizedName })
   }
 
   function saveAbilities(event: FormEvent<HTMLFormElement>) {
@@ -377,7 +440,7 @@ function BuilderWorkspace({
     }
 
     setAbilityErrors({})
-    abilitiesMutation.mutate(result.scores)
+    persistOrAdvance('abilities', { ...document.character, abilities: result.scores })
   }
 
   function saveOrigins(event: FormEvent<HTMLFormElement>) {
@@ -394,7 +457,8 @@ function BuilderWorkspace({
     }
 
     setOriginErrors({})
-    originsMutation.mutate({
+    persistOrAdvance('origins', {
+      ...document.character,
       species: { id: species.id, name: species.name },
       background: { id: background.id, name: background.name },
     })
@@ -409,7 +473,10 @@ function BuilderWorkspace({
     }
 
     setClassError(null)
-    classMutation.mutate({ id: selectedClass.id, name: selectedClass.name })
+    persistOrAdvance('class', {
+      ...document.character,
+      classProgressions: [{ class: { id: selectedClass.id, name: selectedClass.name }, level: 1 }],
+    })
   }
 
   function saveProficiencies(event: FormEvent<HTMLFormElement>) {
@@ -425,7 +492,11 @@ function BuilderWorkspace({
     }
 
     setProficiencyErrors({})
-    proficienciesMutation.mutate(result.choices)
+    setReviewResumePending(false)
+    persistOrAdvance('proficiencies', {
+      ...document.character,
+      proficiencyChoices: result.choices,
+    })
   }
 
   return (
@@ -539,7 +610,7 @@ function BuilderWorkspace({
                   onChange={(event) => {
                     setName(event.target.value)
                     if (nameError) setNameError(null)
-                    if (nameMutation.isError || nameMutation.isSuccess) nameMutation.reset()
+                    if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
                   }}
                   autoComplete="off"
                   aria-describedby={nameError ? 'character-name-error' : 'character-name-help'}
@@ -558,11 +629,17 @@ function BuilderWorkspace({
                 </span>
               )}
               <LocalStorageNotice />
-              <SaveError visible={nameMutation.isError} />
+              <SaveError
+                error={saveMutation.variables?.step === 'name' ? saveMutation.error : null}
+              />
               <BuilderActions
-                saved={nameMutation.isSuccess && name.trim() === document.character.name}
-                pending={nameMutation.isPending}
-                label="Save and continue"
+                saved={
+                  saveMutation.isSuccess &&
+                  saveMutation.variables.step === 'name' &&
+                  autosaveCharacter === null
+                }
+                pending={saveMutation.isPending}
+                label="Continue"
               />
             </form>
           </>
@@ -602,8 +679,8 @@ function BuilderWorkspace({
                           if (error) {
                             setAbilityErrors((current) => ({ ...current, [key]: undefined }))
                           }
-                          if (abilitiesMutation.isError || abilitiesMutation.isSuccess) {
-                            abilitiesMutation.reset()
+                          if (saveMutation.isError || saveMutation.isSuccess) {
+                            saveMutation.reset()
                           }
                         }}
                         aria-invalid={error ? true : undefined}
@@ -623,11 +700,17 @@ function BuilderWorkspace({
                 })}
               </fieldset>
               <LocalStorageNotice />
-              <SaveError visible={abilitiesMutation.isError} />
+              <SaveError
+                error={saveMutation.variables?.step === 'abilities' ? saveMutation.error : null}
+              />
               <BuilderActions
-                saved={abilitiesMutation.isSuccess}
-                pending={abilitiesMutation.isPending}
-                label="Save abilities"
+                saved={
+                  saveMutation.isSuccess &&
+                  saveMutation.variables.step === 'abilities' &&
+                  autosaveCharacter === null
+                }
+                pending={saveMutation.isPending}
+                label="Continue"
               />
             </form>
           </>
@@ -646,18 +729,22 @@ function BuilderWorkspace({
               speciesId={speciesId}
               backgroundId={backgroundId}
               errors={originErrors}
-              saved={originsMutation.isSuccess}
-              saving={originsMutation.isPending}
-              saveFailed={originsMutation.isError}
+              saved={
+                saveMutation.isSuccess &&
+                saveMutation.variables.step === 'origins' &&
+                autosaveCharacter === null
+              }
+              saving={saveMutation.isPending}
+              saveError={saveMutation.variables?.step === 'origins' ? saveMutation.error : null}
               onSpeciesChange={(id) => {
                 setSpeciesId(id)
                 setOriginErrors((current) => ({ ...current, species: undefined }))
-                if (originsMutation.isError || originsMutation.isSuccess) originsMutation.reset()
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
               }}
               onBackgroundChange={(id) => {
                 setBackgroundId(id)
                 setOriginErrors((current) => ({ ...current, background: undefined }))
-                if (originsMutation.isError || originsMutation.isSuccess) originsMutation.reset()
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
               }}
               onRetry={() => {
                 void speciesQuery.refetch()
@@ -679,13 +766,17 @@ function BuilderWorkspace({
               failed={classesQuery.isError}
               classId={classId}
               error={classError}
-              saved={classMutation.isSuccess}
-              saving={classMutation.isPending}
-              saveFailed={classMutation.isError}
+              saved={
+                saveMutation.isSuccess &&
+                saveMutation.variables.step === 'class' &&
+                autosaveCharacter === null
+              }
+              saving={saveMutation.isPending}
+              saveError={saveMutation.variables?.step === 'class' ? saveMutation.error : null}
               onClassChange={(id) => {
                 setClassId(id)
                 setClassError(null)
-                if (classMutation.isError || classMutation.isSuccess) classMutation.reset()
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
               }}
               onRetry={() => void classesQuery.refetch()}
               onSubmit={saveClass}
@@ -715,9 +806,15 @@ function BuilderWorkspace({
                 backgroundDetailQuery.isError ||
                 (creationItems.length === 3 && !proficiencyDetailsReady)
               }
-              saved={proficienciesMutation.isSuccess}
-              saving={proficienciesMutation.isPending}
-              saveFailed={proficienciesMutation.isError}
+              saved={
+                saveMutation.isSuccess &&
+                saveMutation.variables.step === 'proficiencies' &&
+                autosaveCharacter === null
+              }
+              saving={saveMutation.isPending}
+              saveError={
+                saveMutation.variables?.step === 'proficiencies' ? saveMutation.error : null
+              }
               onToggle={(choiceId, optionId, checked) => {
                 setProficiencyInputs((current) => {
                   const selections = current[choiceId] ?? []
@@ -729,15 +826,15 @@ function BuilderWorkspace({
                   }
                 })
                 setProficiencyErrors((current) => omitKey(omitKey(current, choiceId), '_form'))
-                if (proficienciesMutation.isError || proficienciesMutation.isSuccess) {
-                  proficienciesMutation.reset()
+                if (saveMutation.isError || saveMutation.isSuccess) {
+                  saveMutation.reset()
                 }
               }}
               onRemoveChoice={(choiceId) => {
                 setProficiencyInputs((current) => omitKey(current, choiceId))
                 setProficiencyErrors((current) => omitKey(omitKey(current, choiceId), '_form'))
-                if (proficienciesMutation.isError || proficienciesMutation.isSuccess) {
-                  proficienciesMutation.reset()
+                if (saveMutation.isError || saveMutation.isSuccess) {
+                  saveMutation.reset()
                 }
               }}
               onRetry={() => {
@@ -974,7 +1071,7 @@ function ProficienciesStep({
   failed,
   saved,
   saving,
-  saveFailed,
+  saveError,
   onToggle,
   onRemoveChoice,
   onRetry,
@@ -989,7 +1086,7 @@ function ProficienciesStep({
   failed: boolean
   saved: boolean
   saving: boolean
-  saveFailed: boolean
+  saveError: Error | null
   onToggle: (choiceId: string, optionId: string, checked: boolean) => void
   onRemoveChoice: (choiceId: string) => void
   onRetry: () => void
@@ -1128,8 +1225,8 @@ function ProficienciesStep({
         </div>
       )}
       <LocalStorageNotice />
-      <SaveError visible={saveFailed} />
-      <BuilderActions saved={saved} pending={saving} label="Save proficiencies" />
+      <SaveError error={saveError} />
+      <BuilderActions saved={saved} pending={saving} label="Continue to review" />
     </form>
   )
 }
@@ -1142,7 +1239,7 @@ function ClassStep({
   error,
   saved,
   saving,
-  saveFailed,
+  saveError,
   onClassChange,
   onRetry,
   onSubmit,
@@ -1154,7 +1251,7 @@ function ClassStep({
   error: string | null
   saved: boolean
   saving: boolean
-  saveFailed: boolean
+  saveError: Error | null
   onClassChange: (id: string) => void
   onRetry: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
@@ -1197,8 +1294,8 @@ function ClassStep({
         Starting level: 1 · Source: {page.source.rulesVersion} · {page.source.provider}
       </p>
       <LocalStorageNotice />
-      <SaveError visible={saveFailed} />
-      <BuilderActions saved={saved} pending={saving} label="Save class" />
+      <SaveError error={saveError} />
+      <BuilderActions saved={saved} pending={saving} label="Continue" />
     </form>
   )
 }
@@ -1213,7 +1310,7 @@ function OriginsStep({
   errors,
   saved,
   saving,
-  saveFailed,
+  saveError,
   onSpeciesChange,
   onBackgroundChange,
   onRetry,
@@ -1228,7 +1325,7 @@ function OriginsStep({
   errors: { species?: string; background?: string }
   saved: boolean
   saving: boolean
-  saveFailed: boolean
+  saveError: Error | null
   onSpeciesChange: (id: string) => void
   onBackgroundChange: (id: string) => void
   onRetry: () => void
@@ -1280,8 +1377,8 @@ function OriginsStep({
         Source: {speciesPage.source.rulesVersion} · {speciesPage.source.provider}
       </p>
       <LocalStorageNotice />
-      <SaveError visible={saveFailed} />
-      <BuilderActions saved={saved} pending={saving} label="Save origins" />
+      <SaveError error={saveError} />
+      <BuilderActions saved={saved} pending={saving} label="Continue" />
     </form>
   )
 }
@@ -1356,11 +1453,13 @@ function LocalStorageNotice() {
   )
 }
 
-function SaveError({ visible }: { visible: boolean }) {
-  return visible ? (
+function SaveError({ error }: { error: Error | null }) {
+  return error ? (
     <div className="builder-save-error" role="alert">
       <AlertTriangle aria-hidden="true" size={18} />
-      This change could not be saved. The previous draft remains intact.
+      {error instanceof CharacterStorageConflictError
+        ? 'A newer draft was saved in another tab. Reopen this character before saving more changes.'
+        : 'This change could not be saved. The previous draft remains intact.'}
     </div>
   ) : null
 }
@@ -1377,10 +1476,18 @@ function BuilderActions({
   return (
     <div className="builder-form__actions">
       <span aria-live="polite">
-        {saved ? 'Draft saved locally.' : 'Changes save only when you use this button.'}
+        {pending
+          ? 'Saving valid changes locally…'
+          : saved
+            ? 'Draft saved locally.'
+            : 'Valid changes save automatically.'}
       </span>
       <button className="button button--primary" type="submit" disabled={pending}>
-        <Save aria-hidden="true" size={17} />
+        {pending ? (
+          <Save aria-hidden="true" size={17} />
+        ) : (
+          <ArrowRight aria-hidden="true" size={17} />
+        )}
         {pending ? 'Saving…' : label}
       </button>
     </div>
@@ -1408,6 +1515,25 @@ function builderStepLabel(step: Exclude<BuilderStep, 'review'>): string {
       proficiencies: 4,
     }[step]
   ][0]
+}
+
+function nextBuilderStep(step: EditableBuilderStep): BuilderStep {
+  return {
+    name: 'abilities',
+    abilities: 'origins',
+    origins: 'class',
+    class: 'proficiencies',
+    proficiencies: 'review',
+  }[step] as BuilderStep
+}
+
+function nextUpdatedAt(current: string, now: Date): string {
+  const candidate = now.toISOString()
+  return candidate > current ? candidate : new Date(Date.parse(current) + 1).toISOString()
+}
+
+function sameValue(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right)
 }
 
 function resumeStep(document: StoredCharacterV1): BuilderStep {

@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 4 — Character Builder MVP: in progress.**
+**Phase 4 — Character Builder MVP: complete.**
 
-Phases 0–3 are implemented. The Phase 4 storage boundary, local character list, and all six baseline builder steps are complete; work must continue through the remaining local-management behavior without expanding later rules early.
+Phases 0–4 are implemented. The next work begins Phase 5 with class progression, without pulling spellcasting, equipment, or character-sheet scope forward.
 
 ## Last completed work
 
@@ -64,31 +64,34 @@ Phases 0–3 are implemented. The Phase 4 storage boundary, local character list
 - Added per-character Duplicate and Delete actions to the local roster, with successful copies ordered first and React Query caches synchronized after each operation.
 - Added an accessible destructive confirmation for deletion; cancellation and storage failures retain the original card, and no optimistic deletion can hide unsaved failure state.
 - Added focused schema, navigation, duplication, cancellation, deletion, and storage-failure coverage while retaining the existing malformed-record and unavailable-storage boundaries.
+- Added a 650 ms auto-save for changed, valid values on every editable builder step while keeping invalid or incomplete form input local and never advancing the active step in the background.
+- Kept Continue as the explicit progression action: changed values save immediately before advancing, unchanged persisted values advance without a redundant write, and save failures leave the user editing the same step.
+- Serialized all builder writes through one mutation pipeline, preserved newer input typed while a write is pending, and made update timestamps monotonic across rapid saves.
+- Added optimistic concurrency to the native IndexedDB transaction with an expected revision, typed stale-write conflicts, and clear reopen guidance instead of silently overwriting another tab.
+- Recorded the auto-save and conflict policy in ADR-006 and added focused coverage for debounce, invalid drafts, conflicts, ordering, and step progression.
 
 ## Work in progress
 
-Phase 4 remains open. Persistence, My Characters, duplication/deletion, all six progressive builder steps, and canonical review/validation are implemented; auto-save is not.
+No implementation is currently in progress. Phase 4 is complete: persistence, local roster management, all six progressive builder steps, canonical review/validation, and conflict-aware auto-save are implemented.
 
 ## Next step
 
-Complete Phase 4 with a narrow auto-save slice:
+Begin Phase 5 with a narrow class-progression discovery and contract slice:
 
-1. Record the debounce, explicit progression, and multi-tab conflict policy before changing the current explicit-save behavior.
-2. Auto-save valid edits without silently persisting incomplete selections or advancing the active builder step.
-3. Keep an explicit Continue action where progression needs clear user intent and expose saving, saved, and failure states without blocking further local editing.
-4. Prevent an older pending write from overwriting a newer edit in the same tab and define honest behavior for concurrent tabs.
-5. Cover debounce, ordering, unchanged invalid drafts, save failures/recovery, and step progression with focused frontend tests.
-6. Do not add class progression, equipment effects, spellcasting, export, or print in the same slice.
+1. Inventory the normalized 2024 class-level and subclass provider shapes required by progression.
+2. Define the smallest provider-neutral progression contract for levels, class features, subclass availability, HP progression, and level-dependent choices.
+3. Decide how an increased or decreased level retains newly invalid choices without silently deleting local data.
+4. Extend canonical rule tests before adding progression controls to the builder.
+5. Keep spellcasting, feats, equipment effects, export, and print out of this first slice.
 
 ## Pending decisions
 
-- The auto-save debounce and conflict behavior across multiple open tabs must be resolved in the final Phase 4 slice.
 - A project source-code license remains to be selected before public portfolio release.
 - Checked-in provider snapshots are not currently justified; small representative inline fixtures cover consumed schema variants. Revisit only if upstream contract testing becomes hard to understand.
 
 ## Known issues and limitations
 
-- Armored/equipment AC, HP after level 1, auto-save, import/export, and print functionality are not implemented yet.
+- Armored/equipment AC, HP after level 1, class progression beyond the baseline level, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -98,7 +101,7 @@ Complete Phase 4 with a narrow auto-save slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 65 passing across 10 files (`vitest run`)
+- Frontend unit tests: 72 passing across 10 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors

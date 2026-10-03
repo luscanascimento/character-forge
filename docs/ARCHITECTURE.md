@@ -7,7 +7,7 @@ Character Forge is a small modular monolith with two deployable applications:
 ```text
 Browser
   React UI
-  IndexedDB (future characters)
+  IndexedDB (versioned character drafts)
        │ Character Forge REST contracts
        ▼
 ASP.NET Core API
@@ -24,7 +24,7 @@ There is no authentication, server database, message broker, microservice bounda
 
 - React Router owns navigation and lazy route boundaries.
 - TanStack Query owns server state, including loading and unavailable-API states.
-- Zod validates data crossing untrusted boundaries. It validates `/api/meta` and all catalog responses and will later validate imports/local migrations.
+- Zod validates data crossing untrusted boundaries. It validates `/api/meta`, catalog responses, and local character migrations; import validation arrives with Phase 8.
 - React Hook Form will be introduced only when builder forms justify it.
 - Motion provides a small number of meaningful transitions and respects `prefers-reduced-motion`.
 - CSS design tokens establish the charcoal, parchment, bronze, ember, typography, spacing, radius, and duration vocabulary. Components use semantic classes rather than utility walls.
@@ -99,10 +99,11 @@ React query
 
 The frontend never calls `dnd5eapi.co` directly. Provider timeouts, cancellation, malformed responses, and temporary unavailability become predictable Character Forge errors. No automatic backend retry is applied yet: provider reads are idempotent, but six-hour caching and explicit user retry avoid multiplying traffic during an outage.
 
-Character writes will remain browser-local:
+Character writes remain browser-local:
 
 ```text
-Builder intent → domain/rule validation API → versioned character document → IndexedDB
+Valid builder edit → debounced auto-save or explicit Continue → versioned character document → IndexedDB
+Completed local draft → canonical domain/rule validation API → trusted review values
 ```
 
 Business rules have one canonical server implementation. Presentation-only calculations may be mirrored later only if explicitly proven safe and contract-tested against the canonical result.
@@ -145,7 +146,7 @@ The SRD adapter owns HTTP behavior and external DTO normalization. The Rule Engi
 
 Phase 4 stores character drafts in IndexedDB through a small native persistence module. The version-1 envelope contains a UUID, fixed rules identity, `schemaVersion`, creation/update timestamps, and structurally validated draft data. Domain-invalid but well-formed drafts remain representable; canonical legality still comes from `POST /api/characters/validate`.
 
-All reads pass through Zod and an explicit `migrateStoredCharacter` seam before application code receives them. Unknown versions and malformed records fail with typed errors instead of being guessed or silently rewritten. The module exposes only list/get/save/delete operations, sorts lists by update time, and reports unavailable or blocked IndexedDB predictably. Production uses the browser API directly; tests inject an in-memory standards-compatible `IDBFactory`.
+All reads pass through Zod and an explicit `migrateStoredCharacter` seam before application code receives them. Unknown versions and malformed records fail with typed errors instead of being guessed or silently rewritten. The module exposes only list/get/save/delete operations, sorts lists by update time, and reports unavailable or blocked IndexedDB predictably. Updates compare the caller's expected timestamp in the same read-write transaction and reject stale-tab conflicts rather than silently overwriting a newer revision. Production uses the browser API directly; tests inject an in-memory standards-compatible `IDBFactory`.
 
 No character data is stored on the server in the initial product. No account or token infrastructure will be created.
 

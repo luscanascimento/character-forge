@@ -83,7 +83,7 @@ Draft characters can be submitted to `POST /api/characters/validate` for canonic
 
 ## Current limitations
 
-- Builder UI, auto-save, armor/equipment AC, HP after level 1, complete progression rules, import/export, and print layouts are future work.
+- Armor/equipment AC, HP after level 1, complete progression rules, import/export, and print layouts are future work.
 - Spell list filtering currently supports name, level, school, and class. Ritual/concentration filters require a richer local index because the upstream 2024 list contract does not expose those fields; that index is deferred until spellcasting work justifies it.
 - The API exposes no immutable content snapshot identifier in its normal resource responses; Character Forge must retain its own provider-observation metadata when caching catalog content.
 

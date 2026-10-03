@@ -23,6 +23,13 @@ export class CharacterStorageDataError extends Error {
   }
 }
 
+export class CharacterStorageConflictError extends Error {
+  constructor(message = 'A newer character draft is already stored in this browser.') {
+    super(message)
+    this.name = 'CharacterStorageConflictError'
+  }
+}
+
 export class UnsupportedCharacterSchemaError extends CharacterStorageDataError {
   constructor(version: unknown) {
     super(`Character schema version '${String(version)}' is not supported.`)
@@ -74,9 +81,21 @@ export class CharacterStorage {
     return record === undefined ? null : migrateStoredCharacter(record)
   }
 
-  async save(input: unknown): Promise<StoredCharacterV1> {
+  async save(input: unknown, expectedUpdatedAt?: string): Promise<StoredCharacterV1> {
     const document = migrateStoredCharacter(input)
-    await this.#withStore('readwrite', (store) => requestResult(store.put(document)))
+    await this.#withStore('readwrite', async (store) => {
+      const current = await requestResult(store.get(document.id))
+      if (current !== undefined) {
+        const stored = migrateStoredCharacter(current)
+        if (
+          (expectedUpdatedAt !== undefined && stored.updatedAt !== expectedUpdatedAt) ||
+          stored.updatedAt > document.updatedAt
+        ) {
+          throw new CharacterStorageConflictError()
+        }
+      }
+      await requestResult(store.put(document))
+    })
     return document
   }
 

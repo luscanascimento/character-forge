@@ -5,6 +5,7 @@ import {
   characterDatabaseName,
   characterStoreName,
   CharacterStorage,
+  CharacterStorageConflictError,
   CharacterStorageDataError,
   CharacterStorageUnavailableError,
   migrateStoredCharacter,
@@ -57,6 +58,32 @@ describe('character storage', () => {
     const unavailable = new CharacterStorage(null)
 
     await expect(unavailable.list()).rejects.toBeInstanceOf(CharacterStorageUnavailableError)
+  })
+
+  it('rejects an older write instead of overwriting a newer tab revision', async () => {
+    const current = createStoredCharacter({ updatedAt: '2026-10-03T18:00:00.000Z' })
+    const stale = createStoredCharacter({
+      updatedAt: '2026-10-03T17:59:59.000Z',
+      character: { ...current.character, name: 'Stale edit' },
+    })
+    await storage.save(current)
+
+    await expect(storage.save(stale)).rejects.toBeInstanceOf(CharacterStorageConflictError)
+    expect((await storage.get(current.id))?.character.name).toBe('Arannis')
+  })
+
+  it('rejects an expected revision mismatch even when the candidate timestamp is newer', async () => {
+    const current = createStoredCharacter({ updatedAt: '2026-10-03T18:00:00.000Z' })
+    const staleTabEdit = createStoredCharacter({
+      updatedAt: '2026-10-03T18:01:00.000Z',
+      character: { ...current.character, name: 'Stale tab edit' },
+    })
+    await storage.save(current)
+
+    await expect(storage.save(staleTabEdit, '2026-10-03T17:59:00.000Z')).rejects.toBeInstanceOf(
+      CharacterStorageConflictError,
+    )
+    expect((await storage.get(current.id))?.character.name).toBe('Arannis')
   })
 
   it('accepts schema version 1 through the migration seam', () => {

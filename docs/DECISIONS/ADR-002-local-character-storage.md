@@ -1,6 +1,6 @@
 # ADR-002: Store characters locally in IndexedDB
 
-- Status: accepted; implementation in progress
+- Status: accepted and implemented
 - Date: 2026-09-28
 
 ## Context

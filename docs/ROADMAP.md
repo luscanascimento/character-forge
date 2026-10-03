@@ -38,7 +38,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** normalized catalog contracts from Phase 2.
 
-## Phase 4 — Character Builder MVP (in progress)
+## Phase 4 — Character Builder MVP (complete)
 
 **Objectives:** build the progressive builder, IndexedDB persistence, My Characters, edits, duplication/deletion, and auto-save.
 
