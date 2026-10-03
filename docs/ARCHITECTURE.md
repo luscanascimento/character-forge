@@ -39,7 +39,9 @@ Compendium routes are lazy-loaded and keep server state in TanStack Query. Searc
 ```text
 Features/
   Catalog/
+  Characters/
   Meta/
+  Progression/
 Infrastructure/
   Srd/
 Program.cs
@@ -50,6 +52,7 @@ New catalog functionality should live in its feature area, with shared infrastru
 - `GET /api/meta` for the active Character Forge rules contract
 - `GET /api/catalog/{category}` for normalized, searched, filtered, and paginated summaries
 - `GET /api/catalog/{category}/{id}` for normalized detail
+- `GET /api/classes/{classId}/progression` for normalized 1–20 class and subclass feature timelines
 - `GET /health`
 - `POST /api/characters/validate` for non-persisting draft validation and calculations
 - `/openapi/v1.json` in Development
@@ -60,7 +63,7 @@ New catalog functionality should live in its feature area, with shared infrastru
 
 The SRD adapter uses a typed `HttpClient` created by `HttpClientFactory`, an eight-second configurable timeout, request cancellation, explicit external DTOs, and category-specific mapping. Provider transport failures, timeouts, invalid JSON, and non-success responses become safe `503` Problem Details. Missing detail resources remain `404`.
 
-`CatalogService` caches normalized upstream lists and details in `IMemoryCache` for six hours by default. Search, sorting, and pagination operate over cached lists; cache entries carry their observed `fetchedAt` instant. There is no stale-data store across process restarts yet.
+`CatalogService` caches normalized upstream lists and details in `IMemoryCache` for six hours by default. `ClassProgressionService` applies the same configured duration to normalized level timelines. Search, sorting, and pagination operate over cached catalog lists; cache entries carry their observed `fetchedAt` instant. There is no stale-data store across process restarts yet.
 
 ## Domain
 
@@ -80,6 +83,8 @@ Pure ability-modifier and proficiency-bonus calculators enforce their numeric bo
 Character evaluation resolves the selected class, species, and background through `CatalogService` before calculating. Normalized catalog detail carries typed character-creation facts—hit die, direct proficiency grants, and proficiency-choice requirements—so the domain never parses presentation strings or accepts client-supplied rule facts. The adapter resolves referenced species traits and flattens the provider's equivalent nested option families into stable choice ids, counts, and option lists.
 
 The evaluator calculates unarmored AC and level-1 HP, validates every required proficiency choice, canonicalizes selected references, rejects stale/disallowed/duplicate selections, merges unavoidable fixed duplicates, and retains every source that supplied a grant. SRD 5.2.1 says proficiency bonuses do not stack but does not carry forward the 2014 rule that allowed arbitrary replacement of duplicate proficiencies, so Character Forge does not invent such replacements.
+
+Phase 5 progression reads use a separate provider-neutral contract: a complete 1–20 class timeline, canonical proficiency bonuses and feature references, plus sparse subclass timelines with an explicit availability level. Hit die remains typed for HP rules. Spellcasting and polymorphic class-specific counters are excluded until their own rule models exist; feature names are never parsed to invent choices.
 
 External API DTOs, domain models, and public response contracts may differ when the boundary protects rules or stability. They should not be triplicated when their shapes and reasons to change are genuinely identical.
 

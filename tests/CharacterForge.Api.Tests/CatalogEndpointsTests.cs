@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using CharacterForge.Api.Features.Catalog;
 using CharacterForge.Api.Infrastructure.Srd;
+using CharacterForge.Api.Features.Progression;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -109,5 +110,9 @@ public sealed class CatalogEndpointsTests : IDisposable
             CancellationToken cancellationToken) => Task.FromResult<CatalogItemDetail?>(id == "missing"
                 ? null
                 : new CatalogItemDetail(id, "Wizard", category.ToSlug(), [], [], []));
+
+        public Task<ClassProgressionDocument?> GetClassProgressionAsync(
+            string classId,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

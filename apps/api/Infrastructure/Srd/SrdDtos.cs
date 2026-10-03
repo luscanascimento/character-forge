@@ -47,6 +47,21 @@ internal sealed record SrdClassDetail(
     IReadOnlyList<SrdReference>? Subclasses,
     SrdSpellcasting? Spellcasting);
 
+internal sealed record SrdClassLevel(
+    int Level,
+    [property: JsonPropertyName("prof_bonus")] int ProficiencyBonus,
+    IReadOnlyList<SrdReference>? Features);
+
+internal sealed record SrdSubclassLevel(
+    int Level,
+    SrdReference Class,
+    SrdReference Subclass,
+    IReadOnlyList<SrdReference>? Features);
+
+internal sealed record SrdSubclassProgression(
+    SrdReference Reference,
+    IReadOnlyList<SrdSubclassLevel> Levels);
+
 internal sealed record SrdSpeciesDetail(
     string Index,
     string Name,

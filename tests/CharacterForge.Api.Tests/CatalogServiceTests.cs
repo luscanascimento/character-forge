@@ -1,5 +1,6 @@
 using CharacterForge.Api.Features.Catalog;
 using CharacterForge.Api.Infrastructure.Srd;
+using CharacterForge.Api.Features.Progression;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
@@ -46,6 +47,10 @@ public sealed class CatalogServiceTests
         public Task<CatalogItemDetail?> GetItemAsync(
             CatalogCategory category,
             string id,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<ClassProgressionDocument?> GetClassProgressionAsync(
+            string classId,
             CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 4 — Character Builder MVP: complete.**
+**Phase 5 — Class Progression: in progress.**
 
-Phases 0–4 are implemented. The next work begins Phase 5 with class progression, without pulling spellcasting, equipment, or character-sheet scope forward.
+Phases 0–4 are implemented. Phase 5 has begun with a normalized class/subclass progression boundary, without pulling spellcasting, equipment, or character-sheet scope forward.
 
 ## Last completed work
 
@@ -69,20 +69,25 @@ Phases 0–4 are implemented. The next work begins Phase 5 with class progressio
 - Serialized all builder writes through one mutation pipeline, preserved newer input typed while a write is pending, and made update timestamps monotonic across rapid saves.
 - Added optimistic concurrency to the native IndexedDB transaction with an expected revision, typed stale-write conflicts, and clear reopen guidance instead of silently overwriting another tab.
 - Recorded the auto-save and conflict policy in ADR-006 and added focused coverage for debounce, invalid drafts, conflicts, ordering, and step progression.
+- Inventoried all twelve live 2024 class-level tables and all twelve subclass timelines, including the polymorphic class-specific counters and spellcasting fields intentionally excluded from the first Phase 5 slice.
+- Added a provider-neutral class progression contract with the canonical class/hit die, a strict ordered 1–20 level table, proficiency bonuses, feature references, subclass availability, and sparse subclass feature levels.
+- Added `GET /api/classes/{classId}/progression` with configured memory caching, source/rules metadata, slug validation, predictable not-found/provider failures, and no upstream DTO leakage.
+- Rejected incomplete tables, unsupported hit dice, invalid proficiency bonuses, duplicate subclass levels, and mismatched class/subclass references at the provider boundary.
+- Recorded scope and non-destructive level-change policy in ADR-007 and added focused adapter/endpoint/cache coverage.
 
 ## Work in progress
 
-No implementation is currently in progress. Phase 4 is complete: persistence, local roster management, all six progressive builder steps, canonical review/validation, and conflict-aware auto-save are implemented.
+Phase 5 is open. The trusted class/subclass timeline contract is implemented; level-dependent feature choices, higher-level HP validation, persisted subclass selection, and builder controls are not.
 
 ## Next step
 
-Begin Phase 5 with a narrow class-progression discovery and contract slice:
+Continue Phase 5 with the feature-requirement and level-change rule slice:
 
-1. Inventory the normalized 2024 class-level and subclass provider shapes required by progression.
-2. Define the smallest provider-neutral progression contract for levels, class features, subclass availability, HP progression, and level-dependent choices.
-3. Decide how an increased or decreased level retains newly invalid choices without silently deleting local data.
-4. Extend canonical rule tests before adding progression controls to the builder.
-5. Keep spellcasting, feats, equipment effects, export, and print out of this first slice.
+1. Inventory representative feature-detail shapes that encode an actual choice or prerequisite instead of relying on display names.
+2. Define persisted subclass and feature-choice references without breaking schema-version-1 drafts.
+3. Extend canonical validation so a lower level retains but explicitly invalidates unavailable selections.
+4. Add higher-level HP progression rules with focused 1–20 tests before exposing builder controls.
+5. Keep spellcasting, feats, equipment effects, export, and print out of this slice.
 
 ## Pending decisions
 
@@ -105,8 +110,8 @@ Begin Phase 5 with a narrow class-progression discovery and contract slice:
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 70 passing
-- Live provider smoke checks: classes, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses passing
+- Backend unit/integration tests: 78 passing
+- Live provider smoke checks: classes, class/subclass progression, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 

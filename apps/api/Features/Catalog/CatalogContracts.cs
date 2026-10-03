@@ -1,12 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
 
+using CharacterForge.Api.Features.Characters;
+
 namespace CharacterForge.Api.Features.Catalog;
 
 public sealed record CatalogSource(
     string Provider,
     string Ruleset,
     string RulesVersion,
-    DateTimeOffset FetchedAt);
+    DateTimeOffset FetchedAt)
+{
+    internal static CatalogSource Create(DateTimeOffset fetchedAt) => new(
+        "D&D 5e SRD API",
+        CharacterRules.Ruleset,
+        CharacterRules.RulesVersion,
+        fetchedAt);
+}
 
 public sealed record CatalogItemSummary(
     string Id,

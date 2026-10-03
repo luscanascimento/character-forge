@@ -10,10 +10,6 @@ public sealed partial class CatalogService(
     IMemoryCache cache,
     IOptions<SrdApiOptions> options)
 {
-    private const string ProviderName = "D&D 5e SRD API";
-    private const string Ruleset = "2024";
-    private const string RulesVersion = "SRD-5.2.1";
-
     public async Task<CatalogPage> GetPageAsync(
         CatalogCategory category,
         CatalogQuery query,
@@ -50,7 +46,7 @@ public sealed partial class CatalogService(
             query.PageSize,
             materialized.Length,
             totalPages,
-            CreateSource(snapshot.FetchedAt));
+            CatalogSource.Create(snapshot.FetchedAt));
     }
 
     public async Task<CatalogItemDetail?> GetItemAsync(
@@ -63,7 +59,9 @@ public sealed partial class CatalogService(
             token => source.GetItemAsync(category, id, token),
             cancellationToken);
 
-        return snapshot.Value is null ? null : snapshot.Value with { Source = CreateSource(snapshot.FetchedAt) };
+        return snapshot.Value is null
+            ? null
+            : snapshot.Value with { Source = CatalogSource.Create(snapshot.FetchedAt) };
     }
 
     public static IReadOnlyDictionary<string, string[]> Validate(
@@ -130,9 +128,6 @@ public sealed partial class CatalogService(
         cache.Set(key, snapshot, TimeSpan.FromMinutes(options.Value.CacheDurationMinutes));
         return snapshot;
     }
-
-    private static CatalogSource CreateSource(DateTimeOffset fetchedAt) =>
-        new(ProviderName, Ruleset, RulesVersion, fetchedAt);
 
     private static void ValidateSlug(
         string? value,

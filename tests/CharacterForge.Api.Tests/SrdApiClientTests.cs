@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using CharacterForge.Api.Features.Catalog;
+using CharacterForge.Api.Features.Progression;
 using CharacterForge.Api.Infrastructure.Srd;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -8,6 +9,107 @@ namespace CharacterForge.Api.Tests;
 
 public sealed class SrdApiClientTests
 {
+    [Fact]
+    public async Task GetClassProgression_NormalizesLevelsAndSubclassAvailability()
+    {
+        var client = CreateClient(request => request.RequestUri!.PathAndQuery switch
+        {
+            "/api/2024/classes/wizard" => Json("""
+                {
+                  "index": "wizard",
+                  "name": "Wizard",
+                  "hit_die": 6,
+                  "subclasses": [{ "index": "evoker", "name": "Evoker" }]
+                }
+                """),
+            "/api/2024/classes/wizard/levels" => Json(ClassLevelsJson("wizard")),
+            "/api/2024/subclasses/evoker/levels" => Json("""
+                [
+                  {
+                    "level": 6,
+                    "class": { "index": "wizard", "name": "Wizard" },
+                    "subclass": { "index": "evoker", "name": "Evoker" },
+                    "features": [{ "index": "sculpt-spells", "name": "Sculpt Spells" }]
+                  },
+                  {
+                    "level": 3,
+                    "class": { "index": "wizard", "name": "Wizard" },
+                    "subclass": { "index": "evoker", "name": "Evoker" },
+                    "features": [{ "index": "evocation-savant", "name": "Evocation Savant" }]
+                  }
+                ]
+                """),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        });
+
+        var progression = await client.GetClassProgressionAsync("wizard", CancellationToken.None);
+
+        Assert.NotNull(progression);
+        Assert.Equal(new CatalogReference("wizard", "Wizard"), progression.Class);
+        Assert.Equal(6, progression.HitDie);
+        Assert.Equal(20, progression.Levels.Count);
+        Assert.Equal(3, progression.Levels.Single(level => level.Level == 5).ProficiencyBonus);
+        Assert.Contains(
+            progression.Levels[0].Features,
+            feature => feature == new CatalogReference("wizard-spellcasting", "Spellcasting"));
+        var subclass = Assert.Single(progression.Subclasses);
+        Assert.Equal(3, subclass.AvailableAtLevel);
+        Assert.Equal([3, 6], subclass.Levels.Select(level => level.Level));
+        Assert.Null(progression.Source);
+    }
+
+    [Fact]
+    public async Task GetClassProgression_RejectsAnIncompleteLevelTable()
+    {
+        var client = CreateClient(request => request.RequestUri!.PathAndQuery switch
+        {
+            "/api/2024/classes/wizard" => Json("""
+                { "index": "wizard", "name": "Wizard", "hit_die": 6 }
+                """),
+            "/api/2024/classes/wizard/levels" => Json("""
+                [{ "level": 1, "prof_bonus": 2, "features": [] }]
+                """),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        });
+
+        await Assert.ThrowsAsync<SrdProviderException>(() =>
+            client.GetClassProgressionAsync("wizard", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetClassProgression_RejectsAProficiencyBonusThatDisagreesWithCanonicalRules()
+    {
+        var client = CreateClient(request => request.RequestUri!.PathAndQuery switch
+        {
+            "/api/2024/classes/wizard" => Json("""
+                { "index": "wizard", "name": "Wizard", "hit_die": 6 }
+                """),
+            "/api/2024/classes/wizard/levels" => Json(ClassLevelsJson(
+                "wizard",
+                level => level == 5 ? 2 : 2 + ((level - 1) / 4))),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        });
+
+        await Assert.ThrowsAsync<SrdProviderException>(() =>
+            client.GetClassProgressionAsync("wizard", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetClassProgression_ReturnsNullWithoutRequestingLevelsForAMissingClass()
+    {
+        var requests = 0;
+        var client = CreateClient(_ =>
+        {
+            requests++;
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        var progression = await client.GetClassProgressionAsync("missing", CancellationToken.None);
+
+        Assert.Null(progression);
+        Assert.Equal(1, requests);
+    }
+
     [Fact]
     public async Task GetItem_MapsExternalClassWithoutLeakingProviderShape()
     {
@@ -330,6 +432,19 @@ public sealed class SrdApiClientTests
     {
         Content = new StringContent(content, Encoding.UTF8, "application/json")
     };
+
+    private static string ClassLevelsJson(
+        string classId,
+        Func<int, int>? proficiencyBonus = null) => $"[{string.Join(',',
+        Enumerable.Range(1, 20).Select(level => $$"""
+            {
+              "level": {{level}},
+              "prof_bonus": {{proficiencyBonus?.Invoke(level) ?? 2 + ((level - 1) / 4)}},
+              "features": {{(level == 1
+                  ? $$"""[{ "index": "{{classId}}-spellcasting", "name": "Spellcasting" }]"""
+                  : "[]")}}
+            }
+            """))}]";
 
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
         : HttpMessageHandler

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using CharacterForge.Api.Features.Catalog;
+using CharacterForge.Api.Features.Progression;
 
 namespace CharacterForge.Api.Infrastructure.Srd;
 
@@ -42,6 +43,39 @@ public sealed class SrdApiClient(HttpClient httpClient, ILogger<SrdApiClient> lo
             CatalogCategory.Equipment => Map(await GetOptionalAsync<SrdEquipmentDetail>(path, cancellationToken), SrdCatalogMapper.Map),
             _ => throw new ArgumentOutOfRangeException(nameof(category), category, null)
         };
+    }
+
+    public async Task<ClassProgressionDocument?> GetClassProgressionAsync(
+        string classId,
+        CancellationToken cancellationToken)
+    {
+        var escapedClassId = Uri.EscapeDataString(classId);
+        var characterClass = await GetOptionalAsync<SrdClassDetail>(
+            $"classes/{escapedClassId}",
+            cancellationToken);
+        if (characterClass is null)
+        {
+            return null;
+        }
+
+        var levelsTask = GetRequiredAsync<SrdClassLevel[]>(
+            $"classes/{escapedClassId}/levels",
+            cancellationToken);
+        var subclassTasks = (characterClass.Subclasses ?? [])
+            .DistinctBy(subclass => subclass.Index, StringComparer.OrdinalIgnoreCase)
+            .Select(async subclass => new SrdSubclassProgression(
+                subclass,
+                await GetRequiredAsync<SrdSubclassLevel[]>(
+                    $"subclasses/{Uri.EscapeDataString(subclass.Index)}/levels",
+                    cancellationToken)))
+            .ToArray();
+
+        var levels = await levelsTask;
+        var subclasses = await Task.WhenAll(subclassTasks);
+        return SrdProgressionMapper.Map(
+            characterClass,
+            levels,
+            subclasses);
     }
 
     private async Task<CatalogItemDetail?> GetSpeciesAsync(

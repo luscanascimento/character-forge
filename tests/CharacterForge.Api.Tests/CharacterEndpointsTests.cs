@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using CharacterForge.Api.Features.Catalog;
 using CharacterForge.Api.Features.Characters;
 using CharacterForge.Api.Infrastructure.Srd;
+using CharacterForge.Api.Features.Progression;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -257,5 +258,9 @@ public sealed class CharacterEndpointsTests : IDisposable
                 [],
                 CharacterCreation: facts));
         }
+
+        public Task<ClassProgressionDocument?> GetClassProgressionAsync(
+            string classId,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

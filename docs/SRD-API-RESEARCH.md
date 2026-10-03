@@ -4,6 +4,8 @@ Checkpoint date: **2026-09-28**
 
 Phase 2 implementation verification: **2026-09-28**
 
+Phase 5 progression verification: **2026-10-03**
+
 ## Legal source
 
 Wizards of the Coast publishes [SRD 5.2.1](https://www.dndbeyond.com/srd) under CC BY 4.0. The PDF's required attribution statement is reproduced verbatim in `ATTRIBUTIONS.md` and in the application's attributions page.
@@ -84,3 +86,11 @@ SRD 5.2.1 states that the Proficiency Bonus does not stack, but the official tex
 ## Upstream documentation status
 
 The current official documentation has a dedicated [2024 introduction](https://docs.dnd5eapi.co/2024/introduction) and identifies `https://www.dnd5eapi.co/api/2024` as its base URL. Some repository prose encountered during initial discovery was older than the live/versioned definitions. Character Forge therefore keeps adapter tests around the exact schemas it consumes and treats observed resource counts as informational rather than contractual.
+
+## Phase 5 class progression surface
+
+Live verification on 2026-10-03 found exactly twenty resources at `/classes/{class}/levels` for each of the twelve 2024 classes. Every class level carries `level`, `prof_bonus`, and feature references. Some also carry `spellcasting`, while eleven class tables expose differently shaped `class_specific` counters such as Rage uses, Focus Points, Sneak Attack, or Sorcery Points.
+
+Each class detail currently references one SRD subclass. `/subclasses/{subclass}/levels` returns only the levels where that subclass gains features, so the tables are intentionally sparse and differ by subclass. All observed 2024 subclasses first become available at level 3, but Character Forge derives availability from the first returned subclass level instead of hard-coding that observation.
+
+The initial Phase 5 contract consumes only hit die, the complete class-level sequence, proficiency bonus, feature references, and subclass feature levels. Spellcasting is reserved for Phase 6, and polymorphic class-specific counters will receive explicit models only when their rules are implemented. Missing class levels, mismatched references, invalid proficiency bonuses, and malformed subclass timelines fail as provider errors rather than producing a partial progression.
