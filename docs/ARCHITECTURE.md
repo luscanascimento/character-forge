@@ -92,6 +92,8 @@ ADR-010 defines the next rule-data boundary: provider-owned structured catalog f
 
 Feat details now preserve provider-owned type, minimum-level and named-feature prerequisites, repeatability, and alternative ability-score thresholds as a provider-neutral typed contract. The SRD adapter rejects malformed option shapes, duplicate abilities, impossible choice counts, and scores or levels outside canonical bounds. These facts can qualify manifest-owned choices without making frontend code depend on provider DTOs.
 
+Manifest `SRD-5.2.1-CF-1` defines the four SRD Fighting Style requirements: Fighter level 1, Champion level 7, Paladin level 2, and Ranger level 2. Each entry records the owning class/subclass feature id, exact acquisition level, one-choice cardinality, typed option sources, and SRD section/page provenance. Fighting Style feats are supported through the normalized feat-type source; Blessed Warrior and Druidic Warrior are represented as two-cantrip branches locked by the Phase 6 spellcasting dependency. Resolution verifies every manifest feature against the normalized class/subclass timeline and every candidate feat against its structured type and named-feature prerequisite.
+
 External API DTOs, domain models, and public response contracts may differ when the boundary protects rules or stability. They should not be triplicated when their shapes and reasons to change are genuinely identical.
 
 ## Data flow

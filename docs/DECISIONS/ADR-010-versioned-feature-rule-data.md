@@ -30,3 +30,7 @@ Adopt a hybrid rules boundary:
 - The application can distinguish its rules-data revision from `SRD-5.2.1`, local character schema version, and provider fetch time.
 - Some valid choices will remain locked until their dependent phase exists, but the UI can explain the precise dependency.
 - The first implementation slice will normalize provider feat prerequisites before adding Fighting Style persistence and validation.
+
+## Implementation note
+
+Manifest `SRD-5.2.1-CF-1` now defines the Fighter, Champion, Paladin, and Ranger Fighting Style requirements. It verifies manifest feature ids and levels against normalized progression data, verifies candidate feats against provider-owned structured prerequisites, and keeps the Paladin/Ranger cantrip alternatives locked behind the spellcasting dependency.

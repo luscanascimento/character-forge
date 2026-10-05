@@ -90,18 +90,22 @@ Phases 0–4 are implemented. Phase 5 has begun with a normalized class/subclass
 - Added a source-by-source feature-rule inventory with explicit Phase 5, spellcasting, equipment, and feat-effect ownership so dependent choices are locked honestly instead of partially implemented.
 - Extended normalized feat details with provider-owned type, minimum-level and named-feature prerequisites, repeatability, and alternative ability-score thresholds.
 - Added fail-closed validation for malformed feat prerequisite shapes, impossible counts, duplicate abilities, and canonical level/ability bounds without leaking provider DTOs into frontend contracts.
+- Added typed manifest `SRD-5.2.1-CF-1` with independently versioned rules identity and SRD section/page provenance.
+- Defined canonical Fighting Style requirements for Fighter, Champion, Paladin, and Ranger, including one supported feat branch and explicitly locked Blessed Warrior/Druidic Warrior cantrip branches.
+- Added fail-closed agreement checks between manifest feature ids and normalized class/subclass timelines, plus candidate feat checks against provider-owned type and named-feature prerequisites.
 
 ## Work in progress
 
-Phase 5 is open. Trusted levels, fixed 1–20 HP, subclass availability/validation, builder controls, the class/subclass feature timeline, and normalized feat prerequisites are implemented. The provider-owned half of the hybrid feature-rule boundary is ready; the first manifest-backed choice is next.
+Phase 5 is open. Trusted levels, fixed 1–20 HP, subclass availability/validation, builder controls, the class/subclass feature timeline, normalized feat prerequisites, and manifest `SRD-5.2.1-CF-1` are implemented. Canonical Fighting Style requirements are ready for draft persistence, validation, and builder presentation.
 
 ## Next step
 
 Implement the first hybrid feature-rule slice:
 
-1. Introduce manifest version `SRD-5.2.1-CF-1` and canonical Fighting Style requirements.
-2. Persist and validate the supported choice while keeping Paladin/Ranger cantrip alternatives visibly locked until Phase 6.
-3. Keep Weapon Mastery equipment eligibility and Ability Score Improvement effects in Phase 7.
+1. Persist and canonically validate the supported Fighting Style feat choice.
+2. Present eligible Fighting Style feats in the builder while keeping Paladin/Ranger cantrip alternatives visibly locked until Phase 6.
+3. Add manifest-backed Expertise requirements from the character's resolved skill proficiencies.
+4. Keep Weapon Mastery equipment eligibility and Ability Score Improvement effects in Phase 7.
 
 ## Pending decisions
 
@@ -124,7 +128,7 @@ Implement the first hybrid feature-rule slice:
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 95 passing
+- Backend unit/integration tests: 104 passing
 - Live provider smoke checks: classes, class/subclass progression, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10

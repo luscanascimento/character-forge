@@ -42,3 +42,5 @@ The manifest will:
 4. Close the supported Phase 5 subset explicitly; carry Weapon Mastery and Ability Score Improvement selections into Phase 7, where their dependent equipment and feat-effect models belong.
 
 This order gives the builder honest level-dependent choices without pretending that all prose-only mechanics are already modeled.
+
+Steps 1 and 2 are implemented. Manifest `SRD-5.2.1-CF-1` contains the Fighter, Champion, Paladin, and Ranger Fighting Style requirements with exact feature ids, acquisition levels, branch counts, option sources, availability, and SRD page provenance. Blessed Warrior and Druidic Warrior remain explicitly locked by the spellcasting dependency; their cantrip rules have not been pulled into Phase 5.
