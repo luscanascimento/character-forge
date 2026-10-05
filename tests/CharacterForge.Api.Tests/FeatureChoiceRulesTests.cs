@@ -30,7 +30,7 @@ public sealed class FeatureChoiceRulesTests
 
         Assert.Contains(result.Violations, violation =>
             violation.Code == "character.featureChoice.count" &&
-            violation.Source == "featureChoices");
+            violation.Source == "featureChoices.fighter-fighting-style");
     }
 
     [Fact]
@@ -106,6 +106,40 @@ public sealed class FeatureChoiceRulesTests
 
         Assert.False(champion.IsValid);
         Assert.True(otherSubclass.IsValid);
+    }
+
+    [Fact]
+    public void Validate_RejectsSkillThatAlreadyHasExpertiseFromEarlierRequirement()
+    {
+        var expertise = FighterStyle with
+        {
+            Id = "bard-expertise-2",
+            Branches =
+            [
+                new FeatureChoiceBranchRule(
+                    "expertise-skills",
+                    1,
+                    true,
+                    [Archery],
+                    UsesProficientSkills: true)
+            ]
+        };
+        var laterExpertise = expertise with
+        {
+            Id = "bard-expertise-9",
+            AvailableAtLevel = 9
+        };
+
+        var result = FeatureChoiceRules.Validate(
+            [
+                new FeatureChoiceSelection(expertise.Id, "expertise-skills", [Archery]),
+                new FeatureChoiceSelection(laterExpertise.Id, "expertise-skills", [Archery])
+            ],
+            [expertise, laterExpertise],
+            Progression("bard", 9));
+
+        Assert.Contains(result.Violations, violation =>
+            violation.Code == "character.featureChoice.expertise.duplicate");
     }
 
     private static ClassProgression Progression(string classId, int level, string? subclassId = null) =>

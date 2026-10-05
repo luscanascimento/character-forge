@@ -23,6 +23,7 @@ public static class FeatureChoiceRules
     {
         var violations = new List<RuleViolation>();
         var saved = selections ?? [];
+        var expertiseSelections = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var activeRequirements = requirements
             .Where(requirement => IsActive(requirement, progression))
             .ToDictionary(requirement => requirement.Id, StringComparer.OrdinalIgnoreCase);
@@ -56,6 +57,8 @@ public static class FeatureChoiceRules
                 continue;
             }
 
+            var requirementSource = $"featureChoices.{requirement.Id}";
+
             var branch = requirement.Branches.SingleOrDefault(candidate => string.Equals(
                 candidate.Id,
                 selection.BranchId,
@@ -66,7 +69,7 @@ public static class FeatureChoiceRules
                     violations,
                     "character.featureChoice.branch.invalid",
                     "The selected feature-choice branch is not recognized.",
-                    $"{source}.branchId",
+                    $"{requirementSource}.branchId",
                     "Choose a branch from the active feature rules.");
                 continue;
             }
@@ -77,12 +80,29 @@ public static class FeatureChoiceRules
                     violations,
                     "character.featureChoice.branch.locked",
                     "The selected feature-choice branch depends on rules that are not implemented yet.",
-                    $"{source}.branchId",
+                    $"{requirementSource}.branchId",
                     "Choose an available branch.");
                 continue;
             }
 
-            ValidateOptions(selection, branch, source, violations);
+            ValidateOptions(selection, branch, requirementSource, violations);
+            if (branch.UsesProficientSkills)
+            {
+                for (var optionIndex = 0; optionIndex < (selection.Selections?.Count ?? 0); optionIndex++)
+                {
+                    var option = selection.Selections![optionIndex];
+                    if (!string.IsNullOrWhiteSpace(option.Id)
+                        && !expertiseSelections.Add(option.Id))
+                    {
+                        AddViolation(
+                            violations,
+                            "character.featureChoice.expertise.duplicate",
+                            $"'{option.Name}' already has Expertise from another feature choice.",
+                            $"{requirementSource}.selections[{optionIndex}]",
+                            "Choose a proficient skill that does not already have Expertise.");
+                    }
+                }
+            }
         }
 
         foreach (var requirement in activeRequirements.Values)
@@ -97,7 +117,7 @@ public static class FeatureChoiceRules
                     violations,
                     "character.featureChoice.count",
                     $"Feature requirement '{requirement.Id}' needs exactly {requirement.Count} choice.",
-                    "featureChoices",
+                    $"featureChoices.{requirement.Id}",
                     $"Choose exactly {requirement.Count} branch for '{requirement.Id}'.");
             }
         }

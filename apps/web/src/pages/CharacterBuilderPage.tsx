@@ -121,7 +121,7 @@ type ProficiencyRule = {
   id: string
   prompt: string
   count: number
-  options: Array<{ id: string; name: string }>
+  options: Array<{ id: string; name: string; isSkill?: boolean }>
   sourceName: string
 }
 
@@ -129,6 +129,7 @@ type FixedProficiency = {
   id: string
   name: string
   sourceName: string
+  isSkill: boolean
 }
 
 const abilityFields: ReadonlyArray<[AbilityKey, string, string]> = [
@@ -276,18 +277,21 @@ function BuilderWorkspace({
     enabled: Boolean(classId),
     retry: false,
   })
+  const classFeatureDocument = featureChoicesQuery.data
+    ? featureDocumentByOptionSource(featureChoicesQuery.data, false)
+    : undefined
   const classComplete =
     Boolean(selectedClass) &&
     classProgressionQuery.data !== undefined &&
-    featureChoicesQuery.data !== undefined &&
+    classFeatureDocument !== undefined &&
     classProgressionIsComplete(
       document.character.classProgressions[0],
       classProgressionQuery.data,
     ) &&
     validateFeatureChoiceInputs(
-      featureChoicesQuery.data,
+      classFeatureDocument,
       document.character.classProgressions[0],
-      featureChoiceInputsFrom(document.character.featureChoices),
+      featureChoiceInputsForClass(featureChoiceInputsFrom(document.character.featureChoices)),
     ).success
   const classResumeNeedsAttention =
     reviewResumePending &&
@@ -328,13 +332,32 @@ function BuilderWorkspace({
   const fixedProficiencies = fixedProficienciesFrom(creationItems)
   const proficiencyDetailsReady =
     creationItems.length === 3 && creationItems.every((item) => item.characterCreation)
+  const savedProficiencyInputs = proficiencyInputsFrom(document.character.proficiencyChoices)
+  const savedProficiencyResult = validateProficiencyInputs(
+    proficiencyRules,
+    fixedProficiencies,
+    savedProficiencyInputs,
+  )
+  const expertiseDocument = featureChoicesQuery.data
+    ? featureDocumentByOptionSource(featureChoicesQuery.data, true)
+    : undefined
+  const savedExpertiseResult =
+    expertiseDocument && savedProficiencyResult.success
+      ? validateFeatureChoiceInputs(
+          expertiseDocument,
+          document.character.classProgressions[0],
+          featureChoiceInputsForExpertise(
+            featureChoiceInputsFrom(document.character.featureChoices),
+          ),
+          false,
+          document.character.featureChoices,
+          resolvedSkillOptions(proficiencyRules, fixedProficiencies, savedProficiencyInputs),
+        )
+      : null
   const proficiencyComplete =
     proficiencyDetailsReady &&
-    validateProficiencyInputs(
-      proficiencyRules,
-      fixedProficiencies,
-      proficiencyInputsFrom(document.character.proficiencyChoices),
-    ).success
+    savedProficiencyResult.success &&
+    savedExpertiseResult?.success === true
   const activeStep: BuilderStep = classResumeNeedsAttention
     ? 'class'
     : reviewResumePending &&
@@ -399,18 +422,23 @@ function BuilderWorkspace({
         classLevel,
         subclassId,
       )
-      if (!result.success || !featureChoicesQuery.data) return null
+      if (!result.success || !classFeatureDocument) return null
       const featureResult = validateFeatureChoiceInputs(
-        featureChoicesQuery.data,
+        classFeatureDocument,
         result.progression,
-        featureChoiceInputs,
+        featureChoiceInputsForClass(featureChoiceInputs),
         true,
         document.character.featureChoices,
       )
       if (!featureResult.success) return null
       const nextClass = {
         classProgressions: [result.progression],
-        featureChoices: featureResult.choices,
+        featureChoices: mergeFeatureChoices(
+          featureResult.choices,
+          document.character.featureChoices.filter((choice) =>
+            isExpertiseRequirementId(choice.requirementId),
+          ),
+        ),
       }
       return sameValue(nextClass.classProgressions, document.character.classProgressions) &&
         sameValue(nextClass.featureChoices, document.character.featureChoices)
@@ -423,9 +451,31 @@ function BuilderWorkspace({
         fixedProficiencies,
         proficiencyInputs,
       )
-      return result.success && !sameValue(result.choices, document.character.proficiencyChoices)
-        ? { ...document.character, proficiencyChoices: result.choices }
-        : null
+      if (!result.success || !expertiseDocument) return null
+      const expertiseResult = validateFeatureChoiceInputs(
+        expertiseDocument,
+        document.character.classProgressions[0],
+        featureChoiceInputsForExpertise(featureChoiceInputs),
+        false,
+        document.character.featureChoices,
+        resolvedSkillOptions(proficiencyRules, fixedProficiencies, proficiencyInputs),
+      )
+      if (!expertiseResult.success) return null
+      const nextProficiencies = {
+        proficiencyChoices: result.choices,
+        featureChoices: mergeFeatureChoices(
+          document.character.featureChoices.filter(
+            (choice) => !isExpertiseRequirementId(choice.requirementId),
+          ),
+          expertiseResult.choices,
+        ),
+      }
+      return sameValue(
+        nextProficiencies.proficiencyChoices,
+        document.character.proficiencyChoices,
+      ) && sameValue(nextProficiencies.featureChoices, document.character.featureChoices)
+        ? null
+        : { ...document.character, ...nextProficiencies }
     }
     return null
   }
@@ -494,6 +544,11 @@ function BuilderWorkspace({
         setProficiencyInputs((current) =>
           sameValue(current, proficiencyInputsFrom(intent.character.proficiencyChoices))
             ? proficiencyInputsFrom(saved.character.proficiencyChoices)
+            : current,
+        )
+        setFeatureChoiceInputs((current) =>
+          sameValue(current, featureChoiceInputsFrom(intent.character.featureChoices))
+            ? featureChoiceInputsFrom(saved.character.featureChoices)
             : current,
         )
       }
@@ -580,14 +635,14 @@ function BuilderWorkspace({
       return
     }
 
-    if (!featureChoicesQuery.data) {
+    if (!classFeatureDocument) {
       setClassErrors({ progression: 'Wait for the selected class feature rules before saving.' })
       return
     }
     const featureResult = validateFeatureChoiceInputs(
-      featureChoicesQuery.data,
+      classFeatureDocument,
       result.progression,
-      featureChoiceInputs,
+      featureChoiceInputsForClass(featureChoiceInputs),
       true,
       document.character.featureChoices,
     )
@@ -601,7 +656,12 @@ function BuilderWorkspace({
     persistOrAdvance('class', {
       ...document.character,
       classProgressions: [result.progression],
-      featureChoices: featureResult.choices,
+      featureChoices: mergeFeatureChoices(
+        featureResult.choices,
+        document.character.featureChoices.filter((choice) =>
+          isExpertiseRequirementId(choice.requirementId),
+        ),
+      ),
     })
   }
 
@@ -617,11 +677,35 @@ function BuilderWorkspace({
       return
     }
 
+    if (!expertiseDocument) {
+      setProficiencyErrors({ _form: 'Wait for the selected class feature rules before saving.' })
+      return
+    }
+    const expertiseResult = validateFeatureChoiceInputs(
+      expertiseDocument,
+      document.character.classProgressions[0],
+      featureChoiceInputsForExpertise(featureChoiceInputs),
+      false,
+      document.character.featureChoices,
+      resolvedSkillOptions(proficiencyRules, fixedProficiencies, proficiencyInputs),
+    )
+    if (!expertiseResult.success) {
+      setFeatureChoiceErrors(expertiseResult.errors)
+      return
+    }
+
     setProficiencyErrors({})
+    setFeatureChoiceErrors({})
     setReviewResumePending(false)
     persistOrAdvance('proficiencies', {
       ...document.character,
       proficiencyChoices: result.choices,
+      featureChoices: mergeFeatureChoices(
+        document.character.featureChoices.filter(
+          (choice) => !isExpertiseRequirementId(choice.requirementId),
+        ),
+        expertiseResult.choices,
+      ),
     })
   }
 
@@ -893,10 +977,10 @@ function BuilderWorkspace({
               progression={classProgressionQuery.data}
               progressionPending={classProgressionQuery.isPending && Boolean(classId)}
               progressionFailed={classProgressionQuery.isError}
-              featureChoices={featureChoicesQuery.data}
+              featureChoices={classFeatureDocument}
               featureChoicesPending={featureChoicesQuery.isPending && Boolean(classId)}
               featureChoicesFailed={featureChoicesQuery.isError}
-              featureChoiceInputs={featureChoiceInputs}
+              featureChoiceInputs={featureChoiceInputsForClass(featureChoiceInputs)}
               featureChoiceErrors={featureChoiceErrors}
               classId={classId}
               level={classLevel}
@@ -966,6 +1050,16 @@ function BuilderWorkspace({
               savedChoiceNames={savedProficiencyNames(document.character.proficiencyChoices)}
               inputs={proficiencyInputs}
               errors={proficiencyErrors}
+              expertiseDocument={expertiseDocument}
+              expertiseInputs={featureChoiceInputsForExpertise(featureChoiceInputs)}
+              expertiseErrors={featureChoiceErrors}
+              classLevel={document.character.classProgressions[0]?.level ?? 1}
+              subclassId={document.character.classProgressions[0]?.subclass?.id ?? null}
+              skillOptions={resolvedSkillOptions(
+                proficiencyRules,
+                fixedProficiencies,
+                proficiencyInputs,
+              )}
               pending={
                 classDetailQuery.isPending ||
                 speciesDetailQuery.isPending ||
@@ -997,6 +1091,7 @@ function BuilderWorkspace({
                   }
                 })
                 setProficiencyErrors((current) => omitKey(omitKey(current, choiceId), '_form'))
+                setFeatureChoiceErrors({})
                 if (saveMutation.isError || saveMutation.isSuccess) {
                   saveMutation.reset()
                 }
@@ -1004,9 +1099,34 @@ function BuilderWorkspace({
               onRemoveChoice={(choiceId) => {
                 setProficiencyInputs((current) => omitKey(current, choiceId))
                 setProficiencyErrors((current) => omitKey(omitKey(current, choiceId), '_form'))
+                setFeatureChoiceErrors({})
                 if (saveMutation.isError || saveMutation.isSuccess) {
                   saveMutation.reset()
                 }
+              }}
+              onToggleExpertise={(requirementId, optionId, checked) => {
+                setFeatureChoiceInputs((current) => {
+                  const selection = current[requirementId] ?? {
+                    branchId: 'expertise-skills',
+                    selectionIds: [],
+                  }
+                  return {
+                    ...current,
+                    [requirementId]: {
+                      ...selection,
+                      selectionIds: checked
+                        ? [...new Set([...selection.selectionIds, optionId])]
+                        : selection.selectionIds.filter((id) => id !== optionId),
+                    },
+                  }
+                })
+                setFeatureChoiceErrors((current) => omitKey(current, requirementId))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onRemoveExpertise={(requirementId) => {
+                setFeatureChoiceInputs((current) => omitKey(current, requirementId))
+                setFeatureChoiceErrors((current) => omitKey(current, requirementId))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
               }}
               onRetry={() => {
                 void classDetailQuery.refetch()
@@ -1126,6 +1246,9 @@ function ReviewStep({
   const fightingStyles = document.character.featureChoices
     .filter((choice) => choice.requirementId.includes('fighting-style'))
     .flatMap((choice) => choice.selections)
+  const expertise = document.character.featureChoices
+    .filter((choice) => isExpertiseRequirementId(choice.requirementId))
+    .flatMap((choice) => choice.selections)
 
   return (
     <div className="review-sheet">
@@ -1172,6 +1295,12 @@ function ReviewStep({
             <div>
               <dt>Fighting style</dt>
               <dd>{fightingStyles.map((selection) => selection.name).join(', ')}</dd>
+            </div>
+          )}
+          {expertise.length > 0 && (
+            <div>
+              <dt>Expertise</dt>
+              <dd>{expertise.map((selection) => selection.name).join(', ')}</dd>
             </div>
           )}
         </dl>
@@ -1251,6 +1380,12 @@ function ProficienciesStep({
   savedChoiceNames,
   inputs,
   errors,
+  expertiseDocument,
+  expertiseInputs,
+  expertiseErrors,
+  skillOptions,
+  classLevel,
+  subclassId,
   pending,
   failed,
   saved,
@@ -1258,6 +1393,8 @@ function ProficienciesStep({
   saveError,
   onToggle,
   onRemoveChoice,
+  onToggleExpertise,
+  onRemoveExpertise,
   onRetry,
   onSubmit,
 }: {
@@ -1266,6 +1403,12 @@ function ProficienciesStep({
   savedChoiceNames: Record<string, Record<string, string>>
   inputs: ProficiencyInputs
   errors: ProficiencyErrors
+  expertiseDocument?: FeatureChoiceDocument
+  expertiseInputs: FeatureChoiceInputs
+  expertiseErrors: Record<string, string>
+  skillOptions: Array<{ id: string; name: string }>
+  classLevel: number
+  subclassId: string | null
   pending: boolean
   failed: boolean
   saved: boolean
@@ -1273,6 +1416,8 @@ function ProficienciesStep({
   saveError: Error | null
   onToggle: (choiceId: string, optionId: string, checked: boolean) => void
   onRemoveChoice: (choiceId: string) => void
+  onToggleExpertise: (requirementId: string, optionId: string, checked: boolean) => void
+  onRemoveExpertise: (requirementId: string) => void
   onRetry: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
@@ -1402,6 +1547,19 @@ function ProficienciesStep({
         </div>
       )}
 
+      {expertiseDocument && (
+        <ExpertiseFields
+          document={expertiseDocument}
+          level={classLevel}
+          subclassId={subclassId}
+          inputs={expertiseInputs}
+          errors={expertiseErrors}
+          skillOptions={skillOptions}
+          onToggle={onToggleExpertise}
+          onRemove={onRemoveExpertise}
+        />
+      )}
+
       {errors._form && (
         <div className="builder-save-error" role="alert">
           <AlertTriangle aria-hidden="true" size={18} />
@@ -1412,6 +1570,109 @@ function ProficienciesStep({
       <SaveError error={saveError} />
       <BuilderActions saved={saved} pending={saving} label="Continue to review" />
     </form>
+  )
+}
+
+function ExpertiseFields({
+  document,
+  level,
+  subclassId,
+  inputs,
+  errors,
+  skillOptions,
+  onToggle,
+  onRemove,
+}: {
+  document: FeatureChoiceDocument
+  level: number
+  subclassId: string | null
+  inputs: FeatureChoiceInputs
+  errors: Record<string, string>
+  skillOptions: Array<{ id: string; name: string }>
+  onToggle: (requirementId: string, optionId: string, checked: boolean) => void
+  onRemove: (requirementId: string) => void
+}) {
+  const active = document.requirements.filter((requirement) =>
+    featureRequirementIsActive(requirement, level, subclassId),
+  )
+  const activeIds = new Set(active.map((requirement) => requirement.id))
+  const staleIds = Object.keys(inputs).filter((requirementId) => !activeIds.has(requirementId))
+
+  if (active.length === 0 && staleIds.length === 0) return null
+
+  return (
+    <section className="expertise-choices" aria-labelledby="expertise-heading">
+      <div>
+        <h3 id="expertise-heading">Expertise</h3>
+        <span>Choose only skills this character is already proficient in.</span>
+      </div>
+
+      {staleIds.map((requirementId) => (
+        <div className="proficiency-stale" key={requirementId} role="alert">
+          <AlertTriangle aria-hidden="true" size={18} />
+          <div>
+            <strong>An earlier Expertise choice is retained.</strong>
+            <span>It is no longer granted at the current class level.</span>
+          </div>
+          <button type="button" onClick={() => onRemove(requirementId)}>
+            Remove outdated Expertise
+          </button>
+        </div>
+      ))}
+
+      <div className="proficiency-rules">
+        {active.map((requirement) => {
+          const branch = requirement.branches.find(
+            (candidate) => candidate.optionSource === 'proficientSkills',
+          )
+          if (!branch) return null
+          const selectedIds = inputs[requirement.id]?.selectionIds ?? []
+          const claimedElsewhere = new Set(
+            Object.entries(inputs)
+              .filter(([requirementId]) => requirementId !== requirement.id)
+              .flatMap(([, selection]) => selection.selectionIds),
+          )
+          const options = skillOptions.filter(
+            (option) => selectedIds.includes(option.id) || !claimedElsewhere.has(option.id),
+          )
+
+          return (
+            <fieldset
+              className={
+                errors[requirement.id]
+                  ? 'proficiency-rule proficiency-rule--error'
+                  : 'proficiency-rule'
+              }
+              key={requirement.id}
+            >
+              <legend>Expertise gained at level {requirement.availableAtLevel}</legend>
+              <p>Choose exactly {branch.selectionCount}</p>
+              <div className="proficiency-options">
+                {options.map((option) => (
+                  <label key={option.id}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(option.id)}
+                      onChange={(event) =>
+                        onToggle(requirement.id, option.id, event.target.checked)
+                      }
+                    />
+                    <span aria-hidden="true">
+                      {selectedIds.includes(option.id) ? <Check size={14} /> : null}
+                    </span>
+                    <strong>{option.name}</strong>
+                  </label>
+                ))}
+              </div>
+              {options.length === 0 && (
+                <small role="alert">Complete eligible skill proficiencies first.</small>
+              )}
+              {errors[requirement.id] && <small role="alert">{errors[requirement.id]}</small>}
+            </fieldset>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
@@ -2035,7 +2296,9 @@ function stepForViolation(source: string): Exclude<BuilderStep, 'review'> | null
   }
   if (source.startsWith('species') || source.startsWith('background')) return 'origins'
   if (source.startsWith('classProgressions')) return 'class'
-  if (source.startsWith('featureChoices')) return 'class'
+  if (source.startsWith('featureChoices')) {
+    return source.includes('expertise') ? 'proficiencies' : 'class'
+  }
   if (source.startsWith('proficiencyChoices')) return 'proficiencies'
   return null
 }
@@ -2158,6 +2421,44 @@ function featureChoiceInputsFrom(choices: CharacterDraft['featureChoices']): Fea
   )
 }
 
+function isExpertiseRequirementId(requirementId: string): boolean {
+  return requirementId.includes('expertise')
+}
+
+function featureChoiceInputsForClass(inputs: FeatureChoiceInputs): FeatureChoiceInputs {
+  return Object.fromEntries(
+    Object.entries(inputs).filter(([requirementId]) => !isExpertiseRequirementId(requirementId)),
+  )
+}
+
+function featureChoiceInputsForExpertise(inputs: FeatureChoiceInputs): FeatureChoiceInputs {
+  return Object.fromEntries(
+    Object.entries(inputs).filter(([requirementId]) => isExpertiseRequirementId(requirementId)),
+  )
+}
+
+function featureDocumentByOptionSource(
+  document: FeatureChoiceDocument,
+  proficientSkills: boolean,
+): FeatureChoiceDocument {
+  return {
+    ...document,
+    requirements: document.requirements.filter((requirement) =>
+      proficientSkills
+        ? requirement.branches.some((branch) => branch.optionSource === 'proficientSkills')
+        : requirement.branches.every((branch) => branch.optionSource !== 'proficientSkills'),
+    ),
+  }
+}
+
+function mergeFeatureChoices(
+  ...groups: Array<CharacterDraft['featureChoices']>
+): CharacterDraft['featureChoices'] {
+  const choices = new Map<string, CharacterDraft['featureChoices'][number]>()
+  groups.flat().forEach((choice) => choices.set(choice.requirementId, choice))
+  return [...choices.values()]
+}
+
 function featureRequirementIsActive(
   requirement: FeatureChoiceRequirement,
   level: number,
@@ -2175,6 +2476,7 @@ function validateFeatureChoiceInputs(
   inputs: FeatureChoiceInputs,
   allowUnavailable = false,
   savedChoices: CharacterDraft['featureChoices'] = [],
+  proficientSkills: Array<{ id: string; name: string }> = [],
 ):
   | { success: true; choices: CharacterDraft['featureChoices'] }
   | { success: false; errors: Record<string, string> } {
@@ -2189,6 +2491,7 @@ function validateFeatureChoiceInputs(
   const allById = new Map(document.requirements.map((requirement) => [requirement.id, requirement]))
   const errors: Record<string, string> = {}
   const choices: CharacterDraft['featureChoices'] = []
+  const claimedExpertise = new Set<string>()
 
   for (const [requirementId, input] of Object.entries(inputs)) {
     const requirement = activeById.get(requirementId)
@@ -2202,7 +2505,9 @@ function validateFeatureChoiceInputs(
       const saved = savedChoices.find((choice) => choice.requirementId === requirementId)
       const selections = input.selectionIds.map((id) => {
         const known = knownRequirement?.branches
-          .flatMap((branch) => branch.options)
+          .flatMap((branch) =>
+            branch.optionSource === 'proficientSkills' ? proficientSkills : branch.options,
+          )
           .find((option) => option.id === id)
         return known ?? saved?.selections.find((option) => option.id === id) ?? { id, name: id }
       })
@@ -2217,7 +2522,9 @@ function validateFeatureChoiceInputs(
     }
 
     const uniqueIds = [...new Set(input.selectionIds)]
-    const optionsById = new Map(branch.options.map((option) => [option.id, option]))
+    const branchOptions =
+      branch.optionSource === 'proficientSkills' ? proficientSkills : branch.options
+    const optionsById = new Map(branchOptions.map((option) => [option.id, option]))
     if (
       uniqueIds.length !== input.selectionIds.length ||
       uniqueIds.length !== branch.selectionCount ||
@@ -2226,6 +2533,17 @@ function validateFeatureChoiceInputs(
       errors[requirementId] =
         `Choose exactly ${branch.selectionCount} available option${branch.selectionCount === 1 ? '' : 's'}.`
       continue
+    }
+
+    if (
+      branch.optionSource === 'proficientSkills' &&
+      uniqueIds.some((id) => claimedExpertise.has(id))
+    ) {
+      errors[requirementId] = 'Choose skills that do not already have Expertise.'
+      continue
+    }
+    if (branch.optionSource === 'proficientSkills') {
+      uniqueIds.forEach((id) => claimedExpertise.add(id))
     }
 
     choices.push({
@@ -2237,7 +2555,11 @@ function validateFeatureChoiceInputs(
 
   for (const requirement of active) {
     if (!inputs[requirement.id]) {
-      errors[requirement.id] = 'Choose a Fighting Style before continuing.'
+      errors[requirement.id] = requirement.branches.some(
+        (branch) => branch.optionSource === 'proficientSkills',
+      )
+        ? 'Choose the required Expertise skills before continuing.'
+        : 'Choose a Fighting Style before continuing.'
     }
   }
 
@@ -2274,7 +2596,11 @@ function proficiencyRulesFrom(items: CatalogItem[]): ProficiencyRule[] {
   return items.flatMap((item) =>
     (item.characterCreation?.proficiencyChoices ?? []).map((choice) => ({
       ...choice,
-      options: choice.options.map((option) => ({ id: option.id, name: option.name })),
+      options: choice.options.map((option) => ({
+        id: option.id,
+        name: option.name,
+        isSkill: option.isSkill,
+      })),
       sourceName: item.name,
     })),
   )
@@ -2286,8 +2612,32 @@ function fixedProficienciesFrom(items: CatalogItem[]): FixedProficiency[] {
       id: proficiency.id,
       name: proficiency.name,
       sourceName: item.name,
+      isSkill: proficiency.isSkill === true,
     })),
   )
+}
+
+function resolvedSkillOptions(
+  rules: ProficiencyRule[],
+  fixedProficiencies: FixedProficiency[],
+  inputs: ProficiencyInputs,
+): Array<{ id: string; name: string }> {
+  const skills = new Map<string, { id: string; name: string }>()
+  fixedProficiencies
+    .filter((proficiency) => proficiency.isSkill)
+    .forEach((proficiency) =>
+      skills.set(proficiency.id, { id: proficiency.id, name: proficiency.name }),
+    )
+
+  for (const rule of rules) {
+    const options = new Map(rule.options.map((option) => [option.id, option]))
+    for (const id of inputs[rule.id] ?? []) {
+      const option = options.get(id)
+      if (option?.isSkill) skills.set(option.id, { id: option.id, name: option.name })
+    }
+  }
+
+  return [...skills.values()].sort((left, right) => left.name.localeCompare(right.name))
 }
 
 function validateProficiencyInputs(

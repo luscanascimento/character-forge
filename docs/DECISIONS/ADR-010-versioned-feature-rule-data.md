@@ -24,6 +24,7 @@ Adopt a hybrid rules boundary:
 - Spell selections, equipment eligibility/effects, and feat effects remain owned by their roadmap phases even when an earlier feature references them.
 - The API exposes a normalized hybrid feature-choice document so the builder never has to reproduce manifest matching rules or infer them from feature names.
 - Saved feature choices keep the manifest requirement id, branch id, and canonical provider option references. Progression changes retain but invalidate choices that are no longer active until the user removes them explicitly.
+- Character-dependent option sources stay declarative in the class feature document. Expertise options are resolved from canonical skill grants only after proficiency choices are known, and a skill already selected by an earlier Expertise requirement is excluded.
 
 ## Consequences
 

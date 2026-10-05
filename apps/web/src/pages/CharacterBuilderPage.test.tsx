@@ -57,6 +57,7 @@ type FeatureChoicesLoader = (
 
 const catalogItems = {
   classes: [
+    { id: 'bard', name: 'Bard', category: 'classes' as const },
     { id: 'fighter', name: 'Fighter', category: 'classes' as const },
     { id: 'wizard', name: 'Wizard', category: 'classes' as const },
   ],
@@ -98,6 +99,7 @@ function defaultCatalogLoader(): CatalogLoader {
 function catalogItem(category: 'classes' | 'species' | 'backgrounds', id: string): CatalogItem {
   const names: Record<string, string> = {
     wizard: 'Wizard',
+    bard: 'Bard',
     fighter: 'Fighter',
     elf: 'Elf',
     human: 'Human',
@@ -105,45 +107,58 @@ function catalogItem(category: 'classes' | 'species' | 'backgrounds', id: string
     sage: 'Sage',
   }
   const proficiencyChoices =
-    category === 'classes' && id === 'wizard'
+    category === 'classes' && id === 'bard'
       ? [
           {
-            id: 'classes/wizard/proficiencies/0',
-            prompt: 'Choose two class skills',
-            count: 2,
+            id: 'classes/bard/proficiencies/0',
+            prompt: 'Choose three Bard skills',
+            count: 3,
             options: [
-              { id: 'skill-arcana', name: 'Skill: Arcana' },
-              { id: 'skill-history', name: 'Skill: History' },
-              { id: 'skill-perception', name: 'Skill: Perception' },
+              { id: 'skill-arcana', name: 'Skill: Arcana', isSkill: true },
+              { id: 'skill-performance', name: 'Skill: Performance', isSkill: true },
+              { id: 'skill-persuasion', name: 'Skill: Persuasion', isSkill: true },
             ],
           },
         ]
-      : category === 'classes' && id === 'fighter'
+      : category === 'classes' && id === 'wizard'
         ? [
             {
-              id: 'classes/fighter/proficiencies/0',
-              prompt: 'Choose two fighter skills',
+              id: 'classes/wizard/proficiencies/0',
+              prompt: 'Choose two class skills',
               count: 2,
               options: [
-                { id: 'skill-athletics', name: 'Skill: Athletics' },
-                { id: 'skill-perception', name: 'Skill: Perception' },
-                { id: 'skill-survival', name: 'Skill: Survival' },
+                { id: 'skill-arcana', name: 'Skill: Arcana', isSkill: true },
+                { id: 'skill-history', name: 'Skill: History', isSkill: true },
+                { id: 'skill-perception', name: 'Skill: Perception', isSkill: true },
               ],
             },
           ]
-        : category === 'species' && id === 'elf'
+        : category === 'classes' && id === 'fighter'
           ? [
               {
-                id: 'species/elf/traits/keen-senses/proficiencies/0',
-                prompt: 'Choose one keen sense',
-                count: 1,
+                id: 'classes/fighter/proficiencies/0',
+                prompt: 'Choose two fighter skills',
+                count: 2,
                 options: [
-                  { id: 'skill-insight', name: 'Skill: Insight' },
-                  { id: 'skill-perception', name: 'Skill: Perception' },
+                  { id: 'skill-athletics', name: 'Skill: Athletics', isSkill: true },
+                  { id: 'skill-perception', name: 'Skill: Perception', isSkill: true },
+                  { id: 'skill-survival', name: 'Skill: Survival', isSkill: true },
                 ],
               },
             ]
-          : []
+          : category === 'species' && id === 'elf'
+            ? [
+                {
+                  id: 'species/elf/traits/keen-senses/proficiencies/0',
+                  prompt: 'Choose one keen sense',
+                  count: 1,
+                  options: [
+                    { id: 'skill-insight', name: 'Skill: Insight', isSkill: true },
+                    { id: 'skill-perception', name: 'Skill: Perception', isSkill: true },
+                  ],
+                },
+              ]
+            : []
 
   return {
     id,
@@ -154,9 +169,11 @@ function catalogItem(category: 'classes' | 'species' | 'backgrounds', id: string
     sections: [],
     textSections: [],
     characterCreation: {
-      hitDie: category === 'classes' ? (id === 'wizard' ? 6 : 10) : null,
+      hitDie: category === 'classes' ? (id === 'wizard' ? 6 : id === 'bard' ? 8 : 10) : null,
       grantedProficiencies:
-        category === 'classes' ? [{ id: 'simple-weapons', name: 'Simple Weapons' }] : [],
+        category === 'classes'
+          ? [{ id: 'simple-weapons', name: 'Simple Weapons', isSkill: false }]
+          : [],
       proficiencyChoices,
     },
     source: {
@@ -225,14 +242,17 @@ function defaultValidationLoader(): CharacterValidationLoader {
 
 function classProgression(classId: string): ClassProgressionDocument {
   const isFighter = classId === 'fighter'
-  const className = isFighter ? 'Fighter' : 'Wizard'
+  const isBard = classId === 'bard'
+  const className = isFighter ? 'Fighter' : isBard ? 'Bard' : 'Wizard'
   const subclass = isFighter
     ? { id: 'champion', name: 'Champion' }
-    : { id: 'evoker', name: 'Evoker' }
+    : isBard
+      ? { id: 'lore', name: 'College of Lore' }
+      : { id: 'evoker', name: 'Evoker' }
 
   return {
     class: { id: classId, name: className },
-    hitDie: isFighter ? 10 : 6,
+    hitDie: isFighter ? 10 : isBard ? 8 : 6,
     levels: Array.from({ length: 20 }, (_, index) => ({
       level: index + 1,
       proficiencyBonus: 2 + Math.floor(index / 4),
@@ -281,6 +301,39 @@ function defaultFeatureChoicesLoader(): FeatureChoicesLoader {
       rulesVersion: 'SRD-5.2.1',
       class: { id: classId, name: classId === 'fighter' ? 'Fighter' : 'Wizard' },
       requirements: [],
+    }),
+  )
+}
+
+function bardFeatureChoicesLoader(): FeatureChoicesLoader {
+  return vi.fn((classId: string) =>
+    Promise.resolve<FeatureChoiceDocument>({
+      manifestVersion: 'SRD-5.2.1-CF-1',
+      ruleset: '2024',
+      rulesVersion: 'SRD-5.2.1',
+      class: { id: classId, name: classId === 'bard' ? 'Bard' : classId },
+      requirements:
+        classId === 'bard'
+          ? [
+              {
+                id: 'bard-expertise-2',
+                subclassId: null,
+                featureId: 'bard-expertise',
+                availableAtLevel: 2,
+                count: 1,
+                branches: [
+                  {
+                    id: 'expertise-skills',
+                    selectionCount: 2,
+                    optionSource: 'proficientSkills',
+                    availability: 'supported',
+                    dependency: null,
+                    options: [],
+                  },
+                ],
+              },
+            ]
+          : [],
     }),
   )
 }
@@ -820,6 +873,131 @@ describe('CharacterBuilderPage', () => {
         }),
       }),
       '2026-09-29T12:00:00.000Z',
+    )
+  })
+
+  it('derives and persists Expertise from resolved skill proficiencies', async () => {
+    const user = userEvent.setup()
+    const storage = repository({ get: vi.fn().mockResolvedValue(classlessCharacter()) })
+    const featureChoicesLoader = bardFeatureChoicesLoader()
+    renderPage(
+      storage,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      featureChoicesLoader,
+    )
+
+    await user.click(await screen.findByRole('radio', { name: 'Bard' }))
+    await user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Current class level' }),
+      '2',
+    )
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    const bardSkills = await screen.findByRole('group', { name: 'Choose three Bard skills' })
+    await user.click(within(bardSkills).getByRole('checkbox', { name: 'Skill: Arcana' }))
+    await user.click(within(bardSkills).getByRole('checkbox', { name: 'Skill: Performance' }))
+    await user.click(within(bardSkills).getByRole('checkbox', { name: 'Skill: Persuasion' }))
+    const keenSense = screen.getByRole('group', { name: 'Choose one keen sense' })
+    await user.click(within(keenSense).getByRole('checkbox', { name: 'Skill: Insight' }))
+
+    const expertise = await screen.findByRole('group', { name: 'Expertise gained at level 2' })
+    await user.click(within(expertise).getByRole('checkbox', { name: 'Skill: Performance' }))
+    await user.click(within(expertise).getByRole('checkbox', { name: 'Skill: Persuasion' }))
+    await user.click(screen.getByRole('button', { name: 'Continue to review' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(2))
+    expect(storage.save).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          featureChoices: [
+            {
+              requirementId: 'bard-expertise-2',
+              branchId: 'expertise-skills',
+              selections: [
+                { id: 'skill-performance', name: 'Skill: Performance' },
+                { id: 'skill-persuasion', name: 'Skill: Persuasion' },
+              ],
+            },
+          ],
+        }),
+      }),
+      '2026-10-01T15:00:00.000Z',
+    )
+    expect(
+      await screen.findByRole('heading', { name: 'Review your character' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Skill: Performance, Skill: Persuasion')).toBeInTheDocument()
+  })
+
+  it('retains Expertise after a level decrease until explicit removal', async () => {
+    const user = userEvent.setup()
+    const source = createStoredCharacter()
+    const bard = {
+      ...source,
+      character: {
+        ...source.character,
+        classProgressions: [{ class: { id: 'bard', name: 'Bard' }, level: 2, subclass: null }],
+        proficiencyChoices: [
+          {
+            choiceId: 'classes/bard/proficiencies/0',
+            selections: [
+              { id: 'skill-arcana', name: 'Skill: Arcana' },
+              { id: 'skill-performance', name: 'Skill: Performance' },
+              { id: 'skill-persuasion', name: 'Skill: Persuasion' },
+            ],
+          },
+          {
+            choiceId: 'species/elf/traits/keen-senses/proficiencies/0',
+            selections: [{ id: 'skill-insight', name: 'Skill: Insight' }],
+          },
+        ],
+        featureChoices: [
+          {
+            requirementId: 'bard-expertise-2',
+            branchId: 'expertise-skills',
+            selections: [
+              { id: 'skill-performance', name: 'Skill: Performance' },
+              { id: 'skill-persuasion', name: 'Skill: Persuasion' },
+            ],
+          },
+        ],
+      },
+    } satisfies StoredCharacterV1
+    const storage = repository({ get: vi.fn().mockResolvedValue(bard) })
+    renderPage(
+      storage,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      bardFeatureChoicesLoader(),
+    )
+
+    await screen.findByText(/Validated against SRD-5.2.1/)
+    await user.click(screen.getByRole('button', { name: 'Class' }))
+    await user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Current class level' }),
+      '1',
+    )
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    expect(await screen.findByText('An earlier Expertise choice is retained.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove outdated Expertise' })).toBeInTheDocument()
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          classProgressions: [{ class: { id: 'bard', name: 'Bard' }, level: 1, subclass: null }],
+          featureChoices: bard.character.featureChoices,
+        }),
+      }),
+      source.updatedAt,
     )
   })
 
