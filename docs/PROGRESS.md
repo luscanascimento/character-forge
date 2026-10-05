@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 5 — Class Progression: in progress.**
+**Phase 6 — Spellcasting: not started.**
 
-Phases 0–4 are implemented. Phase 5 has begun with a normalized class/subclass progression boundary, without pulling spellcasting, equipment, or character-sheet scope forward.
+Phases 0–5 are implemented. Phase 5 closed with trusted 1–20 class progression, subclass rules, fixed HP, Fighting Style, and Expertise without pulling spellcasting, equipment, or character-sheet scope forward.
 
 ## Last completed work
 
@@ -107,20 +107,22 @@ Phases 0–4 are implemented. Phase 5 has begun with a normalized class/subclass
 - Integrated Expertise into the Proficiencies step after base choices resolve, with exact-count enforcement, canonical id/name persistence, live eligibility updates, and stale-choice removal controls.
 - Preserved Expertise selections when a level drop makes them unavailable, surfaced them in review, and routed requirement-specific validation feedback back to Proficiencies.
 - Added focused builder coverage for eligible-option derivation, persistence, review, and non-destructive invalidation after a level decrease.
+- Reconciled the Phase 5 completion criteria against the supported rule boundary and kept Weapon Mastery and Ability Score Improvement assigned to Phase 7, where their equipment and feat-effect dependencies belong.
+- Live-smoke-tested every manifested Fighting Style and Expertise requirement against the current provider and validated a complete level-2 Bard with canonical proficient-skill Expertise selections.
+- Closed Phase 5 after the complete build, lint, test, format, dependency-audit, and provider-smoke gate passed.
 
 ## Work in progress
 
-Phase 5 is ready for closure review. Trusted levels, fixed 1–20 HP, subclass availability/validation, builder controls, class/subclass timelines, normalized feat prerequisites, manifest `SRD-5.2.1-CF-1`, Fighting Style, and Expertise are implemented across persistence, canonical validation, builder presentation, and review.
+No implementation is currently in progress. Phase 6 can begin from the completed Phase 5 progression and feature-choice boundaries.
 
 ## Next step
 
-Implement manifest-backed Expertise requirements from the character's resolved skill proficiencies:
+Begin Phase 6 with a narrow spellcasting foundation:
 
-Close Phase 5 explicitly:
-
-1. Reconcile completion criteria and documentation against the implemented supported scope.
-2. Keep Weapon Mastery equipment eligibility and Ability Score Improvement effects explicitly assigned to Phase 7.
-3. Run the complete quality gate and mark Phase 5 complete only if all checks pass.
+1. Audit the live 2024 spellcasting progression fields for every SRD class and document known/prepared distinctions.
+2. Define a provider-neutral progression contract that keeps spell level independent from character and class level.
+3. Add canonical spell-slot availability, spell save DC, and spell attack modifier rules before introducing selection UI.
+4. Revisit Blessed Warrior and Druidic Warrior only after class-cantrip eligibility can be validated through that contract.
 
 ## Pending decisions
 
@@ -144,7 +146,7 @@ Close Phase 5 explicitly:
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
 - Backend unit/integration tests: 117 passing
-- Live provider smoke checks: classes, class/subclass progression, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses passing
+- Live provider smoke checks: classes, class/subclass progression, feature-choice manifests, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses including Bard Expertise passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 

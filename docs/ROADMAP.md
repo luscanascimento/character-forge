@@ -46,7 +46,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** Phase 3.
 
-## Phase 5 — Class Progression
+## Phase 5 — Class Progression (complete)
 
 **Objectives:** levels, class features, subclass availability, HP progression, proficiency bonus, and level-dependent choices.
 
