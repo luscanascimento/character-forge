@@ -81,19 +81,22 @@ Phases 0–4 are implemented. Phase 5 has begun with a normalized class/subclass
 - Extended schema-version-1 class progressions with an optional subclass reference while defaulting older stored drafts to `null` through the existing migration seam.
 - Added canonical subclass rules that require a trusted option at its availability level, reject selections from another class, and retain but invalidate a saved subclass when level drops below its requirement.
 - Resolved subclass rules from the normalized class progression during character evaluation without accepting client-supplied availability facts.
+- Connected the builder to the normalized class progression with a schema-validated client, levels 1–20, canonical proficiency-bonus labels, and recoverable provider-error states.
+- Added level-aware subclass controls that explain locked availability, require an eligible choice, preserve a now-locked selection after level reduction, and remove it only through an explicit action.
+- Added an informational class/subclass feature list for the selected level and kept narrative feature choices outside the interactive rule boundary.
+- Included the selected subclass in review and added focused coverage for progression loading, level/subclass persistence, locked-state retention, explicit removal, and provider recovery.
 
 ## Work in progress
 
-Phase 5 is open. The trusted class/subclass timeline, fixed 1–20 HP rules, persisted subclass reference, and canonical level/subclass validation are implemented. Builder controls are next. Level-dependent feature choices are blocked on a trustworthy structured rules source.
+Phase 5 is open. Trusted levels, fixed 1–20 HP, subclass availability/validation, builder controls, and the class/subclass feature timeline are implemented. Level-dependent feature choices remain blocked on a trustworthy structured rules source.
 
 ## Next step
 
-Continue Phase 5 with the level and subclass rule slice:
+Resolve the remaining Phase 5 data boundary before adding interactive feature choices:
 
-1. Add builder controls for levels 1–20 and the trusted subclass list.
-2. Show the level's trusted class/subclass feature timeline without treating narrative features as completed choices.
-3. Preserve a subclass when level decreases and surface its locked requirement with an explicit removal or replacement action.
-4. Keep narrative-only feature choices, spellcasting, feats, equipment effects, export, and print out of this slice.
+1. Evaluate whether a reviewed, versioned Character Forge rules dataset is justified for structured Fighting Style, Weapon Mastery, Expertise, feat-choice, and prerequisite rules.
+2. If no trustworthy source is adopted, close the supported Phase 5 subset explicitly and carry the limitation forward rather than parsing narrative content.
+3. Keep spellcasting, feats, equipment effects, export, and print in their existing roadmap phases.
 
 ## Pending decisions
 
@@ -102,7 +105,7 @@ Continue Phase 5 with the level and subclass rule slice:
 
 ## Known issues and limitations
 
-- Armored/equipment AC, rolled/manual HP, class progression controls beyond the baseline level, import/export, and print functionality are not implemented yet.
+- Armored/equipment AC, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -112,7 +115,7 @@ Continue Phase 5 with the level and subclass rule slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 73 passing across 10 files (`vitest run`)
+- Frontend unit tests: 80 passing across 12 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors

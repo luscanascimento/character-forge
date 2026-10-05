@@ -481,6 +481,266 @@
   font-size: 0.72rem;
 }
 
+.class-progression-state {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin: -0.6rem 0 1.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.class-progression-state > span {
+  color: var(--color-gold);
+}
+
+.class-progression-state--error {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 0.8rem;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
+  background: rgb(182 64 36 / 7%);
+}
+
+.class-progression-state--error div {
+  display: flex;
+  flex-direction: column;
+}
+
+.class-progression-state--error strong {
+  color: var(--color-parchment);
+}
+
+.class-progression-state--error button,
+.subclass-retained button {
+  padding: 0;
+  border: 0;
+  color: var(--color-danger);
+  background: transparent;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.class-progression-fields {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+.class-level {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.class-level > span,
+.subclass-choices > legend {
+  color: var(--color-parchment);
+  font-family: var(--font-label);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.class-level select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--color-border-bright);
+  border-radius: var(--radius-sm);
+  color: var(--color-parchment-bright);
+  background: var(--color-coal);
+  font: inherit;
+}
+
+.class-level select:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+.subclass-choices {
+  padding: 0;
+  border: 0;
+  margin: 0;
+}
+
+.subclass-choices > legend {
+  margin-bottom: 0.65rem;
+}
+
+.subclass-options {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.subclass-options label {
+  display: grid;
+  min-height: 3.4rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-coal);
+  cursor: pointer;
+}
+
+.subclass-options label:has(input:checked) {
+  border-color: var(--color-bronze);
+  background: rgb(183 137 82 / 8%);
+}
+
+.subclass-options label:focus-within {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+.subclass-options input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.subclass-options label > span:first-of-type {
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  border: 1px solid var(--color-border-bright);
+  border-radius: 50%;
+  color: var(--color-success);
+}
+
+.subclass-options label > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.subclass-options strong {
+  color: var(--color-parchment);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.subclass-options small {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+}
+
+.subclass-option--locked {
+  cursor: not-allowed !important;
+  opacity: 0.62;
+}
+
+.subclass-option--locked > span:first-of-type {
+  color: var(--color-text-muted);
+}
+
+.subclass-choices > small {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--color-danger);
+  font-size: 0.74rem;
+}
+
+.subclass-choices--error .subclass-options {
+  padding: 0.25rem;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+}
+
+.subclass-retained {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.85rem;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
+  background: rgb(182 64 36 / 7%);
+}
+
+.subclass-retained > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.subclass-retained strong {
+  color: var(--color-parchment);
+  font-size: 0.8rem;
+}
+
+.subclass-retained span {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.subclass-retained button {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.level-features {
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: rgb(18 16 14 / 38%);
+}
+
+.level-features h3,
+.level-features p {
+  margin: 0;
+}
+
+.level-features h3 {
+  color: var(--color-parchment);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.level-features > div > span,
+.level-features > p {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.level-features ul {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.level-features li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.level-features li strong {
+  color: var(--color-parchment);
+  font-size: 0.8rem;
+}
+
+.level-features li span {
+  color: var(--color-bronze);
+  font-size: 0.68rem;
+}
+
 .proficiency-grants {
   margin-bottom: 1.75rem;
 }

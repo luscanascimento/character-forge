@@ -37,6 +37,8 @@ import type {
   CharacterDraft,
   StoredCharacterV1,
 } from '../features/characters/characterSchemas'
+import { getClassProgression } from '../features/progression/classProgressionApi'
+import type { ClassProgressionDocument } from '../features/progression/classProgression'
 import '../styles/builder.css'
 
 type CharacterRepository = Pick<CharacterStorage, 'get' | 'save'>
@@ -47,6 +49,7 @@ type CharacterBuilderPageProps = {
   autosaveDelay?: number
   catalogLoader?: CatalogLoader
   catalogItemLoader?: CatalogItemLoader
+  progressionLoader?: ClassProgressionLoader
   validationLoader?: CharacterValidationLoader
 }
 
@@ -67,6 +70,11 @@ type CharacterValidationLoader = (
   signal?: AbortSignal,
 ) => Promise<CharacterEvaluation>
 
+type ClassProgressionLoader = (
+  classId: string,
+  signal?: AbortSignal,
+) => Promise<ClassProgressionDocument>
+
 const defaultStorage = new CharacterStorage()
 const defaultNow = () => new Date()
 
@@ -74,7 +82,7 @@ const builderSteps = [
   ['Name', 'Give your character an identity'],
   ['Abilities', 'Set the six ability scores'],
   ['Origins', 'Choose species and background'],
-  ['Class', 'Choose a first-level class'],
+  ['Class', 'Set class, level, and subclass'],
   ['Proficiencies', 'Complete required choices'],
   ['Review', 'Validate the finished character'],
 ] as const
@@ -86,6 +94,7 @@ type AbilityInputs = Record<AbilityKey, string>
 type AbilityErrors = Partial<Record<AbilityKey, string>>
 type ProficiencyInputs = Record<string, string[]>
 type ProficiencyErrors = Record<string, string>
+type ClassErrors = { class?: string; subclass?: string; progression?: string }
 type SavedProficiencyChoices = StoredCharacterV1['character']['proficiencyChoices']
 type EditableBuilderStep = Exclude<BuilderStep, 'review'>
 type SaveIntent = {
@@ -125,6 +134,7 @@ export default function CharacterBuilderPage({
   autosaveDelay = defaultAutosaveDelayMs,
   catalogLoader = getCatalogPage,
   catalogItemLoader = getCatalogItem,
+  progressionLoader = getClassProgression,
   validationLoader = validateCharacter,
 }: CharacterBuilderPageProps) {
   const { characterId } = useParams()
@@ -163,6 +173,7 @@ export default function CharacterBuilderPage({
           autosaveDelay={autosaveDelay}
           catalogLoader={catalogLoader}
           catalogItemLoader={catalogItemLoader}
+          progressionLoader={progressionLoader}
           validationLoader={validationLoader}
         />
       )}
@@ -177,6 +188,7 @@ function BuilderWorkspace({
   autosaveDelay,
   catalogLoader,
   catalogItemLoader,
+  progressionLoader,
   validationLoader,
 }: {
   document: StoredCharacterV1
@@ -185,6 +197,7 @@ function BuilderWorkspace({
   autosaveDelay: number
   catalogLoader: CatalogLoader
   catalogItemLoader: CatalogItemLoader
+  progressionLoader: ClassProgressionLoader
   validationLoader: CharacterValidationLoader
 }) {
   const queryClient = useQueryClient()
@@ -202,7 +215,13 @@ function BuilderWorkspace({
   const [backgroundId, setBackgroundId] = useState(document.character.background?.id ?? '')
   const [originErrors, setOriginErrors] = useState<{ species?: string; background?: string }>({})
   const [classId, setClassId] = useState(document.character.classProgressions[0]?.class?.id ?? '')
-  const [classError, setClassError] = useState<string | null>(null)
+  const [classLevel, setClassLevel] = useState(
+    String(document.character.classProgressions[0]?.level ?? 1),
+  )
+  const [subclassId, setSubclassId] = useState(
+    document.character.classProgressions[0]?.subclass?.id ?? '',
+  )
+  const [classErrors, setClassErrors] = useState<ClassErrors>({})
   const [proficiencyInputs, setProficiencyInputs] = useState<ProficiencyInputs>(() =>
     proficiencyInputsFrom(document.character.proficiencyChoices),
   )
@@ -211,7 +230,6 @@ function BuilderWorkspace({
   const abilitiesComplete = document.character.abilities !== null
   const originsComplete =
     document.character.species !== null && document.character.background !== null
-  const classComplete = Boolean(document.character.classProgressions[0]?.class)
   const selectedClass = document.character.classProgressions[0]?.class
 
   const speciesQuery = useQuery({
@@ -226,10 +244,25 @@ function BuilderWorkspace({
     enabled: selectedStep === 'origins',
     retry: false,
   })
+  const classProgressionQuery = useQuery({
+    queryKey: ['class-progression', classId],
+    queryFn: ({ signal }) => progressionLoader(classId, signal),
+    enabled: Boolean(classId),
+    retry: false,
+  })
+  const classComplete =
+    Boolean(selectedClass) &&
+    classProgressionQuery.data !== undefined &&
+    classProgressionIsComplete(document.character.classProgressions[0], classProgressionQuery.data)
+  const classResumeNeedsAttention =
+    reviewResumePending &&
+    selectedStep === 'proficiencies' &&
+    classProgressionQuery.data !== undefined &&
+    !classComplete
   const classesQuery = useQuery({
     queryKey: ['builder-options', 'classes'],
     queryFn: ({ signal }) => catalogLoader('classes', { page: 1, pageSize: 48 }, signal),
-    enabled: selectedStep === 'class',
+    enabled: selectedStep === 'class' || classResumeNeedsAttention,
     retry: false,
   })
   const classDetailQuery = useQuery({
@@ -267,17 +300,19 @@ function BuilderWorkspace({
       fixedProficiencies,
       proficiencyInputsFrom(document.character.proficiencyChoices),
     ).success
-  const activeStep: BuilderStep =
-    reviewResumePending &&
-    selectedStep === 'proficiencies' &&
-    proficiencyDetailsReady &&
-    proficiencyComplete
+  const activeStep: BuilderStep = classResumeNeedsAttention
+    ? 'class'
+    : reviewResumePending &&
+        selectedStep === 'proficiencies' &&
+        classComplete &&
+        proficiencyDetailsReady &&
+        proficiencyComplete
       ? 'review'
       : selectedStep
   const validationQuery = useQuery({
     queryKey: ['character-validation', document.id, document.updatedAt],
     queryFn: ({ signal }) => validationLoader(document, signal),
-    enabled: activeStep === 'review' && proficiencyComplete,
+    enabled: activeStep === 'review' && classComplete && proficiencyComplete,
     retry: false,
   })
 
@@ -322,12 +357,16 @@ function BuilderWorkspace({
         : { ...document.character, ...nextOrigins }
     }
     if (step === 'class') {
-      const selectedClass = classesQuery.data?.items.find((item) => item.id === classId)
-      const nextProgressions = selectedClass
-        ? [{ class: { id: selectedClass.id, name: selectedClass.name }, level: 1, subclass: null }]
-        : null
-      return nextProgressions && !sameValue(nextProgressions, document.character.classProgressions)
-        ? { ...document.character, classProgressions: nextProgressions }
+      const result = classProgressionFromInputs(
+        classesQuery.data,
+        classProgressionQuery.data,
+        classId,
+        classLevel,
+        subclassId,
+      )
+      return result.success &&
+        !sameValue([result.progression], document.character.classProgressions)
+        ? { ...document.character, classProgressions: [result.progression] }
         : null
     }
     if (step === 'proficiencies') {
@@ -385,6 +424,16 @@ function BuilderWorkspace({
         setClassId((current) =>
           current === intent.character.classProgressions[0]?.class?.id
             ? (saved.character.classProgressions[0]?.class?.id ?? '')
+            : current,
+        )
+        setClassLevel((current) =>
+          current === String(intent.character.classProgressions[0]?.level)
+            ? String(saved.character.classProgressions[0]?.level ?? 1)
+            : current,
+        )
+        setSubclassId((current) =>
+          current === (intent.character.classProgressions[0]?.subclass?.id ?? '')
+            ? (saved.character.classProgressions[0]?.subclass?.id ?? '')
             : current,
         )
       }
@@ -466,18 +515,22 @@ function BuilderWorkspace({
 
   function saveClass(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const selectedClass = classesQuery.data?.items.find((item) => item.id === classId)
-    if (!selectedClass) {
-      setClassError('Choose an available class.')
+    const result = classProgressionFromInputs(
+      classesQuery.data,
+      classProgressionQuery.data,
+      classId,
+      classLevel,
+      subclassId,
+    )
+    if (!result.success) {
+      setClassErrors(result.errors)
       return
     }
 
-    setClassError(null)
+    setClassErrors({})
     persistOrAdvance('class', {
       ...document.character,
-      classProgressions: [
-        { class: { id: selectedClass.id, name: selectedClass.name }, level: 1, subclass: null },
-      ],
+      classProgressions: [result.progression],
     })
   }
 
@@ -760,14 +813,20 @@ function BuilderWorkspace({
             <BuilderStepHeading
               step={4}
               title="Choose their class"
-              description="Choose the path this character begins at level 1 from the active SRD 5.2.1 catalog."
+              description="Set their current level and choose a subclass when the trusted progression makes one available."
             />
             <ClassStep
               page={classesQuery.data}
               pending={classesQuery.isPending}
               failed={classesQuery.isError}
+              progression={classProgressionQuery.data}
+              progressionPending={classProgressionQuery.isPending && Boolean(classId)}
+              progressionFailed={classProgressionQuery.isError}
               classId={classId}
-              error={classError}
+              level={classLevel}
+              subclassId={subclassId}
+              savedSubclass={document.character.classProgressions[0]?.subclass ?? null}
+              errors={classErrors}
               saved={
                 saveMutation.isSuccess &&
                 saveMutation.variables.step === 'class' &&
@@ -777,10 +836,30 @@ function BuilderWorkspace({
               saveError={saveMutation.variables?.step === 'class' ? saveMutation.error : null}
               onClassChange={(id) => {
                 setClassId(id)
-                setClassError(null)
+                setClassLevel('1')
+                setSubclassId('')
+                setClassErrors({})
                 if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
               }}
-              onRetry={() => void classesQuery.refetch()}
+              onLevelChange={(level) => {
+                setClassLevel(level)
+                setClassErrors((current) => ({ ...current, subclass: undefined }))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onSubclassChange={(id) => {
+                setSubclassId(id)
+                setClassErrors((current) => ({ ...current, subclass: undefined }))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onRemoveSubclass={() => {
+                setSubclassId('')
+                setClassErrors((current) => ({ ...current, subclass: undefined }))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onRetry={() => {
+                void classesQuery.refetch()
+                if (classId) void classProgressionQuery.refetch()
+              }}
               onSubmit={saveClass}
             />
           </>
@@ -991,6 +1070,10 @@ function ReviewStep({
           <div>
             <dt>Level</dt>
             <dd>{selectedClass?.level}</dd>
+          </div>
+          <div>
+            <dt>Subclass</dt>
+            <dd>{selectedClass?.subclass?.name ?? 'Not yet available'}</dd>
           </div>
         </dl>
       </section>
@@ -1237,24 +1320,42 @@ function ClassStep({
   page,
   pending,
   failed,
+  progression,
+  progressionPending,
+  progressionFailed,
   classId,
-  error,
+  level,
+  subclassId,
+  savedSubclass,
+  errors,
   saved,
   saving,
   saveError,
   onClassChange,
+  onLevelChange,
+  onSubclassChange,
+  onRemoveSubclass,
   onRetry,
   onSubmit,
 }: {
   page?: CatalogPage
   pending: boolean
   failed: boolean
+  progression?: ClassProgressionDocument
+  progressionPending: boolean
+  progressionFailed: boolean
   classId: string
-  error: string | null
+  level: string
+  subclassId: string
+  savedSubclass: { id: string; name: string } | null
+  errors: ClassErrors
   saved: boolean
   saving: boolean
   saveError: Error | null
   onClassChange: (id: string) => void
+  onLevelChange: (level: string) => void
+  onSubclassChange: (id: string) => void
+  onRemoveSubclass: () => void
   onRetry: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
@@ -1289,16 +1390,192 @@ function ClassStep({
         name="class"
         items={page.items}
         selectedId={classId}
-        error={error ?? undefined}
+        error={errors.class}
         onChange={onClassChange}
       />
+      {progressionPending && (
+        <div className="class-progression-state" role="status">
+          <span aria-hidden="true">✦</span>
+          Resolving the selected class progression…
+        </div>
+      )}
+      {classId && progressionFailed && (
+        <div className="class-progression-state class-progression-state--error" role="alert">
+          <AlertTriangle aria-hidden="true" size={18} />
+          <div>
+            <strong>The class progression is unavailable.</strong>
+            <span>Your saved class and level have not been changed.</span>
+          </div>
+          <button type="button" onClick={onRetry}>
+            Try again
+          </button>
+        </div>
+      )}
+      {progression && (
+        <ClassProgressionFields
+          progression={progression}
+          level={level}
+          subclassId={subclassId}
+          savedSubclass={savedSubclass}
+          error={errors.subclass}
+          onLevelChange={onLevelChange}
+          onSubclassChange={onSubclassChange}
+          onRemoveSubclass={onRemoveSubclass}
+        />
+      )}
+      {errors.progression && (
+        <span className="builder-field-error" role="alert">
+          {errors.progression}
+        </span>
+      )}
       <p className="origin-source">
-        Starting level: 1 · Source: {page.source.rulesVersion} · {page.source.provider}
+        Source: {progression?.source.rulesVersion ?? page.source.rulesVersion} ·{' '}
+        {progression?.source.provider ?? page.source.provider}
       </p>
       <LocalStorageNotice />
       <SaveError error={saveError} />
       <BuilderActions saved={saved} pending={saving} label="Continue" />
     </form>
+  )
+}
+
+function ClassProgressionFields({
+  progression,
+  level,
+  subclassId,
+  savedSubclass,
+  error,
+  onLevelChange,
+  onSubclassChange,
+  onRemoveSubclass,
+}: {
+  progression: ClassProgressionDocument
+  level: string
+  subclassId: string
+  savedSubclass: { id: string; name: string } | null
+  error?: string
+  onLevelChange: (level: string) => void
+  onSubclassChange: (id: string) => void
+  onRemoveSubclass: () => void
+}) {
+  const numericLevel = Number(level)
+  const selectedSubclass = progression.subclasses.find(
+    (subclass) => subclass.subclass.id === subclassId,
+  )
+  const staleSubclass =
+    subclassId && !selectedSubclass
+      ? savedSubclass?.id === subclassId
+        ? savedSubclass
+        : { id: subclassId, name: subclassId }
+      : null
+  const selectedSubclassLocked =
+    selectedSubclass !== undefined && numericLevel < selectedSubclass.availableAtLevel
+  const classLevel = progression.levels.find((entry) => entry.level === numericLevel)
+  const subclassLevel = selectedSubclass?.levels.find((entry) => entry.level === numericLevel)
+  const levelFeatures = [
+    ...(classLevel?.features.map((feature) => ({ ...feature, source: progression.class.name })) ??
+      []),
+    ...(subclassLevel?.features.map((feature) => ({
+      ...feature,
+      source: selectedSubclass!.subclass.name,
+    })) ?? []),
+  ]
+
+  return (
+    <div className="class-progression-fields">
+      <label className="class-level" htmlFor="class-level">
+        <span>Current class level</span>
+        <select
+          id="class-level"
+          value={level}
+          onChange={(event) => onLevelChange(event.target.value)}
+        >
+          {progression.levels.map((entry) => (
+            <option key={entry.level} value={entry.level}>
+              Level {entry.level} · proficiency +{entry.proficiencyBonus}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {progression.subclasses.length > 0 && (
+        <fieldset
+          className={error ? 'subclass-choices subclass-choices--error' : 'subclass-choices'}
+        >
+          <legend>Subclass</legend>
+          <div className="subclass-options">
+            {progression.subclasses.map((subclass) => {
+              const locked = numericLevel < subclass.availableAtLevel
+              return (
+                <label
+                  className={locked ? 'subclass-option--locked' : undefined}
+                  key={subclass.subclass.id}
+                >
+                  <input
+                    type="radio"
+                    name="subclass"
+                    value={subclass.subclass.id}
+                    checked={subclassId === subclass.subclass.id}
+                    disabled={locked}
+                    onChange={() => onSubclassChange(subclass.subclass.id)}
+                  />
+                  <span aria-hidden="true">
+                    {subclassId === subclass.subclass.id ? (
+                      <Check size={15} />
+                    ) : locked ? (
+                      <LockKeyhole size={14} />
+                    ) : null}
+                  </span>
+                  <span>
+                    <strong>{subclass.subclass.name}</strong>
+                    <small>
+                      {locked ? `Available at level ${subclass.availableAtLevel}` : 'Available now'}
+                    </small>
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+          {error && <small role="alert">{error}</small>}
+        </fieldset>
+      )}
+
+      {(staleSubclass || selectedSubclassLocked) && (
+        <div className="subclass-retained" role="alert">
+          <AlertTriangle aria-hidden="true" size={18} />
+          <div>
+            <strong>{staleSubclass?.name ?? selectedSubclass?.subclass.name} is retained.</strong>
+            <span>
+              {staleSubclass
+                ? 'It is not part of the current class progression.'
+                : `It requires level ${selectedSubclass?.availableAtLevel}. Raise the level or remove it explicitly.`}
+            </span>
+          </div>
+          <button type="button" onClick={onRemoveSubclass}>
+            Remove subclass
+          </button>
+        </div>
+      )}
+
+      <section className="level-features" aria-labelledby="level-features-heading">
+        <div>
+          <h3 id="level-features-heading">Unlocked at level {numericLevel}</h3>
+          <span>Feature references are informational; narrative choices are not inferred.</span>
+        </div>
+        {levelFeatures.length > 0 ? (
+          <ul>
+            {levelFeatures.map((feature) => (
+              <li key={`${feature.source}-${feature.id}`}>
+                <strong>{feature.name}</strong>
+                <span>{feature.source}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No new class or selected-subclass features are listed at this level.</p>
+        )}
+      </section>
+    </div>
   )
 }
 
@@ -1536,6 +1813,81 @@ function nextUpdatedAt(current: string, now: Date): string {
 
 function sameValue(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function classProgressionFromInputs(
+  page: CatalogPage | undefined,
+  rules: ClassProgressionDocument | undefined,
+  classId: string,
+  levelInput: string,
+  subclassId: string,
+):
+  | { success: true; progression: CharacterDraft['classProgressions'][number] }
+  | { success: false; errors: ClassErrors } {
+  const selectedClass = page?.items.find((item) => item.id === classId)
+  if (!selectedClass) {
+    return { success: false, errors: { class: 'Choose an available class.' } }
+  }
+  if (!rules || rules.class.id !== selectedClass.id) {
+    return {
+      success: false,
+      errors: { progression: 'Wait for the selected class progression before saving.' },
+    }
+  }
+
+  const level = Number(levelInput)
+  if (!rules.levels.some((entry) => entry.level === level)) {
+    return {
+      success: false,
+      errors: { progression: 'Choose a level from the trusted class progression.' },
+    }
+  }
+
+  const selectedSubclass = rules.subclasses.find((subclass) => subclass.subclass.id === subclassId)
+  if (subclassId && !selectedSubclass) {
+    return {
+      success: false,
+      errors: { subclass: 'Remove the subclass that is no longer available for this class.' },
+    }
+  }
+  if (
+    !selectedSubclass &&
+    rules.subclasses.some((subclass) => subclass.availableAtLevel <= level)
+  ) {
+    return {
+      success: false,
+      errors: { subclass: 'Choose an available subclass for this level.' },
+    }
+  }
+
+  return {
+    success: true,
+    progression: {
+      class: { id: selectedClass.id, name: selectedClass.name },
+      level,
+      subclass: selectedSubclass
+        ? { id: selectedSubclass.subclass.id, name: selectedSubclass.subclass.name }
+        : null,
+    },
+  }
+}
+
+function classProgressionIsComplete(
+  progression: CharacterDraft['classProgressions'][number] | undefined,
+  rules: ClassProgressionDocument,
+): boolean {
+  if (!progression?.class || progression.class.id !== rules.class.id) return false
+
+  const selectedSubclass = progression.subclass
+    ? rules.subclasses.find((subclass) => subclass.subclass.id === progression.subclass?.id)
+    : undefined
+  if (progression.subclass && !selectedSubclass) return false
+  if (selectedSubclass && progression.level < selectedSubclass.availableAtLevel) return false
+
+  return (
+    selectedSubclass !== undefined ||
+    !rules.subclasses.some((subclass) => subclass.availableAtLevel <= progression.level)
+  )
 }
 
 function resumeStep(document: StoredCharacterV1): BuilderStep {

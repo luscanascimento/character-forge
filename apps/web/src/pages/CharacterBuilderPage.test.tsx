@@ -18,6 +18,7 @@ import type {
   CharacterEvaluation,
   StoredCharacterV1,
 } from '../features/characters/characterSchemas'
+import type { ClassProgressionDocument } from '../features/progression/classProgression'
 import { createStoredCharacter } from '../test/characterFixture'
 import CharacterBuilderPage from './CharacterBuilderPage'
 
@@ -42,6 +43,11 @@ type CharacterValidationLoader = (
   document: StoredCharacterV1,
   signal?: AbortSignal,
 ) => Promise<CharacterEvaluation>
+
+type ClassProgressionLoader = (
+  classId: string,
+  signal?: AbortSignal,
+) => Promise<ClassProgressionDocument>
 
 const catalogItems = {
   classes: [
@@ -209,6 +215,56 @@ function defaultValidationLoader(): CharacterValidationLoader {
   return vi.fn().mockResolvedValue(validEvaluation())
 }
 
+function classProgression(classId: string): ClassProgressionDocument {
+  const isFighter = classId === 'fighter'
+  const className = isFighter ? 'Fighter' : 'Wizard'
+  const subclass = isFighter
+    ? { id: 'champion', name: 'Champion' }
+    : { id: 'evoker', name: 'Evoker' }
+
+  return {
+    class: { id: classId, name: className },
+    hitDie: isFighter ? 10 : 6,
+    levels: Array.from({ length: 20 }, (_, index) => ({
+      level: index + 1,
+      proficiencyBonus: 2 + Math.floor(index / 4),
+      features:
+        index === 2
+          ? [{ id: `${classId}-subclass`, name: `${className} Subclass` }]
+          : index === 4
+            ? [{ id: `${classId}-extra-attack`, name: 'Extra Attack' }]
+            : [],
+    })),
+    subclasses: [
+      {
+        subclass,
+        availableAtLevel: 3,
+        levels: [
+          {
+            level: 3,
+            features: [
+              {
+                id: isFighter ? 'champion-improved-critical' : 'sculpt-spells',
+                name: isFighter ? 'Improved Critical' : 'Sculpt Spells',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    source: {
+      provider: 'D&D 5e SRD API',
+      ruleset: '2024',
+      rulesVersion: 'SRD-5.2.1',
+      fetchedAt: '2026-10-04T12:00:00Z',
+    },
+  }
+}
+
+function defaultProgressionLoader(): ClassProgressionLoader {
+  return vi.fn((classId: string) => Promise.resolve(classProgression(classId)))
+}
+
 function repository(overrides: Partial<CharacterRepository> = {}): CharacterRepository {
   return {
     get: vi.fn().mockResolvedValue(createStoredCharacter()),
@@ -271,6 +327,7 @@ function renderPage(
   catalogItemLoader: CatalogItemLoader = defaultCatalogItemLoader(),
   validationLoader: CharacterValidationLoader = defaultValidationLoader(),
   autosaveDelay?: number,
+  progressionLoader: ClassProgressionLoader = defaultProgressionLoader(),
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const character = createStoredCharacter()
@@ -288,6 +345,7 @@ function renderPage(
                 autosaveDelay={autosaveDelay}
                 catalogLoader={catalogLoader}
                 catalogItemLoader={catalogItemLoader}
+                progressionLoader={progressionLoader}
                 validationLoader={validationLoader}
               />
             }
@@ -665,6 +723,123 @@ describe('CharacterBuilderPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('persists a trusted level and subclass and shows their unlocked features', async () => {
+    const user = userEvent.setup()
+    const storage = repository()
+    renderPage(storage)
+
+    await user.click(await screen.findByRole('button', { name: 'Class' }))
+    const level = await screen.findByRole('combobox', { name: 'Current class level' })
+    const evoker = screen.getByRole('radio', { name: /Evoker/ })
+    expect(evoker).toBeDisabled()
+    expect(screen.getByText('Available at level 3')).toBeInTheDocument()
+
+    await user.selectOptions(level, '3')
+    expect(evoker).toBeEnabled()
+    await user.click(evoker)
+    expect(screen.getByText('Wizard Subclass')).toBeInTheDocument()
+    expect(screen.getByText('Sculpt Spells')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          classProgressions: [
+            {
+              class: { id: 'wizard', name: 'Wizard' },
+              level: 3,
+              subclass: { id: 'evoker', name: 'Evoker' },
+            },
+          ],
+        }),
+      }),
+      '2026-09-29T12:00:00.000Z',
+    )
+  })
+
+  it('retains a subclass when level drops and offers explicit removal', async () => {
+    const user = userEvent.setup()
+    const leveledCharacter = createStoredCharacter()
+    const storage = repository({
+      get: vi.fn().mockResolvedValue({
+        ...leveledCharacter,
+        character: {
+          ...leveledCharacter.character,
+          classProgressions: [
+            {
+              class: { id: 'wizard', name: 'Wizard' },
+              level: 3,
+              subclass: { id: 'evoker', name: 'Evoker' },
+            },
+          ],
+        },
+      }),
+    })
+    renderPage(storage)
+
+    await user.click(await screen.findByRole('button', { name: 'Class' }))
+    await user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Current class level' }),
+      '2',
+    )
+
+    expect(screen.getByRole('radio', { name: /Evoker/ })).toBeChecked()
+    expect(screen.getByText(/Evoker is retained/)).toBeInTheDocument()
+    expect(screen.getByText(/requires level 3/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          classProgressions: [
+            expect.objectContaining({
+              level: 2,
+              subclass: { id: 'evoker', name: 'Evoker' },
+            }),
+          ],
+        }),
+      }),
+      '2026-09-29T12:00:00.000Z',
+    )
+  })
+
+  it('removes a retained subclass only through the explicit action', async () => {
+    const user = userEvent.setup()
+    const leveledCharacter = createStoredCharacter()
+    const storage = repository({
+      get: vi.fn().mockResolvedValue({
+        ...leveledCharacter,
+        character: {
+          ...leveledCharacter.character,
+          classProgressions: [
+            {
+              class: { id: 'wizard', name: 'Wizard' },
+              level: 2,
+              subclass: { id: 'evoker', name: 'Evoker' },
+            },
+          ],
+        },
+      }),
+    })
+    renderPage(storage)
+
+    expect(await screen.findByText(/Evoker is retained/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Remove subclass' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          classProgressions: [expect.objectContaining({ level: 2, subclass: null })],
+        }),
+      }),
+      '2026-09-29T12:00:00.000Z',
+    )
+  })
+
   it('requires a catalog class before saving', async () => {
     const user = userEvent.setup()
     const storage = repository({ get: vi.fn().mockResolvedValue(classlessCharacter()) })
@@ -694,6 +869,24 @@ describe('CharacterBuilderPage', () => {
 
     expect(await screen.findByRole('radio', { name: 'Fighter' })).toBeInTheDocument()
     expect(loader).toHaveBeenCalledWith('classes', { page: 1, pageSize: 48 }, expect.anything())
+  })
+
+  it('recovers the selected class progression without changing the local draft', async () => {
+    const user = userEvent.setup()
+    const storage = repository()
+    const progressionLoader = vi
+      .fn<ClassProgressionLoader>()
+      .mockRejectedValueOnce(new Error('provider unavailable'))
+      .mockResolvedValue(classProgression('wizard'))
+    renderPage(storage, undefined, undefined, undefined, undefined, undefined, progressionLoader)
+
+    await user.click(await screen.findByRole('button', { name: 'Class' }))
+    expect(await screen.findByText('The class progression is unavailable.')).toBeInTheDocument()
+    expect(storage.save).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+
+    expect(await screen.findByRole('combobox', { name: 'Current class level' })).toBeInTheDocument()
+    expect(progressionLoader).toHaveBeenCalledTimes(2)
   })
 
   it('resumes saved proficiency choices from all selected catalog details', async () => {

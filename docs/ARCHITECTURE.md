@@ -86,6 +86,8 @@ The evaluator calculates unarmored AC and deterministic fixed HP through level 2
 
 Phase 5 progression reads use a separate provider-neutral contract: a complete 1–20 class timeline, canonical proficiency bonuses and feature references, plus sparse subclass timelines with an explicit availability level. Hit die remains typed for HP rules. Spellcasting and polymorphic class-specific counters are excluded until their own rule models exist; feature names are never parsed to invent choices.
 
+The builder validates this contract at its API boundary and uses it for level, subclass, and per-level feature presentation. A subclass that becomes unavailable after a level decrease remains in the local draft and is shown as locked until the user explicitly raises the level, replaces it, or removes it. Feature references remain informational because the provider's feature descriptions do not expose structured option or prerequisite rules (ADR-009).
+
 External API DTOs, domain models, and public response contracts may differ when the boundary protects rules or stability. They should not be triplicated when their shapes and reasons to change are genuinely identical.
 
 ## Data flow
