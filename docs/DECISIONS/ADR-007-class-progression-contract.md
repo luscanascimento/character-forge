@@ -20,7 +20,7 @@ Expose class progression through `GET /api/classes/{classId}/progression` as a p
 
 The adapter rejects incomplete 1–20 class tables, invalid proficiency bonuses, unsupported hit dice, duplicate subclass levels, and class/subclass reference mismatches as provider failures. The normalized result is cached with the existing SRD cache duration.
 
-Spellcasting fields and class-specific counters are not part of this first contract. They require separate normalized rule models when their owning phases need them. Feature descriptions and level-dependent choice semantics will be resolved from feature resources in a later Phase 5 slice instead of being inferred from names.
+Spellcasting fields and class-specific counters are not part of this first contract. They require separate normalized rule models when their owning phases need them. Feature resources were audited in the next Phase 5 slice; ADR-009 records that their narrative-only contract cannot safely supply level-dependent choice semantics.
 
 Changing a level must never silently delete a persisted subclass, feature, or choice. Future progression validation will retain the saved reference and return a structured violation that explains its current level requirement; the UI may offer an explicit removal or replacement action.
 
@@ -29,4 +29,4 @@ Changing a level must never silently delete a persisted subclass, feature, or ch
 - The frontend can present a trustworthy level and subclass timeline without understanding provider DTOs.
 - Hit die and proficiency facts needed for HP/progression rules stay typed and can be checked against canonical domain rules.
 - Spellcasting and per-class resource mechanics remain intentionally deferred instead of leaking into a generic dictionary.
-- Feature-choice normalization and level-change validation remain required before progression controls can safely persist new selections.
+- Level-change validation remains required before progression controls can safely persist a subclass; feature-choice normalization requires a trustworthy structured rules source.

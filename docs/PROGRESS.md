@@ -76,19 +76,21 @@ Phases 0–4 are implemented. Phase 5 has begun with a normalized class/subclass
 - Recorded scope and non-destructive level-change policy in ADR-007 and added focused adapter/endpoint/cache coverage.
 - Added canonical fixed Hit Point progression for levels 1–20, using the class fixed die value, Constitution modifier, and the minimum-one increase for later levels.
 - Extended character evaluation to return deterministic higher-level HP, documented the fixed-over-rolled product decision in ADR-008, and covered supported dice, low Constitution, level bounds, and endpoint output.
+- Audited all 232 live 2024 feature resources and confirmed that choices and prerequisites are available only as narrative descriptions, not structured rule data.
+- Recorded in ADR-009 that class level and subclass availability may use the normalized progression contract, while feature choices must not be inferred from prose or display names.
 
 ## Work in progress
 
-Phase 5 is open. The trusted class/subclass timeline and fixed 1–20 HP rules are implemented; level-dependent feature choices, persisted subclass selection, and builder controls are not.
+Phase 5 is open. The trusted class/subclass timeline and fixed 1–20 HP rules are implemented; persisted subclass selection and builder controls are next. Level-dependent feature choices are blocked on a trustworthy structured rules source.
 
 ## Next step
 
-Continue Phase 5 with the feature-requirement and level-change rule slice:
+Continue Phase 5 with the level and subclass rule slice:
 
-1. Inventory representative feature-detail shapes that encode an actual choice or prerequisite instead of relying on display names.
-2. Define persisted subclass and feature-choice references without breaking schema-version-1 drafts.
-3. Extend canonical validation so a lower level retains but explicitly invalidates unavailable selections.
-4. Keep spellcasting, feats, equipment effects, export, and print out of this slice.
+1. Add an optional persisted subclass reference without breaking schema-version-1 drafts.
+2. Extend canonical validation so a lower level retains but explicitly invalidates an unavailable subclass.
+3. Add builder controls for levels 1–20 and the trusted subclass list.
+4. Keep narrative-only feature choices, spellcasting, feats, equipment effects, export, and print out of this slice.
 
 ## Pending decisions
 
@@ -118,4 +120,4 @@ Continue Phase 5 with the feature-requirement and level-change rule slice:
 
 ## Last checkpoint
 
-2026-10-03 (America/Sao_Paulo)
+2026-10-04 (America/Sao_Paulo)

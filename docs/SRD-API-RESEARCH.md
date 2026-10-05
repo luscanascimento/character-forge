@@ -4,7 +4,7 @@ Checkpoint date: **2026-09-28**
 
 Phase 2 implementation verification: **2026-09-28**
 
-Phase 5 progression verification: **2026-10-03**
+Phase 5 progression verification: **2026-10-04**
 
 ## Legal source
 
@@ -94,3 +94,17 @@ Live verification on 2026-10-03 found exactly twenty resources at `/classes/{cla
 Each class detail currently references one SRD subclass. `/subclasses/{subclass}/levels` returns only the levels where that subclass gains features, so the tables are intentionally sparse and differ by subclass. All observed 2024 subclasses first become available at level 3, but Character Forge derives availability from the first returned subclass level instead of hard-coding that observation.
 
 The initial Phase 5 contract consumes only hit die, the complete class-level sequence, proficiency bonus, feature references, and subclass feature levels. Spellcasting is reserved for Phase 6, and polymorphic class-specific counters will receive explicit models only when their rules are implemented. Missing class levels, mismatched references, invalid proficiency bonuses, and malformed subclass timelines fail as provider errors rather than producing a partial progression.
+
+### Feature requirements and choices
+
+Live verification on 2026-10-04 inspected all 232 resources returned by `/features`. The 2024 feature-detail surface currently has only two root shapes: 174 class features with `index`, `name`, `description`, `level`, and `class`, and 58 subclass features with the same fields plus `subclass`. None of the resources exposes a structured choice, option set, count, or prerequisite.
+
+Representative rules that require user input exist only in prose:
+
+- Fighter Fighting Style says to choose a Fighting Style feat, but supplies no feat references or qualification data.
+- Fighter Weapon Mastery says to choose three weapon kinds, but supplies no weapon references and its varying count lives in the separate class-specific table.
+- Bard Expertise says to choose skill proficiencies, but supplies no eligible proficiency references.
+- Ability Score Improvement refers to a qualifying feat, but exposes no prerequisite expression.
+- The class Subclass feature says to choose a subclass, while the separately structured subclass level timeline supplies the actual available subclass reference and level.
+
+Character Forge will therefore treat class level, feature availability, subclass references, and subclass availability levels as trusted structured facts. It will not parse feature names or descriptions into selectable rules. Feature-choice persistence and validation remain deferred until a structured SRD source exists or Character Forge owns a separately reviewed rules dataset.
