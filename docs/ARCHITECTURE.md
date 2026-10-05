@@ -76,7 +76,7 @@ classProgressions: [ ... ]
 proficiencyChoices: [ ... ]
 ```
 
-The aggregate is draft-capable: incomplete or invalid choices remain representable and are explained by a structured `ValidationResult`. Catalog selections are retained as references with ids and display names. `classProgressions` is a collection so the document shape does not make one class irreversible, while the current validator explicitly requires exactly one entry and implements no multiclass behavior.
+The aggregate is draft-capable: incomplete or invalid choices remain representable and are explained by a structured `ValidationResult`. Catalog selections are retained as references with ids and display names. `classProgressions` is a collection so the document shape does not make one class irreversible, while the current validator explicitly requires exactly one entry and implements no multiclass behavior. Its optional subclass reference is backward-compatible within local schema version 1; canonical evaluation resolves availability from the server-owned progression contract and never trusts a client-supplied level requirement.
 
 Pure ability-modifier and proficiency-bonus calculators enforce their numeric bounds. `POST /api/characters/validate` is the canonical rule boundary: it does not persist data and emits derived values only when the complete document is valid for 2024 / SRD 5.2.1. See ADR-004 for the distinction between a persisted draft and trusted domain state.
 

@@ -192,6 +192,16 @@ public static partial class CharacterValidator
                 "Class",
                 violations);
 
+            if (progression.Subclass is not null)
+            {
+                ValidateReference(
+                    progression.Subclass,
+                    "subclass.reference",
+                    $"{source}.subclass",
+                    "Subclass",
+                    violations);
+            }
+
             if (progression.Level is < CharacterRules.MinimumLevel or > CharacterRules.MaximumLevel)
             {
                 AddViolation(

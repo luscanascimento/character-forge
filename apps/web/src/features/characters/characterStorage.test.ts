@@ -89,7 +89,16 @@ describe('character storage', () => {
   it('accepts schema version 1 through the migration seam', () => {
     const document = createStoredCharacter()
 
-    expect(migrateStoredCharacter(document)).toEqual(document)
+    expect(migrateStoredCharacter(document)).toEqual({
+      ...document,
+      character: {
+        ...document.character,
+        classProgressions: document.character.classProgressions.map((progression) => ({
+          ...progression,
+          subclass: null,
+        })),
+      },
+    })
   })
 
   it('rejects unsupported future schema versions without guessing', () => {

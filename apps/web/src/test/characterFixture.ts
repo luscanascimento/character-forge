@@ -22,7 +22,7 @@ export function createStoredCharacter(
       },
       species: { id: 'elf', name: 'Elf' },
       background: { id: 'acolyte', name: 'Acolyte' },
-      classProgressions: [{ class: { id: 'wizard', name: 'Wizard' }, level: 1 }],
+      classProgressions: [{ class: { id: 'wizard', name: 'Wizard' }, level: 1, subclass: null }],
       proficiencyChoices: [
         {
           choiceId: 'classes/wizard/proficiencies/0',

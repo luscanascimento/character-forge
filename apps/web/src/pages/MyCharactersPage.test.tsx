@@ -95,7 +95,7 @@ describe('MyCharactersPage', () => {
         abilities: null,
         species: null,
         background: null,
-        classProgressions: [{ class: null, level: 1 }],
+        classProgressions: [{ class: null, level: 1, subclass: null }],
         proficiencyChoices: [],
       },
     })

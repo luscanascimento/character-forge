@@ -35,10 +35,15 @@ public sealed record ProficiencyChoiceRule(
     IReadOnlyList<ContentReference> Options,
     ProficiencySource Source);
 
+public sealed record SubclassRule(
+    ContentReference Subclass,
+    int AvailableAtLevel);
+
 public sealed record CharacterRulesContext(
     int HitDie,
     IReadOnlyList<ProficiencyGrant> ProficiencyGrants,
-    IReadOnlyList<ProficiencyChoiceRule> ProficiencyChoices);
+    IReadOnlyList<ProficiencyChoiceRule> ProficiencyChoices,
+    IReadOnlyList<SubclassRule> Subclasses);
 
 public sealed record CharacterEvaluation(
     ValidationResult Validation,
@@ -54,17 +59,23 @@ public static class CharacterEvaluator
             return new CharacterEvaluation(validation, null);
         }
 
+        var classProgression = character.ClassProgressions![0];
+        var progressionValidation = ClassProgressionRules.Validate(
+            classProgression,
+            context.Subclasses);
         var proficiencyResolution = ProficiencyChoiceRules.Resolve(
             character.ProficiencyChoices,
             context.ProficiencyChoices,
             context.ProficiencyGrants);
-        if (!proficiencyResolution.Validation.IsValid)
+        var ruleViolations = progressionValidation.Violations
+            .Concat(proficiencyResolution.Validation.Violations)
+            .ToArray();
+        if (ruleViolations.Length > 0)
         {
-            return new CharacterEvaluation(proficiencyResolution.Validation, null);
+            return new CharacterEvaluation(new ValidationResult(ruleViolations), null);
         }
 
         var abilities = character.Abilities!;
-        var progression = character.ClassProgressions![0];
 
         return new CharacterEvaluation(
             validation,
@@ -76,12 +87,12 @@ public static class CharacterEvaluator
                     AbilityRules.GetModifier(abilities.Intelligence),
                     AbilityRules.GetModifier(abilities.Wisdom),
                     AbilityRules.GetModifier(abilities.Charisma)),
-                ProficiencyRules.GetBonus(progression.Level),
+                ProficiencyRules.GetBonus(classProgression.Level),
                 ArmorClassRules.GetUnarmored(abilities.Dexterity),
                 HitPointRules.GetFixedMaximum(
                     context.HitDie,
                     abilities.Constitution,
-                    progression.Level),
+                    classProgression.Level),
                 context.HitDie,
                 ProficiencyRules.MergeGrants(proficiencyResolution.Grants)));
     }

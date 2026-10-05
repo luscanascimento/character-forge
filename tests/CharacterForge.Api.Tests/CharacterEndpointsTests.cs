@@ -154,6 +154,37 @@ public sealed class CharacterEndpointsTests : IDisposable
     }
 
     [Fact]
+    public async Task Validate_RetainsButInvalidatesSubclassAfterLevelDecrease()
+    {
+        var character = CharacterValidatorTests.CreateValidCharacter(level: 5) with
+        {
+            ClassProgressions =
+            [
+                new ClassProgression(
+                    new ContentReference("wizard", "Wizard"),
+                    2,
+                    new ContentReference("evoker", "Evoker"))
+            ]
+        };
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/characters/validate",
+            character,
+            CancellationToken.None);
+        var evaluation = await response.Content.ReadFromJsonAsync<CharacterEvaluation>(
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(evaluation);
+        Assert.False(evaluation.Validation.IsValid);
+        Assert.Null(evaluation.Derived);
+        Assert.Contains(
+            evaluation.Validation.Violations,
+            violation => violation.Code == "character.subclass.unavailableAtLevel");
+        Assert.Equal("evoker", character.ClassProgressions[0].Subclass?.Id);
+    }
+
+    [Fact]
     public async Task Validate_ReturnsServiceUnavailableWhenRuleContentProviderFails()
     {
         var character = CharacterValidatorTests.CreateValidCharacter() with
@@ -261,6 +292,27 @@ public sealed class CharacterEndpointsTests : IDisposable
 
         public Task<ClassProgressionDocument?> GetClassProgressionAsync(
             string classId,
-            CancellationToken cancellationToken) => throw new NotSupportedException();
+            CancellationToken cancellationToken) => Task.FromResult<ClassProgressionDocument?>(
+                classId == "missing"
+                    ? null
+                    : new ClassProgressionDocument(
+                        new CatalogReference("wizard", "Wizard"),
+                        6,
+                        Enumerable.Range(1, 20)
+                            .Select(level => new ClassLevelProgression(
+                                level,
+                                ProficiencyRules.GetBonus(level),
+                                []))
+                            .ToArray(),
+                        [
+                            new SubclassProgression(
+                                new CatalogReference("evoker", "Evoker"),
+                                3,
+                                [
+                                    new SubclassLevelProgression(
+                                        3,
+                                        [new CatalogReference("sculpt-spells", "Sculpt Spells")])
+                                ])
+                        ]));
     }
 }

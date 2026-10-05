@@ -21,7 +21,10 @@ public sealed record AbilityScores(
 
 public sealed record ContentReference(string? Id, string? Name);
 
-public sealed record ClassProgression(ContentReference? Class, int Level);
+public sealed record ClassProgression(
+    ContentReference? Class,
+    int Level,
+    ContentReference? Subclass = null);
 
 public sealed record ProficiencyChoiceSelection(
     string? ChoiceId,

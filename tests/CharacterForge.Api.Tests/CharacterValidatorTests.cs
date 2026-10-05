@@ -126,7 +126,10 @@ public sealed class CharacterValidatorTests
         new AbilityScores(8, 14, 13, 12, 10, 16),
         new ContentReference("elf", "Elf"),
         new ContentReference("acolyte", "Acolyte"),
-        [new ClassProgression(new ContentReference("wizard", "Wizard"), level)],
+        [new ClassProgression(
+            new ContentReference("wizard", "Wizard"),
+            level,
+            level >= 3 ? new ContentReference("evoker", "Evoker") : null)],
         [
             new ProficiencyChoiceSelection(
                 "classes/wizard/proficiencies/0",

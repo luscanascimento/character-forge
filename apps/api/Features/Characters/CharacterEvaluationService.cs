@@ -1,9 +1,12 @@
 using CharacterForge.Api.Features.Catalog;
+using CharacterForge.Api.Features.Progression;
 using CharacterForge.Api.Infrastructure.Srd;
 
 namespace CharacterForge.Api.Features.Characters;
 
-public sealed class CharacterEvaluationService(CatalogService catalog)
+public sealed class CharacterEvaluationService(
+    CatalogService catalog,
+    ClassProgressionService classProgressions)
 {
     public async Task<CharacterEvaluation> EvaluateAsync(
         Character character,
@@ -28,12 +31,16 @@ public sealed class CharacterEvaluationService(CatalogService catalog)
             CatalogCategory.Backgrounds,
             character.Background!.Id!,
             cancellationToken);
+        var classProgressionTask = classProgressions.GetAsync(
+            progression.Class.Id!,
+            cancellationToken);
 
-        await Task.WhenAll(classTask, speciesTask, backgroundTask);
+        await Task.WhenAll(classTask, speciesTask, backgroundTask, classProgressionTask);
 
         var selectedClass = await classTask;
         var species = await speciesTask;
         var background = await backgroundTask;
+        var classProgression = await classProgressionTask;
         var missingContent = MissingContentViolations(selectedClass, species, background);
         if (missingContent.Count > 0)
         {
@@ -46,13 +53,29 @@ public sealed class CharacterEvaluationService(CatalogService catalog)
             throw new SrdProviderException("The selected class did not provide a supported hit die.");
         }
 
+        if (classProgression is null || !string.Equals(
+            classProgression.Class.Id,
+            progression.Class.Id,
+            StringComparison.OrdinalIgnoreCase))
+        {
+            throw new SrdProviderException("The selected class did not provide a matching progression.");
+        }
+
         var grants = new List<ProficiencyGrant>();
         var choices = new List<ProficiencyChoiceRule>();
         AddFacts(grants, choices, selectedClass!, classFacts);
         AddFacts(grants, choices, species!, RequireFacts(species!, "species"));
         AddFacts(grants, choices, background!, RequireFacts(background!, "background"));
 
-        return CharacterEvaluator.Evaluate(character, new CharacterRulesContext(hitDie, grants, choices));
+        var subclassRules = classProgression.Subclasses
+            .Select(subclass => new SubclassRule(
+                new ContentReference(subclass.Subclass.Id, subclass.Subclass.Name),
+                subclass.AvailableAtLevel))
+            .ToArray();
+
+        return CharacterEvaluator.Evaluate(
+            character,
+            new CharacterRulesContext(hitDie, grants, choices, subclassRules));
     }
 
     private static List<RuleViolation> MissingContentViolations(

@@ -25,7 +25,7 @@ describe('createStoredCharacterDraft', () => {
         abilities: null,
         species: null,
         background: null,
-        classProgressions: [{ class: null, level: 1 }],
+        classProgressions: [{ class: null, level: 1, subclass: null }],
         proficiencyChoices: [],
       },
     })
@@ -77,5 +77,24 @@ describe('duplicateStoredCharacter', () => {
     })
 
     expect(duplicate.character.name).toBe('Untitled character (Copy)')
+  })
+})
+
+describe('storedCharacterV1Schema', () => {
+  it('keeps existing schema-version-1 drafts compatible by defaulting subclass to null', () => {
+    const legacyDocument = {
+      ...createStoredCharacterDraft({
+        id: '7a28dfb1-c349-436b-a420-9c09de991368',
+        now: new Date('2026-10-01T14:30:00.000Z'),
+      }),
+      character: {
+        ...createStoredCharacterDraft().character,
+        classProgressions: [{ class: { id: 'wizard', name: 'Wizard' }, level: 2 }],
+      },
+    }
+
+    const parsed = storedCharacterV1Schema.parse(legacyDocument)
+
+    expect(parsed.character.classProgressions[0]?.subclass).toBeNull()
   })
 })

@@ -78,18 +78,21 @@ Phases 0–4 are implemented. Phase 5 has begun with a normalized class/subclass
 - Extended character evaluation to return deterministic higher-level HP, documented the fixed-over-rolled product decision in ADR-008, and covered supported dice, low Constitution, level bounds, and endpoint output.
 - Audited all 232 live 2024 feature resources and confirmed that choices and prerequisites are available only as narrative descriptions, not structured rule data.
 - Recorded in ADR-009 that class level and subclass availability may use the normalized progression contract, while feature choices must not be inferred from prose or display names.
+- Extended schema-version-1 class progressions with an optional subclass reference while defaulting older stored drafts to `null` through the existing migration seam.
+- Added canonical subclass rules that require a trusted option at its availability level, reject selections from another class, and retain but invalidate a saved subclass when level drops below its requirement.
+- Resolved subclass rules from the normalized class progression during character evaluation without accepting client-supplied availability facts.
 
 ## Work in progress
 
-Phase 5 is open. The trusted class/subclass timeline and fixed 1–20 HP rules are implemented; persisted subclass selection and builder controls are next. Level-dependent feature choices are blocked on a trustworthy structured rules source.
+Phase 5 is open. The trusted class/subclass timeline, fixed 1–20 HP rules, persisted subclass reference, and canonical level/subclass validation are implemented. Builder controls are next. Level-dependent feature choices are blocked on a trustworthy structured rules source.
 
 ## Next step
 
 Continue Phase 5 with the level and subclass rule slice:
 
-1. Add an optional persisted subclass reference without breaking schema-version-1 drafts.
-2. Extend canonical validation so a lower level retains but explicitly invalidates an unavailable subclass.
-3. Add builder controls for levels 1–20 and the trusted subclass list.
+1. Add builder controls for levels 1–20 and the trusted subclass list.
+2. Show the level's trusted class/subclass feature timeline without treating narrative features as completed choices.
+3. Preserve a subclass when level decreases and surface its locked requirement with an explicit removal or replacement action.
 4. Keep narrative-only feature choices, spellcasting, feats, equipment effects, export, and print out of this slice.
 
 ## Pending decisions
@@ -109,11 +112,11 @@ Continue Phase 5 with the level and subclass rule slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 72 passing across 10 files (`vitest run`)
+- Frontend unit tests: 73 passing across 10 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 85 passing
+- Backend unit/integration tests: 91 passing
 - Live provider smoke checks: classes, class/subclass progression, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10

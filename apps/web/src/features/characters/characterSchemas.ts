@@ -32,6 +32,7 @@ export const characterDraftSchema = z.object({
     z.object({
       class: contentReferenceSchema.nullable(),
       level: z.number().int().finite(),
+      subclass: contentReferenceSchema.nullable().default(null),
     }),
   ),
   proficiencyChoices: z.array(
@@ -120,7 +121,7 @@ export function createStoredCharacterDraft({
       abilities: null,
       species: null,
       background: null,
-      classProgressions: [{ class: null, level: 1 }],
+      classProgressions: [{ class: null, level: 1, subclass: null }],
       proficiencyChoices: [],
     },
   })

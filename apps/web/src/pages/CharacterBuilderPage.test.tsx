@@ -247,7 +247,7 @@ function classlessCharacter(): StoredCharacterV1 {
     ...character,
     character: {
       ...character.character,
-      classProgressions: [{ class: null, level: 1 }],
+      classProgressions: [{ class: null, level: 1, subclass: null }],
       proficiencyChoices: [],
     },
   }
@@ -653,7 +653,9 @@ describe('CharacterBuilderPage', () => {
       expect.objectContaining({
         updatedAt: '2026-10-01T15:00:00.000Z',
         character: expect.objectContaining({
-          classProgressions: [{ class: { id: 'fighter', name: 'Fighter' }, level: 1 }],
+          classProgressions: [
+            { class: { id: 'fighter', name: 'Fighter' }, level: 1, subclass: null },
+          ],
         }),
       }),
       '2026-09-29T12:00:00.000Z',

@@ -324,7 +324,7 @@ function BuilderWorkspace({
     if (step === 'class') {
       const selectedClass = classesQuery.data?.items.find((item) => item.id === classId)
       const nextProgressions = selectedClass
-        ? [{ class: { id: selectedClass.id, name: selectedClass.name }, level: 1 }]
+        ? [{ class: { id: selectedClass.id, name: selectedClass.name }, level: 1, subclass: null }]
         : null
       return nextProgressions && !sameValue(nextProgressions, document.character.classProgressions)
         ? { ...document.character, classProgressions: nextProgressions }
@@ -475,7 +475,9 @@ function BuilderWorkspace({
     setClassError(null)
     persistOrAdvance('class', {
       ...document.character,
-      classProgressions: [{ class: { id: selectedClass.id, name: selectedClass.name }, level: 1 }],
+      classProgressions: [
+        { class: { id: selectedClass.id, name: selectedClass.name }, level: 1, subclass: null },
+      ],
     })
   }
 
