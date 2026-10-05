@@ -9,7 +9,8 @@ public sealed record Character(
     ContentReference? Species,
     ContentReference? Background,
     IReadOnlyList<ClassProgression>? ClassProgressions,
-    IReadOnlyList<ProficiencyChoiceSelection>? ProficiencyChoices);
+    IReadOnlyList<ProficiencyChoiceSelection>? ProficiencyChoices,
+    IReadOnlyList<FeatureChoiceSelection>? FeatureChoices = null);
 
 public sealed record AbilityScores(
     int Strength,
@@ -28,4 +29,9 @@ public sealed record ClassProgression(
 
 public sealed record ProficiencyChoiceSelection(
     string? ChoiceId,
+    IReadOnlyList<ContentReference>? Selections);
+
+public sealed record FeatureChoiceSelection(
+    string? RequirementId,
+    string? BranchId,
     IReadOnlyList<ContentReference>? Selections);

@@ -43,4 +43,4 @@ The manifest will:
 
 This order gives the builder honest level-dependent choices without pretending that all prose-only mechanics are already modeled.
 
-Steps 1 and 2 are implemented. Manifest `SRD-5.2.1-CF-1` contains the Fighter, Champion, Paladin, and Ranger Fighting Style requirements with exact feature ids, acquisition levels, branch counts, option sources, availability, and SRD page provenance. Blessed Warrior and Druidic Warrior remain explicitly locked by the spellcasting dependency; their cantrip rules have not been pulled into Phase 5.
+Steps 1 and 2 are implemented. Manifest `SRD-5.2.1-CF-1` contains the Fighter, Champion, Paladin, and Ranger Fighting Style requirements with exact feature ids, acquisition levels, branch counts, option sources, availability, and SRD page provenance. The hybrid feature-choice endpoint joins those requirements to provider-owned feat ids and names; drafts persist and canonically validate the supported feat branch. Blessed Warrior and Druidic Warrior remain explicitly locked by the spellcasting dependency, and their cantrip rules have not been pulled into Phase 5. Expertise is the next slice.

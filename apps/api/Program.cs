@@ -1,5 +1,6 @@
 using CharacterForge.Api.Features.Catalog;
 using CharacterForge.Api.Features.Characters;
+using CharacterForge.Api.Features.FeatureRules;
 using CharacterForge.Api.Features.Meta;
 using CharacterForge.Api.Features.Progression;
 using CharacterForge.Api.Infrastructure;
@@ -53,6 +54,7 @@ builder.Services.AddHttpClient<ISrdContentSource, SrdApiClient>((services, clien
 builder.Services.AddScoped<CatalogService>();
 builder.Services.AddScoped<CharacterEvaluationService>();
 builder.Services.AddScoped<ClassProgressionService>();
+builder.Services.AddScoped<FeatureRuleService>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
@@ -94,6 +96,7 @@ app.MapMetaEndpoints();
 app.MapCatalogEndpoints();
 app.MapCharacterEndpoints();
 app.MapClassProgressionEndpoints();
+app.MapFeatureRuleEndpoints();
 
 app.Run();
 

@@ -97,6 +97,7 @@ describe('MyCharactersPage', () => {
         background: null,
         classProgressions: [{ class: null, level: 1, subclass: null }],
         proficiencyChoices: [],
+        featureChoices: [],
       },
     })
     const storage = repository()

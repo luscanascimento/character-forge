@@ -87,19 +87,22 @@ public static class FeatureRuleManifest
         ArgumentNullException.ThrowIfNull(branch);
         ArgumentNullException.ThrowIfNull(feat);
 
-        if (branch.OptionSource.Kind != FeatureOptionSourceKind.FeatType
-            || !string.Equals(feat.Category, CatalogCategory.Feats.ToSlug(), StringComparison.Ordinal)
-            || feat.Feat is null
-            || !string.Equals(feat.Feat.Type, branch.OptionSource.Filter, StringComparison.Ordinal)
-            || !string.Equals(
-                feat.Feat.RequiredFeature,
-                branch.OptionSource.RequiredFeature,
-                StringComparison.Ordinal))
+        if (!MatchesFeatOption(branch, feat))
         {
             throw new FeatureRuleContentException(
                 $"Feat '{feat.Id}' does not match feature-rule branch '{branch.Id}' in manifest '{Version}'.");
         }
     }
+
+    public static bool MatchesFeatOption(FeatureChoiceBranch branch, CatalogItemDetail feat) =>
+        branch.OptionSource.Kind == FeatureOptionSourceKind.FeatType
+        && string.Equals(feat.Category, CatalogCategory.Feats.ToSlug(), StringComparison.Ordinal)
+        && feat.Feat is not null
+        && string.Equals(feat.Feat.Type, branch.OptionSource.Filter, StringComparison.Ordinal)
+        && string.Equals(
+            feat.Feat.RequiredFeature,
+            branch.OptionSource.RequiredFeature,
+            StringComparison.Ordinal);
 
     private static FeatureChoiceRequirement FightingStyle(
         string id,

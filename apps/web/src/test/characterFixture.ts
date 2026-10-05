@@ -36,6 +36,7 @@ export function createStoredCharacter(
           selections: [{ id: 'skill-perception', name: 'Skill: Perception' }],
         },
       ],
+      featureChoices: [],
     },
     ...overrides,
   }

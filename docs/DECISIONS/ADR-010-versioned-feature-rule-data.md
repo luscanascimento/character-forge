@@ -22,6 +22,8 @@ Adopt a hybrid rules boundary:
 - Provider facts and manifest facts must agree on referenced ids. A mismatch fails closed as a rules-content error.
 - Updating an existing rule fact requires a manifest-version change and focused tests; adding a new entry requires provenance and focused tests.
 - Spell selections, equipment eligibility/effects, and feat effects remain owned by their roadmap phases even when an earlier feature references them.
+- The API exposes a normalized hybrid feature-choice document so the builder never has to reproduce manifest matching rules or infer them from feature names.
+- Saved feature choices keep the manifest requirement id, branch id, and canonical provider option references. Progression changes retain but invalidate choices that are no longer active until the user removes them explicitly.
 
 ## Consequences
 

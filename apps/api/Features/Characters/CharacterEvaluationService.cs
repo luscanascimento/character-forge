@@ -1,12 +1,14 @@
 using CharacterForge.Api.Features.Catalog;
 using CharacterForge.Api.Features.Progression;
+using CharacterForge.Api.Features.FeatureRules;
 using CharacterForge.Api.Infrastructure.Srd;
 
 namespace CharacterForge.Api.Features.Characters;
 
 public sealed class CharacterEvaluationService(
     CatalogService catalog,
-    ClassProgressionService classProgressions)
+    ClassProgressionService classProgressions,
+    FeatureRuleService featureRules)
 {
     public async Task<CharacterEvaluation> EvaluateAsync(
         Character character,
@@ -34,13 +36,15 @@ public sealed class CharacterEvaluationService(
         var classProgressionTask = classProgressions.GetAsync(
             progression.Class.Id!,
             cancellationToken);
+        var featureRulesTask = featureRules.GetAsync(progression.Class.Id!, cancellationToken);
 
-        await Task.WhenAll(classTask, speciesTask, backgroundTask, classProgressionTask);
+        await Task.WhenAll(classTask, speciesTask, backgroundTask, classProgressionTask, featureRulesTask);
 
         var selectedClass = await classTask;
         var species = await speciesTask;
         var background = await backgroundTask;
         var classProgression = await classProgressionTask;
+        var featureRuleDocument = await featureRulesTask;
         var missingContent = MissingContentViolations(selectedClass, species, background);
         if (missingContent.Count > 0)
         {
@@ -61,6 +65,14 @@ public sealed class CharacterEvaluationService(
             throw new SrdProviderException("The selected class did not provide a matching progression.");
         }
 
+        if (featureRuleDocument is null || !string.Equals(
+            featureRuleDocument.Class.Id,
+            progression.Class.Id,
+            StringComparison.OrdinalIgnoreCase))
+        {
+            throw new SrdProviderException("The selected class did not provide matching feature rules.");
+        }
+
         var grants = new List<ProficiencyGrant>();
         var choices = new List<ProficiencyChoiceRule>();
         AddFacts(grants, choices, selectedClass!, classFacts);
@@ -75,7 +87,21 @@ public sealed class CharacterEvaluationService(
 
         return CharacterEvaluator.Evaluate(
             character,
-            new CharacterRulesContext(hitDie, grants, choices, subclassRules));
+            new CharacterRulesContext(
+                hitDie,
+                grants,
+                choices,
+                subclassRules,
+                featureRuleDocument.Requirements.Select(requirement => new FeatureChoiceRequirementRule(
+                    requirement.Id,
+                    requirement.SubclassId,
+                    requirement.AvailableAtLevel,
+                    requirement.Count,
+                    requirement.Branches.Select(branch => new FeatureChoiceBranchRule(
+                        branch.Id,
+                        branch.SelectionCount,
+                        string.Equals(branch.Availability, "supported", StringComparison.Ordinal),
+                        branch.Options)).ToArray())).ToArray()));
     }
 
     private static List<RuleViolation> MissingContentViolations(

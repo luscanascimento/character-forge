@@ -39,6 +39,11 @@ import type {
 } from '../features/characters/characterSchemas'
 import { getClassProgression } from '../features/progression/classProgressionApi'
 import type { ClassProgressionDocument } from '../features/progression/classProgression'
+import { getFeatureChoices } from '../features/featureRules/featureRulesApi'
+import type {
+  FeatureChoiceDocument,
+  FeatureChoiceRequirement,
+} from '../features/featureRules/featureRules'
 import '../styles/builder.css'
 
 type CharacterRepository = Pick<CharacterStorage, 'get' | 'save'>
@@ -50,6 +55,7 @@ type CharacterBuilderPageProps = {
   catalogLoader?: CatalogLoader
   catalogItemLoader?: CatalogItemLoader
   progressionLoader?: ClassProgressionLoader
+  featureChoicesLoader?: FeatureChoicesLoader
   validationLoader?: CharacterValidationLoader
 }
 
@@ -75,6 +81,11 @@ type ClassProgressionLoader = (
   signal?: AbortSignal,
 ) => Promise<ClassProgressionDocument>
 
+type FeatureChoicesLoader = (
+  classId: string,
+  signal?: AbortSignal,
+) => Promise<FeatureChoiceDocument>
+
 const defaultStorage = new CharacterStorage()
 const defaultNow = () => new Date()
 
@@ -95,6 +106,7 @@ type AbilityErrors = Partial<Record<AbilityKey, string>>
 type ProficiencyInputs = Record<string, string[]>
 type ProficiencyErrors = Record<string, string>
 type ClassErrors = { class?: string; subclass?: string; progression?: string }
+type FeatureChoiceInputs = Record<string, { branchId: string; selectionIds: string[] }>
 type SavedProficiencyChoices = StoredCharacterV1['character']['proficiencyChoices']
 type EditableBuilderStep = Exclude<BuilderStep, 'review'>
 type SaveIntent = {
@@ -135,6 +147,7 @@ export default function CharacterBuilderPage({
   catalogLoader = getCatalogPage,
   catalogItemLoader = getCatalogItem,
   progressionLoader = getClassProgression,
+  featureChoicesLoader = getFeatureChoices,
   validationLoader = validateCharacter,
 }: CharacterBuilderPageProps) {
   const { characterId } = useParams()
@@ -174,6 +187,7 @@ export default function CharacterBuilderPage({
           catalogLoader={catalogLoader}
           catalogItemLoader={catalogItemLoader}
           progressionLoader={progressionLoader}
+          featureChoicesLoader={featureChoicesLoader}
           validationLoader={validationLoader}
         />
       )}
@@ -189,6 +203,7 @@ function BuilderWorkspace({
   catalogLoader,
   catalogItemLoader,
   progressionLoader,
+  featureChoicesLoader,
   validationLoader,
 }: {
   document: StoredCharacterV1
@@ -198,6 +213,7 @@ function BuilderWorkspace({
   catalogLoader: CatalogLoader
   catalogItemLoader: CatalogItemLoader
   progressionLoader: ClassProgressionLoader
+  featureChoicesLoader: FeatureChoicesLoader
   validationLoader: CharacterValidationLoader
 }) {
   const queryClient = useQueryClient()
@@ -222,6 +238,10 @@ function BuilderWorkspace({
     document.character.classProgressions[0]?.subclass?.id ?? '',
   )
   const [classErrors, setClassErrors] = useState<ClassErrors>({})
+  const [featureChoiceInputs, setFeatureChoiceInputs] = useState<FeatureChoiceInputs>(() =>
+    featureChoiceInputsFrom(document.character.featureChoices),
+  )
+  const [featureChoiceErrors, setFeatureChoiceErrors] = useState<Record<string, string>>({})
   const [proficiencyInputs, setProficiencyInputs] = useState<ProficiencyInputs>(() =>
     proficiencyInputsFrom(document.character.proficiencyChoices),
   )
@@ -250,10 +270,25 @@ function BuilderWorkspace({
     enabled: Boolean(classId),
     retry: false,
   })
+  const featureChoicesQuery = useQuery({
+    queryKey: ['feature-choices', classId],
+    queryFn: ({ signal }) => featureChoicesLoader(classId, signal),
+    enabled: Boolean(classId),
+    retry: false,
+  })
   const classComplete =
     Boolean(selectedClass) &&
     classProgressionQuery.data !== undefined &&
-    classProgressionIsComplete(document.character.classProgressions[0], classProgressionQuery.data)
+    featureChoicesQuery.data !== undefined &&
+    classProgressionIsComplete(
+      document.character.classProgressions[0],
+      classProgressionQuery.data,
+    ) &&
+    validateFeatureChoiceInputs(
+      featureChoicesQuery.data,
+      document.character.classProgressions[0],
+      featureChoiceInputsFrom(document.character.featureChoices),
+    ).success
   const classResumeNeedsAttention =
     reviewResumePending &&
     selectedStep === 'proficiencies' &&
@@ -364,10 +399,23 @@ function BuilderWorkspace({
         classLevel,
         subclassId,
       )
-      return result.success &&
-        !sameValue([result.progression], document.character.classProgressions)
-        ? { ...document.character, classProgressions: [result.progression] }
-        : null
+      if (!result.success || !featureChoicesQuery.data) return null
+      const featureResult = validateFeatureChoiceInputs(
+        featureChoicesQuery.data,
+        result.progression,
+        featureChoiceInputs,
+        true,
+        document.character.featureChoices,
+      )
+      if (!featureResult.success) return null
+      const nextClass = {
+        classProgressions: [result.progression],
+        featureChoices: featureResult.choices,
+      }
+      return sameValue(nextClass.classProgressions, document.character.classProgressions) &&
+        sameValue(nextClass.featureChoices, document.character.featureChoices)
+        ? null
+        : { ...document.character, ...nextClass }
     }
     if (step === 'proficiencies') {
       const result = validateProficiencyInputs(
@@ -434,6 +482,11 @@ function BuilderWorkspace({
         setSubclassId((current) =>
           current === (intent.character.classProgressions[0]?.subclass?.id ?? '')
             ? (saved.character.classProgressions[0]?.subclass?.id ?? '')
+            : current,
+        )
+        setFeatureChoiceInputs((current) =>
+          sameValue(current, featureChoiceInputsFrom(intent.character.featureChoices))
+            ? featureChoiceInputsFrom(saved.character.featureChoices)
             : current,
         )
       }
@@ -527,10 +580,28 @@ function BuilderWorkspace({
       return
     }
 
+    if (!featureChoicesQuery.data) {
+      setClassErrors({ progression: 'Wait for the selected class feature rules before saving.' })
+      return
+    }
+    const featureResult = validateFeatureChoiceInputs(
+      featureChoicesQuery.data,
+      result.progression,
+      featureChoiceInputs,
+      true,
+      document.character.featureChoices,
+    )
+    if (!featureResult.success) {
+      setFeatureChoiceErrors(featureResult.errors)
+      return
+    }
+
     setClassErrors({})
+    setFeatureChoiceErrors({})
     persistOrAdvance('class', {
       ...document.character,
       classProgressions: [result.progression],
+      featureChoices: featureResult.choices,
     })
   }
 
@@ -822,6 +893,11 @@ function BuilderWorkspace({
               progression={classProgressionQuery.data}
               progressionPending={classProgressionQuery.isPending && Boolean(classId)}
               progressionFailed={classProgressionQuery.isError}
+              featureChoices={featureChoicesQuery.data}
+              featureChoicesPending={featureChoicesQuery.isPending && Boolean(classId)}
+              featureChoicesFailed={featureChoicesQuery.isError}
+              featureChoiceInputs={featureChoiceInputs}
+              featureChoiceErrors={featureChoiceErrors}
               classId={classId}
               level={classLevel}
               subclassId={subclassId}
@@ -856,9 +932,23 @@ function BuilderWorkspace({
                 setClassErrors((current) => ({ ...current, subclass: undefined }))
                 if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
               }}
+              onFeatureChoice={(requirementId, branchId, optionId) => {
+                setFeatureChoiceInputs((current) => ({
+                  ...current,
+                  [requirementId]: { branchId, selectionIds: [optionId] },
+                }))
+                setFeatureChoiceErrors((current) => omitKey(current, requirementId))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onRemoveFeatureChoice={(requirementId) => {
+                setFeatureChoiceInputs((current) => omitKey(current, requirementId))
+                setFeatureChoiceErrors((current) => omitKey(current, requirementId))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
               onRetry={() => {
                 void classesQuery.refetch()
                 if (classId) void classProgressionQuery.refetch()
+                if (classId) void featureChoicesQuery.refetch()
               }}
               onSubmit={saveClass}
             />
@@ -1033,12 +1123,15 @@ function ReviewStep({
 
   const derived = evaluation.derived!
   const selectedClass = document.character.classProgressions[0]
+  const fightingStyles = document.character.featureChoices
+    .filter((choice) => choice.requirementId.includes('fighting-style'))
+    .flatMap((choice) => choice.selections)
 
   return (
     <div className="review-sheet">
       <header className="review-hero">
         <div>
-          <p>Level 1 character</p>
+          <p>Level {selectedClass?.level} character</p>
           <h3>{document.character.name}</h3>
           <span>
             {document.character.species?.name} · {selectedClass?.class?.name}
@@ -1075,6 +1168,12 @@ function ReviewStep({
             <dt>Subclass</dt>
             <dd>{selectedClass?.subclass?.name ?? 'Not yet available'}</dd>
           </div>
+          {fightingStyles.length > 0 && (
+            <div>
+              <dt>Fighting style</dt>
+              <dd>{fightingStyles.map((selection) => selection.name).join(', ')}</dd>
+            </div>
+          )}
         </dl>
       </section>
 
@@ -1323,6 +1422,11 @@ function ClassStep({
   progression,
   progressionPending,
   progressionFailed,
+  featureChoices,
+  featureChoicesPending,
+  featureChoicesFailed,
+  featureChoiceInputs,
+  featureChoiceErrors,
   classId,
   level,
   subclassId,
@@ -1335,6 +1439,8 @@ function ClassStep({
   onLevelChange,
   onSubclassChange,
   onRemoveSubclass,
+  onFeatureChoice,
+  onRemoveFeatureChoice,
   onRetry,
   onSubmit,
 }: {
@@ -1344,6 +1450,11 @@ function ClassStep({
   progression?: ClassProgressionDocument
   progressionPending: boolean
   progressionFailed: boolean
+  featureChoices?: FeatureChoiceDocument
+  featureChoicesPending: boolean
+  featureChoicesFailed: boolean
+  featureChoiceInputs: FeatureChoiceInputs
+  featureChoiceErrors: Record<string, string>
   classId: string
   level: string
   subclassId: string
@@ -1356,6 +1467,8 @@ function ClassStep({
   onLevelChange: (level: string) => void
   onSubclassChange: (id: string) => void
   onRemoveSubclass: () => void
+  onFeatureChoice: (requirementId: string, branchId: string, optionId: string) => void
+  onRemoveFeatureChoice: (requirementId: string) => void
   onRetry: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
@@ -1411,17 +1524,48 @@ function ClassStep({
           </button>
         </div>
       )}
+      {featureChoicesPending && (
+        <div className="class-progression-state" role="status">
+          <span aria-hidden="true">✦</span>
+          Resolving level-dependent feature choices…
+        </div>
+      )}
+      {classId && featureChoicesFailed && (
+        <div className="class-progression-state class-progression-state--error" role="alert">
+          <AlertTriangle aria-hidden="true" size={18} />
+          <div>
+            <strong>The feature choices are unavailable.</strong>
+            <span>Your saved class choices have not been changed.</span>
+          </div>
+          <button type="button" onClick={onRetry}>
+            Try again
+          </button>
+        </div>
+      )}
       {progression && (
-        <ClassProgressionFields
-          progression={progression}
-          level={level}
-          subclassId={subclassId}
-          savedSubclass={savedSubclass}
-          error={errors.subclass}
-          onLevelChange={onLevelChange}
-          onSubclassChange={onSubclassChange}
-          onRemoveSubclass={onRemoveSubclass}
-        />
+        <>
+          <ClassProgressionFields
+            progression={progression}
+            level={level}
+            subclassId={subclassId}
+            savedSubclass={savedSubclass}
+            error={errors.subclass}
+            onLevelChange={onLevelChange}
+            onSubclassChange={onSubclassChange}
+            onRemoveSubclass={onRemoveSubclass}
+          />
+          {featureChoices && (
+            <FeatureChoicesFields
+              document={featureChoices}
+              level={Number(level)}
+              subclassId={subclassId || null}
+              inputs={featureChoiceInputs}
+              errors={featureChoiceErrors}
+              onChoose={onFeatureChoice}
+              onRemove={onRemoveFeatureChoice}
+            />
+          )}
+        </>
       )}
       {errors.progression && (
         <span className="builder-field-error" role="alert">
@@ -1437,6 +1581,117 @@ function ClassStep({
       <BuilderActions saved={saved} pending={saving} label="Continue" />
     </form>
   )
+}
+
+function FeatureChoicesFields({
+  document,
+  level,
+  subclassId,
+  inputs,
+  errors,
+  onChoose,
+  onRemove,
+}: {
+  document: FeatureChoiceDocument
+  level: number
+  subclassId: string | null
+  inputs: FeatureChoiceInputs
+  errors: Record<string, string>
+  onChoose: (requirementId: string, branchId: string, optionId: string) => void
+  onRemove: (requirementId: string) => void
+}) {
+  const active = document.requirements.filter((requirement) =>
+    featureRequirementIsActive(requirement, level, subclassId),
+  )
+  const activeIds = new Set(active.map((requirement) => requirement.id))
+  const staleIds = Object.keys(inputs).filter((requirementId) => !activeIds.has(requirementId))
+
+  if (active.length === 0 && staleIds.length === 0) return null
+
+  return (
+    <section className="feature-choices" aria-labelledby="feature-choices-heading">
+      <div>
+        <h3 id="feature-choices-heading">Level-dependent choices</h3>
+        <span>Options are verified against manifest {document.manifestVersion}.</span>
+      </div>
+
+      {staleIds.map((requirementId) => (
+        <div className="subclass-retained" key={requirementId} role="alert">
+          <AlertTriangle aria-hidden="true" size={18} />
+          <div>
+            <strong>A previous feature choice is retained.</strong>
+            <span>
+              It is unavailable for the current class, subclass, or level. Restore the granting
+              progression or remove it explicitly.
+            </span>
+          </div>
+          <button type="button" onClick={() => onRemove(requirementId)}>
+            Remove feature choice
+          </button>
+        </div>
+      ))}
+
+      {active.map((requirement) => {
+        const selection = inputs[requirement.id]
+        return (
+          <fieldset
+            className={
+              errors[requirement.id] ? 'feature-choice feature-choice--error' : 'feature-choice'
+            }
+            key={requirement.id}
+          >
+            <legend>{featureChoiceLabel(requirement)}</legend>
+            <p>Choose one available path.</p>
+            {requirement.branches.map((branch) =>
+              branch.availability === 'locked' ? (
+                <div className="feature-choice__locked" key={branch.id}>
+                  <LockKeyhole aria-hidden="true" size={16} />
+                  <span>
+                    <strong>{lockedBranchLabel(branch.id)}</strong>
+                    <small>Available after Spellcasting is implemented in Phase 6.</small>
+                  </span>
+                </div>
+              ) : (
+                <div className="feature-choice__options" key={branch.id}>
+                  {branch.options.map((option) => (
+                    <label key={option.id}>
+                      <input
+                        type="radio"
+                        name={`feature-choice-${requirement.id}`}
+                        checked={
+                          selection?.branchId === branch.id &&
+                          selection.selectionIds.includes(option.id)
+                        }
+                        onChange={() => onChoose(requirement.id, branch.id, option.id)}
+                      />
+                      <span aria-hidden="true">
+                        {selection?.selectionIds.includes(option.id) ? <Check size={14} /> : null}
+                      </span>
+                      <strong>{option.name}</strong>
+                    </label>
+                  ))}
+                </div>
+              ),
+            )}
+            {errors[requirement.id] && <small role="alert">{errors[requirement.id]}</small>}
+          </fieldset>
+        )
+      })}
+    </section>
+  )
+}
+
+function featureChoiceLabel(requirement: FeatureChoiceRequirement): string {
+  return requirement.id === 'champion-additional-fighting-style'
+    ? 'Additional Fighting Style'
+    : 'Fighting Style'
+}
+
+function lockedBranchLabel(branchId: string): string {
+  return branchId
+    .split('-')
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
 function ClassProgressionFields({
@@ -1780,6 +2035,7 @@ function stepForViolation(source: string): Exclude<BuilderStep, 'review'> | null
   }
   if (source.startsWith('species') || source.startsWith('background')) return 'origins'
   if (source.startsWith('classProgressions')) return 'class'
+  if (source.startsWith('featureChoices')) return 'class'
   if (source.startsWith('proficiencyChoices')) return 'proficiencies'
   return null
 }
@@ -1888,6 +2144,104 @@ function classProgressionIsComplete(
     selectedSubclass !== undefined ||
     !rules.subclasses.some((subclass) => subclass.availableAtLevel <= progression.level)
   )
+}
+
+function featureChoiceInputsFrom(choices: CharacterDraft['featureChoices']): FeatureChoiceInputs {
+  return Object.fromEntries(
+    choices.map((choice) => [
+      choice.requirementId,
+      {
+        branchId: choice.branchId,
+        selectionIds: choice.selections.map((selection) => selection.id),
+      },
+    ]),
+  )
+}
+
+function featureRequirementIsActive(
+  requirement: FeatureChoiceRequirement,
+  level: number,
+  subclassId: string | null,
+): boolean {
+  return (
+    level >= requirement.availableAtLevel &&
+    (requirement.subclassId === null || requirement.subclassId === subclassId)
+  )
+}
+
+function validateFeatureChoiceInputs(
+  document: FeatureChoiceDocument,
+  progression: CharacterDraft['classProgressions'][number] | undefined,
+  inputs: FeatureChoiceInputs,
+  allowUnavailable = false,
+  savedChoices: CharacterDraft['featureChoices'] = [],
+):
+  | { success: true; choices: CharacterDraft['featureChoices'] }
+  | { success: false; errors: Record<string, string> } {
+  if (!progression?.class || progression.class.id !== document.class.id) {
+    return { success: false, errors: { _form: 'Wait for matching feature rules.' } }
+  }
+
+  const active = document.requirements.filter((requirement) =>
+    featureRequirementIsActive(requirement, progression.level, progression.subclass?.id ?? null),
+  )
+  const activeById = new Map(active.map((requirement) => [requirement.id, requirement]))
+  const allById = new Map(document.requirements.map((requirement) => [requirement.id, requirement]))
+  const errors: Record<string, string> = {}
+  const choices: CharacterDraft['featureChoices'] = []
+
+  for (const [requirementId, input] of Object.entries(inputs)) {
+    const requirement = activeById.get(requirementId)
+    if (!requirement) {
+      if (!allowUnavailable) {
+        errors[requirementId] = 'Remove this choice or restore its granting progression.'
+        continue
+      }
+
+      const knownRequirement = allById.get(requirementId)
+      const saved = savedChoices.find((choice) => choice.requirementId === requirementId)
+      const selections = input.selectionIds.map((id) => {
+        const known = knownRequirement?.branches
+          .flatMap((branch) => branch.options)
+          .find((option) => option.id === id)
+        return known ?? saved?.selections.find((option) => option.id === id) ?? { id, name: id }
+      })
+      choices.push({ requirementId, branchId: input.branchId, selections })
+      continue
+    }
+
+    const branch = requirement.branches.find((candidate) => candidate.id === input.branchId)
+    if (!branch || branch.availability !== 'supported') {
+      errors[requirementId] = 'Choose an available feature path.'
+      continue
+    }
+
+    const uniqueIds = [...new Set(input.selectionIds)]
+    const optionsById = new Map(branch.options.map((option) => [option.id, option]))
+    if (
+      uniqueIds.length !== input.selectionIds.length ||
+      uniqueIds.length !== branch.selectionCount ||
+      uniqueIds.some((id) => !optionsById.has(id))
+    ) {
+      errors[requirementId] =
+        `Choose exactly ${branch.selectionCount} available option${branch.selectionCount === 1 ? '' : 's'}.`
+      continue
+    }
+
+    choices.push({
+      requirementId,
+      branchId: branch.id,
+      selections: uniqueIds.map((id) => optionsById.get(id)!),
+    })
+  }
+
+  for (const requirement of active) {
+    if (!inputs[requirement.id]) {
+      errors[requirement.id] = 'Choose a Fighting Style before continuing.'
+    }
+  }
+
+  return Object.keys(errors).length > 0 ? { success: false, errors } : { success: true, choices }
 }
 
 function resumeStep(document: StoredCharacterV1): BuilderStep {

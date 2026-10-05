@@ -41,6 +41,15 @@ export const characterDraftSchema = z.object({
       selections: z.array(contentReferenceSchema),
     }),
   ),
+  featureChoices: z
+    .array(
+      z.object({
+        requirementId: z.string().min(1).max(240),
+        branchId: z.string().min(1).max(240),
+        selections: z.array(contentReferenceSchema),
+      }),
+    )
+    .default([]),
 })
 
 const documentIdentitySchema = z.object({
@@ -123,6 +132,7 @@ export function createStoredCharacterDraft({
       background: null,
       classProgressions: [{ class: null, level: 1, subclass: null }],
       proficiencyChoices: [],
+      featureChoices: [],
     },
   })
 }

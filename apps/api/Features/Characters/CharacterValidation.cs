@@ -28,8 +28,53 @@ public static partial class CharacterValidator
         ValidateReference(character.Species, "species", "species", "Species", violations);
         ValidateReference(character.Background, "background", "background", "Background", violations);
         ValidateClassProgressions(character.ClassProgressions, violations);
+        ValidateFeatureChoices(character.FeatureChoices, violations);
 
         return new ValidationResult(violations);
+    }
+
+    private static void ValidateFeatureChoices(
+        IReadOnlyList<FeatureChoiceSelection>? choices,
+        ICollection<RuleViolation> violations)
+    {
+        if (choices is null)
+        {
+            return;
+        }
+
+        for (var index = 0; index < choices.Count; index++)
+        {
+            var choice = choices[index];
+            var source = $"featureChoices[{index}]";
+            if (string.IsNullOrWhiteSpace(choice.RequirementId))
+            {
+                AddViolation(
+                    violations,
+                    "character.featureChoice.requirement.required",
+                    "Feature requirement id is required.",
+                    $"{source}.requirementId",
+                    "Keep the requirement id supplied by the active feature rules.");
+            }
+            if (string.IsNullOrWhiteSpace(choice.BranchId))
+            {
+                AddViolation(
+                    violations,
+                    "character.featureChoice.branch.required",
+                    "Feature choice branch id is required.",
+                    $"{source}.branchId",
+                    "Keep the branch id supplied by the active feature rules.");
+            }
+
+            for (var optionIndex = 0; optionIndex < (choice.Selections?.Count ?? 0); optionIndex++)
+            {
+                ValidateReference(
+                    choice.Selections![optionIndex],
+                    "featureChoice.selection.reference",
+                    $"{source}.selections[{optionIndex}]",
+                    "Feature option",
+                    violations);
+            }
+        }
     }
 
     private static void ValidateIdentity(Character character, ICollection<RuleViolation> violations)

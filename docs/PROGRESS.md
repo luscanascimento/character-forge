@@ -93,18 +93,23 @@ Phases 0–4 are implemented. Phase 5 has begun with a normalized class/subclass
 - Added typed manifest `SRD-5.2.1-CF-1` with independently versioned rules identity and SRD section/page provenance.
 - Defined canonical Fighting Style requirements for Fighter, Champion, Paladin, and Ranger, including one supported feat branch and explicitly locked Blessed Warrior/Druidic Warrior cantrip branches.
 - Added fail-closed agreement checks between manifest feature ids and normalized class/subclass timelines, plus candidate feat checks against provider-owned type and named-feature prerequisites.
+- Added `GET /api/classes/{classId}/feature-choices`, which combines the verified manifest with provider-owned feat ids/names while keeping locked spellcasting branches optionless.
+- Extended schema-version-1 drafts compatibly with canonical feature-choice selections and defaulted older stored documents to an empty collection through the existing migration seam.
+- Added canonical Fighting Style validation for active class/subclass requirements, supported branches, exact counts, distinct eligible options, and retained-but-invalid choices after a level or subclass change.
+- Presented eligible Fighting Style feats in the Class step, persisted only ids/names returned by the hybrid rules endpoint, and kept Blessed Warrior and Druidic Warrior visibly locked behind Phase 6.
+- Added focused endpoint, domain-rule, API-adapter, schema-migration, and builder coverage for the first hybrid feature-rule slice.
 
 ## Work in progress
 
-Phase 5 is open. Trusted levels, fixed 1–20 HP, subclass availability/validation, builder controls, the class/subclass feature timeline, normalized feat prerequisites, and manifest `SRD-5.2.1-CF-1` are implemented. Canonical Fighting Style requirements are ready for draft persistence, validation, and builder presentation.
+Phase 5 is open. Trusted levels, fixed 1–20 HP, subclass availability/validation, builder controls, the class/subclass feature timeline, normalized feat prerequisites, manifest `SRD-5.2.1-CF-1`, and the complete supported Fighting Style flow are implemented.
 
 ## Next step
 
-Implement the first hybrid feature-rule slice:
+Implement manifest-backed Expertise requirements from the character's resolved skill proficiencies:
 
-1. Persist and canonically validate the supported Fighting Style feat choice.
-2. Present eligible Fighting Style feats in the builder while keeping Paladin/Ranger cantrip alternatives visibly locked until Phase 6.
-3. Add manifest-backed Expertise requirements from the character's resolved skill proficiencies.
+1. Add the Bard, Ranger, and Rogue Expertise requirement/count entries to the versioned manifest.
+2. Derive eligible options only from canonically resolved skill proficiencies that do not already have Expertise.
+3. Persist and validate level-dependent Expertise selections without silently deleting choices after progression changes.
 4. Keep Weapon Mastery equipment eligibility and Ability Score Improvement effects in Phase 7.
 
 ## Pending decisions
@@ -124,15 +129,15 @@ Implement the first hybrid feature-rule slice:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 81 passing across 12 files (`vitest run`)
+- Frontend unit tests: 84 passing across 13 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 104 passing
+- Backend unit/integration tests: 111 passing
 - Live provider smoke checks: classes, class/subclass progression, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 
 ## Last checkpoint
 
-2026-10-04 (America/Sao_Paulo)
+2026-10-05 (America/Sao_Paulo)

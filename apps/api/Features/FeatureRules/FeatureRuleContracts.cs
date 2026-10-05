@@ -1,3 +1,5 @@
+using CharacterForge.Api.Features.Characters;
+
 namespace CharacterForge.Api.Features.FeatureRules;
 
 public enum FeatureOptionSourceKind
@@ -44,5 +46,27 @@ public sealed record FeatureChoiceRequirement(
     int Count,
     IReadOnlyList<FeatureChoiceBranch> Branches,
     FeatureRuleProvenance Provenance);
+
+public sealed record FeatureChoiceBranchDocument(
+    string Id,
+    int SelectionCount,
+    string Availability,
+    string? Dependency,
+    IReadOnlyList<ContentReference> Options);
+
+public sealed record FeatureChoiceRequirementDocument(
+    string Id,
+    string? SubclassId,
+    string FeatureId,
+    int AvailableAtLevel,
+    int Count,
+    IReadOnlyList<FeatureChoiceBranchDocument> Branches);
+
+public sealed record FeatureChoiceDocument(
+    string ManifestVersion,
+    string Ruleset,
+    string RulesVersion,
+    ContentReference Class,
+    IReadOnlyList<FeatureChoiceRequirementDocument> Requirements);
 
 public sealed class FeatureRuleContentException(string message) : Exception(message);

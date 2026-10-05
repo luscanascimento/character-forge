@@ -19,6 +19,7 @@ import type {
   StoredCharacterV1,
 } from '../features/characters/characterSchemas'
 import type { ClassProgressionDocument } from '../features/progression/classProgression'
+import type { FeatureChoiceDocument } from '../features/featureRules/featureRules'
 import { createStoredCharacter } from '../test/characterFixture'
 import CharacterBuilderPage from './CharacterBuilderPage'
 
@@ -48,6 +49,11 @@ type ClassProgressionLoader = (
   classId: string,
   signal?: AbortSignal,
 ) => Promise<ClassProgressionDocument>
+
+type FeatureChoicesLoader = (
+  classId: string,
+  signal?: AbortSignal,
+) => Promise<FeatureChoiceDocument>
 
 const catalogItems = {
   classes: [
@@ -265,6 +271,18 @@ function defaultProgressionLoader(): ClassProgressionLoader {
   return vi.fn((classId: string) => Promise.resolve(classProgression(classId)))
 }
 
+function defaultFeatureChoicesLoader(): FeatureChoicesLoader {
+  return vi.fn((classId: string) =>
+    Promise.resolve<FeatureChoiceDocument>({
+      manifestVersion: 'SRD-5.2.1-CF-1',
+      ruleset: '2024',
+      rulesVersion: 'SRD-5.2.1',
+      class: { id: classId, name: classId === 'fighter' ? 'Fighter' : 'Wizard' },
+      requirements: [],
+    }),
+  )
+}
+
 function repository(overrides: Partial<CharacterRepository> = {}): CharacterRepository {
   return {
     get: vi.fn().mockResolvedValue(createStoredCharacter()),
@@ -328,6 +346,7 @@ function renderPage(
   validationLoader: CharacterValidationLoader = defaultValidationLoader(),
   autosaveDelay?: number,
   progressionLoader: ClassProgressionLoader = defaultProgressionLoader(),
+  featureChoicesLoader: FeatureChoicesLoader = defaultFeatureChoicesLoader(),
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const character = createStoredCharacter()
@@ -346,6 +365,7 @@ function renderPage(
                 catalogLoader={catalogLoader}
                 catalogItemLoader={catalogItemLoader}
                 progressionLoader={progressionLoader}
+                featureChoicesLoader={featureChoicesLoader}
                 validationLoader={validationLoader}
               />
             }
@@ -721,6 +741,82 @@ describe('CharacterBuilderPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'Choose their proficiencies' }),
     ).toBeInTheDocument()
+  })
+
+  it('persists a canonical Fighting Style and keeps spellcasting alternatives locked', async () => {
+    const user = userEvent.setup()
+    const storage = repository({ get: vi.fn().mockResolvedValue(classlessCharacter()) })
+    const featureChoicesLoader: FeatureChoicesLoader = vi.fn((classId: string) =>
+      Promise.resolve<FeatureChoiceDocument>({
+        manifestVersion: 'SRD-5.2.1-CF-1',
+        ruleset: '2024',
+        rulesVersion: 'SRD-5.2.1',
+        class: { id: classId, name: 'Fighter' },
+        requirements:
+          classId === 'fighter'
+            ? [
+                {
+                  id: 'fighter-fighting-style',
+                  subclassId: null,
+                  featureId: 'fighter-fighting-style',
+                  availableAtLevel: 1,
+                  count: 1,
+                  branches: [
+                    {
+                      id: 'fighting-style-feat',
+                      selectionCount: 1,
+                      availability: 'supported',
+                      dependency: null,
+                      options: [
+                        { id: 'archery', name: 'Archery' },
+                        { id: 'defense', name: 'Defense' },
+                      ],
+                    },
+                    {
+                      id: 'blessed-warrior',
+                      selectionCount: 2,
+                      availability: 'locked',
+                      dependency: 'spellcasting',
+                      options: [],
+                    },
+                  ],
+                },
+              ]
+            : [],
+      }),
+    )
+    renderPage(
+      storage,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      featureChoicesLoader,
+    )
+
+    await user.click(await screen.findByRole('radio', { name: 'Fighter' }))
+    await user.click(await screen.findByRole('radio', { name: 'Archery' }))
+    expect(screen.getByText('Blessed Warrior')).toBeInTheDocument()
+    expect(screen.getByText(/after Spellcasting is implemented/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          featureChoices: [
+            {
+              requirementId: 'fighter-fighting-style',
+              branchId: 'fighting-style-feat',
+              selections: [{ id: 'archery', name: 'Archery' }],
+            },
+          ],
+        }),
+      }),
+      '2026-09-29T12:00:00.000Z',
+    )
   })
 
   it('persists a trusted level and subclass and shows their unlocked features', async () => {

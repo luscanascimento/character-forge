@@ -43,7 +43,8 @@ public sealed record CharacterRulesContext(
     int HitDie,
     IReadOnlyList<ProficiencyGrant> ProficiencyGrants,
     IReadOnlyList<ProficiencyChoiceRule> ProficiencyChoices,
-    IReadOnlyList<SubclassRule> Subclasses);
+    IReadOnlyList<SubclassRule> Subclasses,
+    IReadOnlyList<FeatureChoiceRequirementRule>? FeatureChoices = null);
 
 public sealed record CharacterEvaluation(
     ValidationResult Validation,
@@ -67,8 +68,13 @@ public static class CharacterEvaluator
             character.ProficiencyChoices,
             context.ProficiencyChoices,
             context.ProficiencyGrants);
+        var featureChoiceValidation = FeatureChoiceRules.Validate(
+            character.FeatureChoices,
+            context.FeatureChoices ?? [],
+            classProgression);
         var ruleViolations = progressionValidation.Violations
             .Concat(proficiencyResolution.Validation.Violations)
+            .Concat(featureChoiceValidation.Violations)
             .ToArray();
         if (ruleViolations.Length > 0)
         {
