@@ -108,3 +108,11 @@ Representative rules that require user input exist only in prose:
 - The class Subclass feature says to choose a subclass, while the separately structured subclass level timeline supplies the actual available subclass reference and level.
 
 Character Forge will therefore treat class level, feature availability, subclass references, and subclass availability levels as trusted structured facts. It will not parse feature names or descriptions into selectable rules. Feature-choice persistence and validation remain deferred until a structured SRD source exists or Character Forge owns a separately reviewed rules dataset.
+
+### Feature-rule source decision
+
+The follow-up audit found useful structured facts outside feature detail. Feat resources expose types plus minimum-level, named-feature, and ability-score prerequisite shapes. Class level rows repeat feature ids at each acquisition level, and the polymorphic `class_specific` object carries Weapon Mastery counts for Barbarian and Fighter. Equipment resources expose weapon and mastery references.
+
+Those facts are not complete requirements. Paladin, Ranger, and Rogue Weapon Mastery counts remain only in prose; Expertise counts and eligibility are narrative; and the Paladin/Ranger Fighting Style alternatives embed cantrip choices only in feature descriptions. The provider data moved from the now-archived standalone `5e-database` repository into the `5e-srd-api` monorepo, but the 2024 schemas retain these gaps.
+
+ADR-010 therefore adopts a narrow, versioned Character Forge manifest for missing semantics while retaining provider-owned ids, names, option lists, and structured prerequisites. The detailed boundary and implementation order are recorded in `FEATURE-RULE-INVENTORY.md`.

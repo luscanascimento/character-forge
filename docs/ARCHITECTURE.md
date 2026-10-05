@@ -88,6 +88,8 @@ Phase 5 progression reads use a separate provider-neutral contract: a complete 1
 
 The builder validates this contract at its API boundary and uses it for level, subclass, and per-level feature presentation. A subclass that becomes unavailable after a level decrease remains in the local draft and is shown as locked until the user explicitly raises the level, replaces it, or removes it. Feature references remain informational because the provider's feature descriptions do not expose structured option or prerequisite rules (ADR-009).
 
+ADR-010 defines the next rule-data boundary: provider-owned structured catalog facts are combined with a narrow, typed Character Forge manifest for missing feature-choice semantics. The manifest has its own version, provenance, and focused tests; it fails closed on provider-reference mismatch and never copies or parses narrative descriptions. Dependent spell, equipment, and feat-effect rules remain in their roadmap phases.
+
 External API DTOs, domain models, and public response contracts may differ when the boundary protects rules or stability. They should not be triplicated when their shapes and reasons to change are genuinely identical.
 
 ## Data flow

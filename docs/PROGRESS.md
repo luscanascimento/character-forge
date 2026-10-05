@@ -85,18 +85,22 @@ Phases 0–4 are implemented. Phase 5 has begun with a normalized class/subclass
 - Added level-aware subclass controls that explain locked availability, require an eligible choice, preserve a now-locked selection after level reduction, and remove it only through an explicit action.
 - Added an informational class/subclass feature list for the selected level and kept narrative feature choices outside the interactive rule boundary.
 - Included the selected subclass in review and added focused coverage for progression loading, level/subclass persistence, locked-state retention, explicit removal, and provider recovery.
+- Audited the official SRD 5.2.1 rules and the provider's 2024 source schemas for Fighting Style, Expertise, Weapon Mastery, Ability Score Improvement, and their prerequisites.
+- Recorded the hybrid rule-data boundary in ADR-010: provider-owned structured facts plus a narrow, typed, independently versioned Character Forge manifest for missing semantics.
+- Added a source-by-source feature-rule inventory with explicit Phase 5, spellcasting, equipment, and feat-effect ownership so dependent choices are locked honestly instead of partially implemented.
 
 ## Work in progress
 
-Phase 5 is open. Trusted levels, fixed 1–20 HP, subclass availability/validation, builder controls, and the class/subclass feature timeline are implemented. Level-dependent feature choices remain blocked on a trustworthy structured rules source.
+Phase 5 is open. Trusted levels, fixed 1–20 HP, subclass availability/validation, builder controls, and the class/subclass feature timeline are implemented. The trustworthy hybrid data source for supported level-dependent choices is now defined and implementation is next.
 
 ## Next step
 
-Resolve the remaining Phase 5 data boundary before adding interactive feature choices:
+Implement the first hybrid feature-rule slice:
 
-1. Evaluate whether a reviewed, versioned Character Forge rules dataset is justified for structured Fighting Style, Weapon Mastery, Expertise, feat-choice, and prerequisite rules.
-2. If no trustworthy source is adopted, close the supported Phase 5 subset explicitly and carry the limitation forward rather than parsing narrative content.
-3. Keep spellcasting, feats, equipment effects, export, and print in their existing roadmap phases.
+1. Normalize provider feat types, minimum levels, named-feature prerequisites, and ability-score prerequisite options.
+2. Introduce manifest version `SRD-5.2.1-CF-1` and canonical Fighting Style requirements.
+3. Persist and validate the supported choice while keeping Paladin/Ranger cantrip alternatives visibly locked until Phase 6.
+4. Keep Weapon Mastery equipment eligibility and Ability Score Improvement effects in Phase 7.
 
 ## Pending decisions
 

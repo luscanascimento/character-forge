@@ -15,7 +15,7 @@ Parsing those descriptions or switching on display names would make validation d
 - Persist an optional subclass reference with the single class progression. Drafts without the new field remain valid schema-version-1 documents.
 - When level decreases, retain a saved subclass and return a structured violation if it is no longer available.
 - Do not create feature-choice contracts, persisted feature-choice selections, or builder controls from narrative feature descriptions.
-- Keep the existing feature references as timeline/display facts only. Add feature choices later only from a structured provider contract or a separately reviewed, versioned Character Forge rules dataset.
+- Keep the existing feature references as timeline/display facts only. ADR-010 adopts a separately reviewed, versioned Character Forge rules manifest for the narrow semantics the provider does not structure.
 - Keep spellcasting, class-specific counters, feats, and equipment rules in their owning phases.
 
 ## Consequences
@@ -24,4 +24,4 @@ Parsing those descriptions or switching on display names would make validation d
 - A level change never silently deletes the selected subclass.
 - The builder can explain locked subclass availability using a numeric requirement supplied by the progression contract.
 - Fighting styles, mastery selections, Expertise, Ability Score Improvement, and similar choices remain visibly outside the supported validation boundary.
-- Completing all Phase 5 feature choices now requires a new trustworthy structured data source rather than an adapter-only change.
+- Completing supported Phase 5 feature choices requires the hybrid provider/manifest boundary in ADR-010 rather than an adapter-only change.
