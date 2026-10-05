@@ -45,7 +45,55 @@ public static class FeatureRuleManifest
             level: 2,
             section: "Ranger — Level 2: Fighting Style",
             page: 59,
-            alternative: LockedCantripBranch("druidic-warrior", "druid"))
+            alternative: LockedCantripBranch("druidic-warrior", "druid")),
+        Expertise(
+            id: "bard-expertise-2",
+            classId: "bard",
+            featureId: "bard-expertise",
+            level: 2,
+            count: 2,
+            section: "Bard — Level 2: Expertise",
+            page: 32),
+        Expertise(
+            id: "bard-expertise-9",
+            classId: "bard",
+            featureId: "bard-expertise",
+            level: 9,
+            count: 2,
+            section: "Bard — Level 9: Expertise",
+            page: 32),
+        Expertise(
+            id: "ranger-deft-explorer-expertise",
+            classId: "ranger",
+            featureId: "ranger-deft-explorer",
+            level: 2,
+            count: 1,
+            section: "Ranger — Level 2: Deft Explorer — Expertise",
+            page: 59),
+        Expertise(
+            id: "ranger-expertise-9",
+            classId: "ranger",
+            featureId: "ranger-expertise",
+            level: 9,
+            count: 2,
+            section: "Ranger — Level 9: Expertise",
+            page: 59),
+        Expertise(
+            id: "rogue-expertise-1",
+            classId: "rogue",
+            featureId: "rogue-expertise",
+            level: 1,
+            count: 2,
+            section: "Rogue — Level 1: Expertise",
+            page: 61),
+        Expertise(
+            id: "rogue-expertise-6",
+            classId: "rogue",
+            featureId: "rogue-expertise",
+            level: 6,
+            count: 2,
+            section: "Rogue — Level 6: Expertise",
+            page: 61)
     ]);
 
     static FeatureRuleManifest() => ValidateManifest();
@@ -149,6 +197,27 @@ public static class FeatureRuleManifest
         FeatureChoiceAvailability.Locked,
         FeatureRuleDependency.Spellcasting);
 
+    private static FeatureChoiceRequirement Expertise(
+        string id,
+        string classId,
+        string featureId,
+        int level,
+        int count,
+        string section,
+        int page) => new(
+            id,
+            classId,
+            SubclassId: null,
+            featureId,
+            level,
+            Count: 1,
+            [new FeatureChoiceBranch(
+                "expertise-skills",
+                count,
+                new FeatureOptionSource(FeatureOptionSourceKind.ProficientSkills, "skills"),
+                FeatureChoiceAvailability.Supported)],
+            new FeatureRuleProvenance(SourceDocument, section, page, SourceUrl));
+
     private static void VerifyFeatureOccurrence(
         ClassProgressionDocument progression,
         FeatureChoiceRequirement requirement)
@@ -182,7 +251,7 @@ public static class FeatureRuleManifest
                 StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
-        if (occurrences.Length != 1 || occurrences[0].Level != requirement.AvailableAtLevel)
+        if (occurrences.Count(occurrence => occurrence.Level == requirement.AvailableAtLevel) != 1)
         {
             throw Mismatch(requirement);
         }

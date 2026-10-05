@@ -18,7 +18,9 @@ public sealed class FeatureRuleManifestTests
     public void Manifest_DefinesEverySrdFightingStyleRequirement()
     {
         Assert.Collection(
-            FeatureRuleManifest.Requirements,
+            FeatureRuleManifest.Requirements.Where(requirement =>
+                requirement.Branches.Any(branch =>
+                    branch.OptionSource.Kind == FeatureOptionSourceKind.FeatType)),
             requirement => AssertRequirement(
                 requirement,
                 "fighter-fighting-style",
@@ -50,6 +52,31 @@ public sealed class FeatureRuleManifestTests
     }
 
     [Fact]
+    public void Manifest_DefinesEverySrdExpertiseRequirement()
+    {
+        var requirements = FeatureRuleManifest.Requirements
+            .Where(requirement => requirement.Branches.Any(branch =>
+                branch.OptionSource.Kind == FeatureOptionSourceKind.ProficientSkills))
+            .ToArray();
+
+        Assert.Collection(
+            requirements,
+            requirement => AssertExpertise(requirement, "bard-expertise-2", "bard", "bard-expertise", 2, 2, 32),
+            requirement => AssertExpertise(requirement, "bard-expertise-9", "bard", "bard-expertise", 9, 2, 32),
+            requirement => AssertExpertise(
+                requirement,
+                "ranger-deft-explorer-expertise",
+                "ranger",
+                "ranger-deft-explorer",
+                2,
+                1,
+                59),
+            requirement => AssertExpertise(requirement, "ranger-expertise-9", "ranger", "ranger-expertise", 9, 2, 59),
+            requirement => AssertExpertise(requirement, "rogue-expertise-1", "rogue", "rogue-expertise", 1, 2, 61),
+            requirement => AssertExpertise(requirement, "rogue-expertise-6", "rogue", "rogue-expertise", 6, 2, 61));
+    }
+
+    [Fact]
     public void Manifest_KeepsSpellGrantingAlternativesLockedBehindSpellcasting()
     {
         var alternatives = FeatureRuleManifest.Requirements
@@ -74,6 +101,22 @@ public sealed class FeatureRuleManifestTests
 
         Assert.Equal(
             ["fighter-fighting-style", "champion-additional-fighting-style"],
+            requirements.Select(requirement => requirement.Id));
+    }
+
+    [Fact]
+    public void GetVerifiedRequirements_AcceptsRepeatedProviderFeatureAtManifestLevels()
+    {
+        var progression = new ClassProgressionDocument(
+            new CatalogReference("bard", "Bard"),
+            HitDie: 8,
+            Levels((2, "bard-expertise"), (9, "bard-expertise")),
+            []);
+
+        var requirements = FeatureRuleManifest.GetVerifiedRequirements(progression);
+
+        Assert.Equal(
+            ["bard-expertise-2", "bard-expertise-9"],
             requirements.Select(requirement => requirement.Id));
     }
 
@@ -153,6 +196,29 @@ public sealed class FeatureRuleManifestTests
         Assert.Equal(FeatureOptionSourceKind.FeatType, featBranch.OptionSource.Kind);
         Assert.Equal("fighting-style", featBranch.OptionSource.Filter);
         Assert.Equal("Fighting Style", featBranch.OptionSource.RequiredFeature);
+    }
+
+    private static void AssertExpertise(
+        FeatureChoiceRequirement requirement,
+        string id,
+        string classId,
+        string featureId,
+        int level,
+        int count,
+        int page)
+    {
+        Assert.Equal(id, requirement.Id);
+        Assert.Equal(classId, requirement.ClassId);
+        Assert.Equal(featureId, requirement.FeatureId);
+        Assert.Equal(level, requirement.AvailableAtLevel);
+        Assert.Equal(page, requirement.Provenance.Page);
+
+        var branch = Assert.Single(requirement.Branches);
+        Assert.Equal("expertise-skills", branch.Id);
+        Assert.Equal(count, branch.SelectionCount);
+        Assert.Equal(FeatureOptionSourceKind.ProficientSkills, branch.OptionSource.Kind);
+        Assert.Equal("skills", branch.OptionSource.Filter);
+        Assert.Equal(FeatureChoiceAvailability.Supported, branch.Availability);
     }
 
     private static ClassProgressionDocument FighterProgression() => new(

@@ -30,9 +30,13 @@ public sealed class FeatureRuleService(
                 "The class progression did not agree with the active feature-rule manifest.",
                 exception);
         }
-        var featOptions = requirements.Count == 0
+        var featRequirements = requirements
+            .Where(requirement => requirement.Branches.Any(branch =>
+                branch.OptionSource.Kind == FeatureOptionSourceKind.FeatType))
+            .ToArray();
+        var featOptions = featRequirements.Length == 0
             ? []
-            : await GetFeatOptionsAsync(requirements, cancellationToken);
+            : await GetFeatOptionsAsync(featRequirements, cancellationToken);
 
         return new FeatureChoiceDocument(
             FeatureRuleManifest.Version,
@@ -51,6 +55,7 @@ public sealed class FeatureRuleService(
                     branch.Availability.ToString().ToLowerInvariant(),
                     branch.Dependency?.ToString().ToLowerInvariant(),
                     branch.Availability == FeatureChoiceAvailability.Supported
+                        && branch.OptionSource.Kind == FeatureOptionSourceKind.FeatType
                         ? featOptions
                             .Where(feat => FeatureRuleManifest.MatchesFeatOption(branch, feat))
                             .Select(feat => new ContentReference(feat.Id, feat.Name))
@@ -78,7 +83,9 @@ public sealed class FeatureRuleService(
         var feats = details.Cast<CatalogItemDetail>().ToArray();
         foreach (var branch in requirements
             .SelectMany(requirement => requirement.Branches)
-            .Where(branch => branch.Availability == FeatureChoiceAvailability.Supported))
+            .Where(branch =>
+                branch.Availability == FeatureChoiceAvailability.Supported
+                && branch.OptionSource.Kind == FeatureOptionSourceKind.FeatType))
         {
             var matches = feats.Where(feat => FeatureRuleManifest.MatchesFeatOption(branch, feat)).ToArray();
             if (matches.Length == 0)

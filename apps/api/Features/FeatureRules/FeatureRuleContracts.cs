@@ -5,7 +5,8 @@ namespace CharacterForge.Api.Features.FeatureRules;
 public enum FeatureOptionSourceKind
 {
     FeatType,
-    ClassCantrips
+    ClassCantrips,
+    ProficientSkills
 }
 
 public enum FeatureChoiceAvailability
