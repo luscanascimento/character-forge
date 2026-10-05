@@ -101,7 +101,11 @@ public sealed class CharacterEvaluationService(
                         branch.Id,
                         branch.SelectionCount,
                         string.Equals(branch.Availability, "supported", StringComparison.Ordinal),
-                        branch.Options)).ToArray())).ToArray()));
+                        branch.Options,
+                        string.Equals(
+                            branch.OptionSource,
+                            "proficientSkills",
+                            StringComparison.Ordinal))).ToArray())).ToArray()));
     }
 
     private static List<RuleViolation> MissingContentViolations(
@@ -153,7 +157,8 @@ public sealed class CharacterEvaluationService(
         {
             grants.Add(new ProficiencyGrant(
                 new ContentReference(proficiency.Id, proficiency.Name),
-                source));
+                source,
+                proficiency.IsSkill));
         }
 
         foreach (var choice in facts.ProficiencyChoices)
@@ -165,7 +170,11 @@ public sealed class CharacterEvaluationService(
                 choice.Options
                     .Select(option => new ContentReference(option.Id, option.Name))
                     .ToArray(),
-                source));
+                source,
+                choice.Options
+                    .Where(option => option.IsSkill)
+                    .Select(option => option.Id)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase)));
         }
     }
 }

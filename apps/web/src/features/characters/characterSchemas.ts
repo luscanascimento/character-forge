@@ -96,6 +96,7 @@ export const characterEvaluationSchema = z.object({
         z.object({
           proficiency: contentReferenceSchema,
           sources: z.array(proficiencySourceSchema),
+          isSkill: z.boolean(),
         }),
       ),
     })

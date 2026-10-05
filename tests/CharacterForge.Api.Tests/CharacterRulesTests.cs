@@ -126,4 +126,26 @@ public sealed class CharacterRulesTests
         Assert.Equal(["light-armor", "skill-perception"], merged.Select(item => item.Proficiency.Id));
         Assert.Equal(2, merged.Single(item => item.Proficiency.Id == "skill-perception").Sources.Count);
     }
+
+    [Fact]
+    public void ProficiencyGrants_PreserveStructuredSkillIdentity()
+    {
+        var source = new ProficiencySource(
+            "classes",
+            new ContentReference("bard", "Bard"));
+
+        var merged = ProficiencyRules.MergeGrants(
+        [
+            new ProficiencyGrant(
+                new ContentReference("skill-performance", "Skill: Performance"),
+                source,
+                IsSkill: true),
+            new ProficiencyGrant(
+                new ContentReference("instrument-lute", "Lute"),
+                source)
+        ]);
+
+        Assert.True(merged.Single(item => item.Proficiency.Id == "skill-performance").IsSkill);
+        Assert.False(merged.Single(item => item.Proficiency.Id == "instrument-lute").IsSkill);
+    }
 }

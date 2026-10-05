@@ -51,6 +51,7 @@ public sealed record FeatureChoiceRequirement(
 public sealed record FeatureChoiceBranchDocument(
     string Id,
     int SelectionCount,
+    string OptionSource,
     string Availability,
     string? Dependency,
     IReadOnlyList<ContentReference> Options);

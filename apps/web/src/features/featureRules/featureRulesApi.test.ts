@@ -19,6 +19,7 @@ describe('feature rules API', () => {
       expect.objectContaining({ headers: { Accept: 'application/json' } }),
     )
     expect(document.requirements[0]?.branches[0]?.options[0]?.id).toBe('archery')
+    expect(document.requirements[0]?.branches[0]?.optionSource).toBe('featType')
     expect(document.requirements[0]?.branches[1]?.availability).toBe('locked')
   })
 
@@ -49,6 +50,7 @@ function featureChoiceResponse() {
           {
             id: 'fighting-style-feat',
             selectionCount: 1,
+            optionSource: 'featType',
             availability: 'supported',
             dependency: null,
             options: [{ id: 'archery', name: 'Archery' }],
@@ -56,6 +58,7 @@ function featureChoiceResponse() {
           {
             id: 'blessed-warrior',
             selectionCount: 2,
+            optionSource: 'classCantrips',
             availability: 'locked',
             dependency: 'spellcasting',
             options: [],

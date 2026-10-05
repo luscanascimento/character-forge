@@ -158,7 +158,7 @@ internal static class SrdCatalogMapper
         references?.Select(reference => new CatalogReference(reference.Index, reference.Name, reference.Note)).ToArray()
         ?? [];
 
-    private static IReadOnlyList<CatalogReference> ProficiencyReferences(
+    private static IReadOnlyList<CatalogProficiencyReference> ProficiencyReferences(
         IReadOnlyList<SrdReference>? references) =>
         references?.Select(ProficiencyReference).ToArray() ?? [];
 
@@ -181,7 +181,7 @@ internal static class SrdCatalogMapper
         return new CatalogProficiencyChoice(id, choice.Desc, choice.Choose, options);
     }
 
-    private static IEnumerable<CatalogReference> FlattenProficiencyOptions(SrdChoice choice)
+    private static IEnumerable<CatalogProficiencyReference> FlattenProficiencyOptions(SrdChoice choice)
     {
         foreach (var option in choice.From.Options ?? [])
         {
@@ -200,18 +200,19 @@ internal static class SrdCatalogMapper
         }
     }
 
-    private static CatalogReference ProficiencyReference(SrdReference reference)
+    private static CatalogProficiencyReference ProficiencyReference(SrdReference reference)
     {
         var id = reference.Url?.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault()
             ?? reference.Index;
-        var isSkill = reference.Url?.Contains("/skills/", StringComparison.Ordinal) == true;
+        var isSkill = reference.Url?.Contains("/skills/", StringComparison.Ordinal) == true
+            || id.StartsWith("skill-", StringComparison.Ordinal);
 
-        return new CatalogReference(
+        return new CatalogProficiencyReference(
             isSkill && !id.StartsWith("skill-", StringComparison.Ordinal) ? $"skill-{id}" : id,
             isSkill && !reference.Name.StartsWith("Skill:", StringComparison.Ordinal)
                 ? $"Skill: {reference.Name}"
                 : reference.Name,
-            reference.Note);
+            isSkill);
     }
 
     private static CatalogFeatFacts FeatFacts(SrdFeatDetail item)

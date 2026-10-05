@@ -163,11 +163,12 @@ public sealed class SrdApiClientTests
         Assert.Equal(6, item.CharacterCreation.HitDie);
         Assert.Contains(
             item.CharacterCreation.GrantedProficiencies,
-            proficiency => proficiency.Id == "daggers");
+            proficiency => proficiency is { Id: "daggers", IsSkill: false });
         var choice = Assert.Single(item.CharacterCreation.ProficiencyChoices);
         Assert.Equal("classes/wizard/proficiencies/0", choice.Id);
         Assert.Equal(1, choice.Count);
         Assert.Equal(["skill-arcana", "skill-history"], choice.Options.Select(option => option.Id));
+        Assert.All(choice.Options, option => Assert.True(option.IsSkill));
     }
 
     [Fact]

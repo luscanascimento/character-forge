@@ -48,11 +48,13 @@ public sealed class FeatureRuleEndpointsTests : IDisposable
             branch =>
             {
                 Assert.Equal("supported", branch.Availability);
+                Assert.Equal("featType", branch.OptionSource);
                 Assert.Equal("archery", Assert.Single(branch.Options).Id);
             },
             branch =>
             {
                 Assert.Equal("locked", branch.Availability);
+                Assert.Equal("classCantrips", branch.OptionSource);
                 Assert.Equal("spellcasting", branch.Dependency);
                 Assert.Empty(branch.Options);
             });

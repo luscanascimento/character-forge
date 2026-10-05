@@ -236,8 +236,8 @@ public sealed class CharacterEndpointsTests : IDisposable
                 CatalogCategory.Classes => new CatalogCharacterCreationFacts(
                     6,
                     [
-                        new CatalogReference("simple-weapons", "Simple Weapons"),
-                        new CatalogReference("saving-throw-int", "Saving Throw: INT")
+                        new CatalogProficiencyReference("simple-weapons", "Simple Weapons", false),
+                        new CatalogProficiencyReference("saving-throw-int", "Saving Throw: INT", false)
                     ],
                     [
                         new CatalogProficiencyChoice(
@@ -245,16 +245,16 @@ public sealed class CharacterEndpointsTests : IDisposable
                             "Choose two Wizard skills",
                             2,
                             [
-                                new CatalogReference("skill-arcana", "Skill: Arcana"),
-                                new CatalogReference("skill-history", "Skill: History"),
-                                new CatalogReference("skill-insight", "Skill: Insight")
+                                new CatalogProficiencyReference("skill-arcana", "Skill: Arcana", true),
+                                new CatalogProficiencyReference("skill-history", "Skill: History", true),
+                                new CatalogProficiencyReference("skill-insight", "Skill: Insight", true)
                             ])
                     ]),
                 CatalogCategory.Backgrounds => new CatalogCharacterCreationFacts(
                     null,
                     [
-                        new CatalogReference("skill-insight", "Skill: Insight"),
-                        new CatalogReference("skill-religion", "Skill: Religion")
+                        new CatalogProficiencyReference("skill-insight", "Skill: Insight", true),
+                        new CatalogProficiencyReference("skill-religion", "Skill: Religion", true)
                     ],
                     []),
                 CatalogCategory.Species => new CatalogCharacterCreationFacts(
@@ -266,9 +266,9 @@ public sealed class CharacterEndpointsTests : IDisposable
                             "Choose one Keen Senses skill",
                             1,
                             [
-                                new CatalogReference("skill-insight", "Skill: Insight"),
-                                new CatalogReference("skill-perception", "Skill: Perception"),
-                                new CatalogReference("skill-survival", "Skill: Survival")
+                                new CatalogProficiencyReference("skill-insight", "Skill: Insight", true),
+                                new CatalogProficiencyReference("skill-perception", "Skill: Perception", true),
+                                new CatalogProficiencyReference("skill-survival", "Skill: Survival", true)
                             ])
                     ]),
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, null)

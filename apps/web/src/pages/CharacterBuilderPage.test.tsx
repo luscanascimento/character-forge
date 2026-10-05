@@ -196,6 +196,7 @@ function validEvaluation(): CharacterEvaluation {
       grantedProficiencies: [
         {
           proficiency: { id: 'simple-weapons', name: 'Simple Weapons' },
+          isSkill: false,
           sources: [
             {
               category: 'classes',
@@ -205,6 +206,7 @@ function validEvaluation(): CharacterEvaluation {
         },
         {
           proficiency: { id: 'skill-arcana', name: 'Skill: Arcana' },
+          isSkill: true,
           sources: [
             {
               category: 'classes',
@@ -765,6 +767,7 @@ describe('CharacterBuilderPage', () => {
                     {
                       id: 'fighting-style-feat',
                       selectionCount: 1,
+                      optionSource: 'featType',
                       availability: 'supported',
                       dependency: null,
                       options: [
@@ -775,6 +778,7 @@ describe('CharacterBuilderPage', () => {
                     {
                       id: 'blessed-warrior',
                       selectionCount: 2,
+                      optionSource: 'classCantrips',
                       availability: 'locked',
                       dependency: 'spellcasting',
                       options: [],

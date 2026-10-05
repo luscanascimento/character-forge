@@ -52,6 +52,7 @@ public sealed class FeatureRuleService(
                 requirement.Branches.Select(branch => new FeatureChoiceBranchDocument(
                     branch.Id,
                     branch.SelectionCount,
+                    OptionSourceContract(branch.OptionSource.Kind),
                     branch.Availability.ToString().ToLowerInvariant(),
                     branch.Dependency?.ToString().ToLowerInvariant(),
                     branch.Availability == FeatureChoiceAvailability.Supported
@@ -102,4 +103,12 @@ public sealed class FeatureRuleService(
 
         return feats;
     }
+
+    private static string OptionSourceContract(FeatureOptionSourceKind kind) => kind switch
+    {
+        FeatureOptionSourceKind.FeatType => "featType",
+        FeatureOptionSourceKind.ClassCantrips => "classCantrips",
+        FeatureOptionSourceKind.ProficientSkills => "proficientSkills",
+        _ => throw new FeatureRuleContentException($"Unknown feature option source '{kind}'.")
+    };
 }

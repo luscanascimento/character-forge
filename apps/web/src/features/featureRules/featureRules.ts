@@ -4,6 +4,7 @@ import { contentReferenceSchema } from '../characters/characterSchemas'
 const branchSchema = z.object({
   id: z.string(),
   selectionCount: z.number().int().positive(),
+  optionSource: z.enum(['featType', 'classCantrips', 'proficientSkills']),
   availability: z.enum(['supported', 'locked']),
   dependency: z.enum(['spellcasting']).nullable(),
   options: z.array(contentReferenceSchema),

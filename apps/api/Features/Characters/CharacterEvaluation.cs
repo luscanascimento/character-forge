@@ -22,18 +22,21 @@ public sealed record ProficiencySource(
 
 public sealed record ProficiencyGrant(
     ContentReference Proficiency,
-    ProficiencySource Source);
+    ProficiencySource Source,
+    bool IsSkill = false);
 
 public sealed record GrantedProficiency(
     ContentReference Proficiency,
-    IReadOnlyList<ProficiencySource> Sources);
+    IReadOnlyList<ProficiencySource> Sources,
+    bool IsSkill);
 
 public sealed record ProficiencyChoiceRule(
     string Id,
     string Prompt,
     int Count,
     IReadOnlyList<ContentReference> Options,
-    ProficiencySource Source);
+    ProficiencySource Source,
+    IReadOnlySet<string>? SkillOptionIds = null);
 
 public sealed record SubclassRule(
     ContentReference Subclass,
@@ -68,9 +71,13 @@ public static class CharacterEvaluator
             character.ProficiencyChoices,
             context.ProficiencyChoices,
             context.ProficiencyGrants);
+        var grantedProficiencies = ProficiencyRules.MergeGrants(proficiencyResolution.Grants);
+        var featureChoiceRules = ResolveFeatureChoiceOptions(
+            context.FeatureChoices ?? [],
+            grantedProficiencies);
         var featureChoiceValidation = FeatureChoiceRules.Validate(
             character.FeatureChoices,
-            context.FeatureChoices ?? [],
+            featureChoiceRules,
             classProgression);
         var ruleViolations = progressionValidation.Violations
             .Concat(proficiencyResolution.Validation.Violations)
@@ -100,6 +107,27 @@ public static class CharacterEvaluator
                     abilities.Constitution,
                     classProgression.Level),
                 context.HitDie,
-                ProficiencyRules.MergeGrants(proficiencyResolution.Grants)));
+                grantedProficiencies));
+    }
+
+    private static IReadOnlyList<FeatureChoiceRequirementRule> ResolveFeatureChoiceOptions(
+        IReadOnlyList<FeatureChoiceRequirementRule> requirements,
+        IReadOnlyList<GrantedProficiency> proficiencies)
+    {
+        var skills = proficiencies
+            .Where(proficiency => proficiency.IsSkill)
+            .Select(proficiency => proficiency.Proficiency)
+            .ToArray();
+
+        return requirements
+            .Select(requirement => requirement with
+            {
+                Branches = requirement.Branches
+                    .Select(branch => branch.UsesProficientSkills
+                        ? branch with { Options = skills }
+                        : branch)
+                    .ToArray()
+            })
+            .ToArray();
     }
 }

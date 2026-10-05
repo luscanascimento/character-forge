@@ -100,18 +100,21 @@ Phases 0–4 are implemented. Phase 5 has begun with a normalized class/subclass
 - Added focused endpoint, domain-rule, API-adapter, schema-migration, and builder coverage for the first hybrid feature-rule slice.
 - Added manifest-backed Expertise requirements for Bard levels 2/9, Ranger levels 2/9, and Rogue levels 1/6 with exact provider feature ids, selection counts, and SRD provenance.
 - Allowed one provider feature id to occur at multiple explicitly manifested acquisition levels without weakening fail-closed level agreement.
+- Preserved structured skill identity across normalized catalog proficiency grants/options and canonical resolved grants instead of inferring Expertise eligibility from display names.
+- Exposed each feature branch's option-source kind and derived canonical Expertise candidates only from the character's resolved skill proficiencies.
+- Kept class-wide feature documents character-neutral: provider-owned Fighting Style options remain embedded, while character-specific proficient-skill options are resolved during character evaluation.
 
 ## Work in progress
 
-Phase 5 is open. Trusted levels, fixed 1–20 HP, subclass availability/validation, builder controls, the class/subclass feature timeline, normalized feat prerequisites, manifest `SRD-5.2.1-CF-1`, and the complete supported Fighting Style flow are implemented. All SRD Expertise acquisition requirements are now represented in the manifest; character-specific option derivation is next.
+Phase 5 is open. Trusted levels, fixed 1–20 HP, subclass availability/validation, builder controls, the class/subclass feature timeline, normalized feat prerequisites, manifest `SRD-5.2.1-CF-1`, and the complete supported Fighting Style flow are implemented. All SRD Expertise requirements are represented, and canonical eligible options now derive from resolved skill proficiencies.
 
 ## Next step
 
 Implement manifest-backed Expertise requirements from the character's resolved skill proficiencies:
 
-1. Derive eligible options only from canonically resolved skill proficiencies that do not already have Expertise.
-2. Persist and validate level-dependent Expertise selections without silently deleting choices after progression changes.
-3. Present Expertise in the proficiency workflow and review.
+1. Reject repeated Expertise across acquisition requirements and persist canonical selections without silently deleting choices after progression changes.
+2. Present Expertise in the proficiency workflow after its prerequisite proficiency choices are complete.
+3. Surface Expertise in review and route canonical violations back to the proficiency workflow.
 4. Close Phase 5 explicitly while keeping Weapon Mastery equipment eligibility and Ability Score Improvement effects in Phase 7.
 
 ## Pending decisions
@@ -135,7 +138,7 @@ Implement manifest-backed Expertise requirements from the character's resolved s
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 113 passing
+- Backend unit/integration tests: 116 passing
 - Live provider smoke checks: classes, class/subclass progression, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10

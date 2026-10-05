@@ -4,7 +4,8 @@ public sealed record FeatureChoiceBranchRule(
     string Id,
     int SelectionCount,
     bool IsAvailable,
-    IReadOnlyList<ContentReference> Options);
+    IReadOnlyList<ContentReference> Options,
+    bool UsesProficientSkills = false);
 
 public sealed record FeatureChoiceRequirementRule(
     string Id,

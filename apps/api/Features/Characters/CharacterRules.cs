@@ -33,7 +33,10 @@ public static class ProficiencyRules
 
     public static IReadOnlyList<GrantedProficiency> MergeGrants(IEnumerable<ProficiencyGrant> grants)
     {
-        var merged = new Dictionary<string, (ContentReference Proficiency, List<ProficiencySource> Sources)>(
+        var merged = new Dictionary<string, (
+            ContentReference Proficiency,
+            List<ProficiencySource> Sources,
+            bool IsSkill)>(
             StringComparer.OrdinalIgnoreCase);
 
         foreach (var grant in grants)
@@ -45,8 +48,14 @@ public static class ProficiencyRules
 
             if (!merged.TryGetValue(grant.Proficiency.Id, out var entry))
             {
-                entry = (grant.Proficiency, []);
+                entry = (grant.Proficiency, [], grant.IsSkill);
                 merged.Add(grant.Proficiency.Id, entry);
+            }
+
+            if (grant.IsSkill && !entry.IsSkill)
+            {
+                entry.IsSkill = true;
+                merged[grant.Proficiency.Id] = entry;
             }
 
             if (!entry.Sources.Contains(grant.Source))
@@ -57,7 +66,7 @@ public static class ProficiencyRules
 
         return merged.Values
             .OrderBy(entry => entry.Proficiency.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(entry => new GrantedProficiency(entry.Proficiency, entry.Sources))
+            .Select(entry => new GrantedProficiency(entry.Proficiency, entry.Sources, entry.IsSkill))
             .ToArray();
     }
 }

@@ -135,7 +135,8 @@ public static class ProficiencyChoiceRules
 
             grants.Add(new ProficiencyGrant(
                 new ContentReference(option.Id, option.Name),
-                rule.Source));
+                rule.Source,
+                rule.SkillOptionIds?.Contains(option.Id!) == true));
         }
     }
 

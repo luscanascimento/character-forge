@@ -32,15 +32,19 @@ const referenceSchema = z.object({
   note: z.string().nullable().optional(),
 })
 
+const proficiencyReferenceSchema = referenceSchema.extend({
+  isSkill: z.boolean().optional(),
+})
+
 const characterCreationSchema = z.object({
   hitDie: z.number().int().positive().nullable(),
-  grantedProficiencies: z.array(referenceSchema),
+  grantedProficiencies: z.array(proficiencyReferenceSchema),
   proficiencyChoices: z.array(
     z.object({
       id: z.string(),
       prompt: z.string(),
       count: z.number().int().positive(),
-      options: z.array(referenceSchema),
+      options: z.array(proficiencyReferenceSchema),
     }),
   ),
 })

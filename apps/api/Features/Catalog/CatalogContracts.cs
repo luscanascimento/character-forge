@@ -31,15 +31,17 @@ public sealed record CatalogSection(string Title, IReadOnlyList<CatalogReference
 
 public sealed record CatalogTextSection(string Title, IReadOnlyList<string> Paragraphs);
 
+public sealed record CatalogProficiencyReference(string Id, string Name, bool IsSkill);
+
 public sealed record CatalogProficiencyChoice(
     string Id,
     string Prompt,
     int Count,
-    IReadOnlyList<CatalogReference> Options);
+    IReadOnlyList<CatalogProficiencyReference> Options);
 
 public sealed record CatalogCharacterCreationFacts(
     int? HitDie,
-    IReadOnlyList<CatalogReference> GrantedProficiencies,
+    IReadOnlyList<CatalogProficiencyReference> GrantedProficiencies,
     IReadOnlyList<CatalogProficiencyChoice> ProficiencyChoices);
 
 public sealed record CatalogAbilityScorePrerequisite(
