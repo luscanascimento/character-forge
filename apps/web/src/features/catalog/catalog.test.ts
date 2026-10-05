@@ -37,4 +37,41 @@ describe('catalog item schema', () => {
     expect(item.characterCreation?.hitDie).toBe(6)
     expect(item.characterCreation?.proficiencyChoices[0]?.options).toHaveLength(2)
   })
+
+  it('preserves normalized feat prerequisites', () => {
+    const item = catalogItemSchema.parse({
+      id: 'grappler',
+      name: 'Grappler',
+      category: 'feats',
+      description: [],
+      attributes: [{ label: 'Type', value: 'General' }],
+      sections: [],
+      feat: {
+        type: 'general',
+        minimumLevel: 4,
+        requiredFeature: null,
+        isRepeatable: false,
+        abilityScorePrerequisite: {
+          count: 1,
+          options: [
+            { ability: { id: 'str', name: 'STR' }, minimumScore: 13 },
+            { ability: { id: 'dex', name: 'DEX' }, minimumScore: 13 },
+          ],
+        },
+      },
+      source: {
+        provider: 'D&D 5e SRD API',
+        ruleset: '2024',
+        rulesVersion: 'SRD-5.2.1',
+        fetchedAt: '2026-10-04T12:00:00Z',
+      },
+    })
+
+    expect(item.feat).toMatchObject({
+      type: 'general',
+      minimumLevel: 4,
+      isRepeatable: false,
+    })
+    expect(item.feat?.abilityScorePrerequisite?.options).toHaveLength(2)
+  })
 })

@@ -45,6 +45,28 @@ const characterCreationSchema = z.object({
   ),
 })
 
+const abilityScorePrerequisiteChoiceSchema = z
+  .object({
+    count: z.number().int().positive(),
+    options: z.array(
+      z.object({
+        ability: referenceSchema,
+        minimumScore: z.number().int().min(1).max(30),
+      }),
+    ),
+  })
+  .refine((choice) => choice.options.length >= choice.count, {
+    message: 'Ability prerequisite does not contain enough options',
+  })
+
+const featFactsSchema = z.object({
+  type: z.string().min(1),
+  minimumLevel: z.number().int().min(1).max(20).nullable(),
+  requiredFeature: z.string().min(1).nullable(),
+  isRepeatable: z.boolean(),
+  abilityScorePrerequisite: abilityScorePrerequisiteChoiceSchema.nullable(),
+})
+
 export const catalogPageSchema = z.object({
   items: z.array(summarySchema),
   page: z.number().int(),
@@ -72,6 +94,7 @@ export const catalogItemSchema = z.object({
     .transform((sections) => sections ?? []),
   characterCreation: characterCreationSchema.nullable().optional(),
   source: sourceSchema,
+  feat: featFactsSchema.nullable().optional(),
 })
 
 export type CatalogPage = z.infer<typeof catalogPageSchema>

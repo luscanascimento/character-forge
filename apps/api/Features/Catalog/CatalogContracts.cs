@@ -42,6 +42,21 @@ public sealed record CatalogCharacterCreationFacts(
     IReadOnlyList<CatalogReference> GrantedProficiencies,
     IReadOnlyList<CatalogProficiencyChoice> ProficiencyChoices);
 
+public sealed record CatalogAbilityScorePrerequisite(
+    CatalogReference Ability,
+    int MinimumScore);
+
+public sealed record CatalogAbilityScorePrerequisiteChoice(
+    int Count,
+    IReadOnlyList<CatalogAbilityScorePrerequisite> Options);
+
+public sealed record CatalogFeatFacts(
+    string Type,
+    int? MinimumLevel,
+    string? RequiredFeature,
+    bool IsRepeatable,
+    CatalogAbilityScorePrerequisiteChoice? AbilityScorePrerequisite);
+
 public sealed record CatalogItemDetail(
     string Id,
     string Name,
@@ -51,7 +66,8 @@ public sealed record CatalogItemDetail(
     IReadOnlyList<CatalogSection> Sections,
     IReadOnlyList<CatalogTextSection>? TextSections = null,
     CatalogCharacterCreationFacts? CharacterCreation = null,
-    CatalogSource? Source = null);
+    CatalogSource? Source = null,
+    CatalogFeatFacts? Feat = null);
 
 public sealed record CatalogPage(
     IReadOnlyList<CatalogItemSummary> Items,

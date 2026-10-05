@@ -26,7 +26,9 @@ internal sealed record SrdOptionSet(
 internal sealed record SrdOption(
     [property: JsonPropertyName("option_type")] string OptionType,
     SrdReference? Item,
-    SrdChoice? Choice);
+    SrdChoice? Choice,
+    [property: JsonPropertyName("ability_score")] SrdReference? AbilityScore,
+    [property: JsonPropertyName("minimum_score")] int? MinimumScore);
 
 internal sealed record SrdPrimaryAbility(
     string Desc,
@@ -89,7 +91,14 @@ internal sealed record SrdFeatDetail(
     string Index,
     string Name,
     string? Description,
-    string? Type);
+    string? Type,
+    string? Repeatable,
+    SrdFeatPrerequisites? Prerequisites,
+    [property: JsonPropertyName("prerequisite_options")] SrdChoice? PrerequisiteOptions);
+
+internal sealed record SrdFeatPrerequisites(
+    [property: JsonPropertyName("minimum_level")] int? MinimumLevel,
+    [property: JsonPropertyName("feature_named")] string? FeatureNamed);
 
 internal sealed record SrdSpellDetail(
     string Index,

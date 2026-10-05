@@ -1,5 +1,6 @@
 using System.Globalization;
 using CharacterForge.Api.Features.Catalog;
+using CharacterForge.Api.Features.Characters;
 
 namespace CharacterForge.Api.Infrastructure.Srd;
 
@@ -77,7 +78,8 @@ internal static class SrdCatalogMapper
         CatalogCategory.Feats.ToSlug(),
         Text(item.Description),
         Compact([new("Type", TitleCase(item.Type))]),
-        []);
+        [],
+        Feat: FeatFacts(item));
 
     public static CatalogItemDetail Map(SrdSpellDetail item) => new(
         item.Index,
@@ -210,6 +212,77 @@ internal static class SrdCatalogMapper
                 ? $"Skill: {reference.Name}"
                 : reference.Name,
             reference.Note);
+    }
+
+    private static CatalogFeatFacts FeatFacts(SrdFeatDetail item)
+    {
+        if (string.IsNullOrWhiteSpace(item.Type))
+        {
+            throw new SrdProviderException($"The SRD provider returned a feat without a type for '{item.Index}'.");
+        }
+
+        var minimumLevel = item.Prerequisites?.MinimumLevel;
+        if (minimumLevel is < CharacterRules.MinimumLevel or > CharacterRules.MaximumLevel)
+        {
+            throw new SrdProviderException($"The SRD provider returned an invalid minimum level for feat '{item.Index}'.");
+        }
+
+        var requiredFeature = item.Prerequisites?.FeatureNamed;
+        if (requiredFeature is not null && string.IsNullOrWhiteSpace(requiredFeature))
+        {
+            throw new SrdProviderException($"The SRD provider returned an invalid required feature for feat '{item.Index}'.");
+        }
+
+        return new CatalogFeatFacts(
+            item.Type.Trim().ToLowerInvariant(),
+            minimumLevel,
+            requiredFeature?.Trim(),
+            !string.IsNullOrWhiteSpace(item.Repeatable),
+            AbilityScorePrerequisite(item.Index, item.PrerequisiteOptions));
+    }
+
+    private static CatalogAbilityScorePrerequisiteChoice? AbilityScorePrerequisite(
+        string featId,
+        SrdChoice? choice)
+    {
+        if (choice is null)
+        {
+            return null;
+        }
+
+        if (!string.Equals(choice.Type, "ability-scores", StringComparison.Ordinal)
+            || choice.Choose < 1
+            || choice.From is null
+            || !string.Equals(choice.From.OptionSetType, "options_array", StringComparison.Ordinal)
+            || choice.From.Options is not { Count: > 0 })
+        {
+            throw new SrdProviderException($"The SRD provider returned an invalid ability prerequisite for feat '{featId}'.");
+        }
+
+        var options = choice.From.Options.Select(option =>
+        {
+            if (!string.Equals(option.OptionType, "score_prerequisite", StringComparison.Ordinal)
+                || option.AbilityScore is null
+                || string.IsNullOrWhiteSpace(option.AbilityScore.Index)
+                || string.IsNullOrWhiteSpace(option.AbilityScore.Name)
+                || option.MinimumScore is not int minimumScore
+                || minimumScore is < CharacterRules.MinimumAbilityScore or > CharacterRules.MaximumAbilityScore)
+            {
+                throw new SrdProviderException($"The SRD provider returned an invalid ability prerequisite for feat '{featId}'.");
+            }
+
+            return new CatalogAbilityScorePrerequisite(
+                new CatalogReference(option.AbilityScore.Index, option.AbilityScore.Name),
+                minimumScore);
+        }).ToArray();
+
+        if (options.Length < choice.Choose
+            || options.Select(option => option.Ability.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() != options.Length)
+        {
+            throw new SrdProviderException($"The SRD provider returned an invalid ability prerequisite for feat '{featId}'.");
+        }
+
+        return new CatalogAbilityScorePrerequisiteChoice(choice.Choose, options);
     }
 
     private static string JoinNames(IReadOnlyList<SrdReference>? references) =>

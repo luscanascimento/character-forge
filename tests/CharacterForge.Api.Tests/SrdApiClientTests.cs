@@ -181,6 +181,125 @@ public sealed class SrdApiClientTests
     }
 
     [Fact]
+    public async Task GetFeat_PreservesAbilityScorePrerequisiteOptions()
+    {
+        var client = CreateClient(_ => Json("""
+            {
+              "index": "grappler",
+              "name": "Grappler",
+              "description": "You are an accomplished wrestler.",
+              "type": "general",
+              "prerequisites": { "minimum_level": 4 },
+              "prerequisite_options": {
+                "desc": "Strength or Dexterity 13+",
+                "choose": 1,
+                "type": "ability-scores",
+                "from": {
+                  "option_set_type": "options_array",
+                  "options": [
+                    {
+                      "option_type": "score_prerequisite",
+                      "ability_score": { "index": "str", "name": "STR" },
+                      "minimum_score": 13
+                    },
+                    {
+                      "option_type": "score_prerequisite",
+                      "ability_score": { "index": "dex", "name": "DEX" },
+                      "minimum_score": 13
+                    }
+                  ]
+                }
+              }
+            }
+            """));
+
+        var item = await client.GetItemAsync(CatalogCategory.Feats, "grappler", CancellationToken.None);
+
+        Assert.NotNull(item?.Feat);
+        Assert.Equal("general", item.Feat.Type);
+        Assert.Equal(4, item.Feat.MinimumLevel);
+        Assert.Null(item.Feat.RequiredFeature);
+        Assert.False(item.Feat.IsRepeatable);
+        Assert.NotNull(item.Feat.AbilityScorePrerequisite);
+        Assert.Equal(1, item.Feat.AbilityScorePrerequisite.Count);
+        Assert.Equal(
+            [new CatalogAbilityScorePrerequisite(new CatalogReference("str", "STR"), 13),
+             new CatalogAbilityScorePrerequisite(new CatalogReference("dex", "DEX"), 13)],
+            item.Feat.AbilityScorePrerequisite.Options);
+    }
+
+    [Fact]
+    public async Task GetFeat_PreservesNamedFeaturePrerequisite()
+    {
+        var client = CreateClient(_ => Json("""
+            {
+              "index": "archery",
+              "name": "Archery",
+              "type": "fighting-style",
+              "prerequisites": { "feature_named": "Fighting Style" }
+            }
+            """));
+
+        var item = await client.GetItemAsync(CatalogCategory.Feats, "archery", CancellationToken.None);
+
+        Assert.NotNull(item?.Feat);
+        Assert.Equal("fighting-style", item.Feat.Type);
+        Assert.Equal("Fighting Style", item.Feat.RequiredFeature);
+        Assert.Null(item.Feat.MinimumLevel);
+        Assert.Null(item.Feat.AbilityScorePrerequisite);
+    }
+
+    [Fact]
+    public async Task GetFeat_NormalizesRepeatability()
+    {
+        var client = CreateClient(_ => Json("""
+            {
+              "index": "ability-score-improvement",
+              "name": "Ability Score Improvement",
+              "type": "general",
+              "repeatable": "You can take this feat more than once.",
+              "prerequisites": { "minimum_level": 4 }
+            }
+            """));
+
+        var item = await client.GetItemAsync(
+            CatalogCategory.Feats,
+            "ability-score-improvement",
+            CancellationToken.None);
+
+        Assert.NotNull(item?.Feat);
+        Assert.True(item.Feat.IsRepeatable);
+    }
+
+    [Fact]
+    public async Task GetFeat_RejectsMalformedAbilityScorePrerequisite()
+    {
+        var client = CreateClient(_ => Json("""
+            {
+              "index": "invalid-feat",
+              "name": "Invalid Feat",
+              "type": "general",
+              "prerequisite_options": {
+                "desc": "Strength 31+",
+                "choose": 1,
+                "type": "ability-scores",
+                "from": {
+                  "option_set_type": "options_array",
+                  "options": [{
+                    "option_type": "score_prerequisite",
+                    "ability_score": { "index": "str", "name": "STR" },
+                    "minimum_score": 31
+                  }]
+                }
+              }
+            }
+            """));
+
+        await Assert.ThrowsAsync<SrdProviderException>(() =>
+            client.GetItemAsync(CatalogCategory.Feats, "invalid-feat", CancellationToken.None));
+    }
+
+    [Fact]
     public async Task GetBackground_PreservesMachineReadableProficiencyFacts()
     {
         const string json = """

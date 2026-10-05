@@ -90,6 +90,8 @@ The builder validates this contract at its API boundary and uses it for level, s
 
 ADR-010 defines the next rule-data boundary: provider-owned structured catalog facts are combined with a narrow, typed Character Forge manifest for missing feature-choice semantics. The manifest has its own version, provenance, and focused tests; it fails closed on provider-reference mismatch and never copies or parses narrative descriptions. Dependent spell, equipment, and feat-effect rules remain in their roadmap phases.
 
+Feat details now preserve provider-owned type, minimum-level and named-feature prerequisites, repeatability, and alternative ability-score thresholds as a provider-neutral typed contract. The SRD adapter rejects malformed option shapes, duplicate abilities, impossible choice counts, and scores or levels outside canonical bounds. These facts can qualify manifest-owned choices without making frontend code depend on provider DTOs.
+
 External API DTOs, domain models, and public response contracts may differ when the boundary protects rules or stability. They should not be triplicated when their shapes and reasons to change are genuinely identical.
 
 ## Data flow
