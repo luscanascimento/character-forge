@@ -7,32 +7,19 @@ public static class SpellSelectionRules
         SpellSelectionRule? rule)
     {
         var cantrips = selections?.Cantrips ?? [];
+        var spellbook = selections?.Spellbook ?? [];
         var preparedSpells = selections?.PreparedSpells ?? [];
         var violations = new List<RuleViolation>();
 
         if (rule is null)
         {
-            if (cantrips.Count > 0 || preparedSpells.Count > 0)
+            if (cantrips.Count > 0 || spellbook.Count > 0 || preparedSpells.Count > 0)
             {
                 violations.Add(Violation(
                     "character.spells.unsupported",
                     "This class does not have a supported spell selection rule.",
                     "spells",
                     "Remove these selections or restore the class that granted them."));
-            }
-
-            return new ValidationResult(violations);
-        }
-
-        if (string.Equals(rule.PreparedSpellSource, "spellbook", StringComparison.Ordinal))
-        {
-            if (cantrips.Count > 0 || preparedSpells.Count > 0)
-            {
-                violations.Add(Violation(
-                    "character.spells.spellbook.required",
-                    "Wizard spell selections require spellbook ownership rules that are not available yet.",
-                    "spells",
-                    "Keep spell selections empty until a Wizard spellbook can be recorded."));
             }
 
             return new ValidationResult(violations);
@@ -46,6 +33,37 @@ public static class SpellSelectionRules
             "cantrips",
             "cantrip",
             violations);
+
+        if (string.Equals(rule.PreparedSpellSource, "spellbook", StringComparison.Ordinal))
+        {
+            ValidateSpellbook(spellbook, rule, violations);
+            ValidateGroup(
+                preparedSpells,
+                rule.PreparedSpellCount,
+                spell => spell.SpellLevel is >= 1 &&
+                    spell.SpellLevel <= rule.MaximumPreparedSpellLevel &&
+                    spellbook.Any(owned => string.Equals(
+                        owned.Id,
+                        spell.Spell.Id,
+                        StringComparison.OrdinalIgnoreCase)),
+                rule.ClassSpells,
+                "preparedSpells",
+                "prepared spell",
+                violations,
+                "Choose a spell in this Wizard's spellbook that is no higher than the available spell-slot level.");
+
+            return new ValidationResult(violations);
+        }
+
+        if (spellbook.Count > 0)
+        {
+            violations.Add(Violation(
+                "character.spells.spellbook.unsupported",
+                "This class does not use a spellbook.",
+                "spells.spellbook",
+                "Remove the retained spellbook or restore the Wizard class."));
+        }
+
         ValidateGroup(
             preparedSpells,
             rule.PreparedSpellCount,
@@ -65,7 +83,8 @@ public static class SpellSelectionRules
         IReadOnlyList<SpellOptionRule> options,
         string group,
         string label,
-        ICollection<RuleViolation> violations)
+        ICollection<RuleViolation> violations,
+        string? levelRequirement = null)
     {
         if (selections.Count != requiredCount)
         {
@@ -109,7 +128,7 @@ public static class SpellSelectionRules
                     $"spells.{group}[{index}]",
                     group == "cantrips"
                         ? "Choose a level 0 spell."
-                        : "Choose a spell no higher than the available spell-slot level."));
+                        : levelRequirement ?? "Choose a spell no higher than the available spell-slot level."));
             }
 
             if (!string.Equals(selection.Name, option.Spell.Name, StringComparison.Ordinal))
@@ -121,6 +140,31 @@ public static class SpellSelectionRules
                     option.Spell.Name!));
             }
         }
+    }
+
+    private static void ValidateSpellbook(
+        IReadOnlyList<ContentReference> spellbook,
+        SpellSelectionRule rule,
+        ICollection<RuleViolation> violations)
+    {
+        if (spellbook.Count < rule.MinimumSpellbookSpells)
+        {
+            violations.Add(Violation(
+                "character.spells.spellbook.count",
+                $"Record at least {rule.MinimumSpellbookSpells} spells in this Wizard's spellbook.",
+                "spells.spellbook",
+                $"At least {rule.MinimumSpellbookSpells} distinct eligible Wizard spells."));
+        }
+
+        ValidateGroup(
+            spellbook,
+            spellbook.Count,
+            spell => spell.SpellLevel is >= 1 && spell.SpellLevel <= rule.MaximumPreparedSpellLevel,
+            rule.ClassSpells,
+            "spellbook",
+            "spellbook spell",
+            violations,
+            "Record only Wizard spells no higher than the available spell-slot level.");
     }
 
     private static string Pluralize(string value, int count) => count == 1 ? value : $"{value}s";

@@ -53,7 +53,7 @@ public sealed class ClassProgressionEndpointsTests : IDisposable
         Assert.Equal(1, _source.ProgressionRequestCount);
         Assert.Equal(3, Assert.Single(first.Subclasses).AvailableAtLevel);
         Assert.Equal(2, Assert.Single(first.Spellcasting!.Levels).Slots[0].Count);
-        Assert.Equal("SRD-5.2.1-SPELL-1", first.Spellcasting.Policy?.ManifestVersion);
+        Assert.Equal("SRD-5.2.1-SPELL-2", first.Spellcasting.Policy?.ManifestVersion);
         Assert.Equal("spellbook", first.Spellcasting.Policy?.PreparedSpellSource);
         Assert.Equal("standard", first.Spellcasting.Policy?.SlotPool);
     }

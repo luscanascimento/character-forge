@@ -39,4 +39,5 @@ public sealed record FeatureChoiceSelection(
 
 public sealed record SpellSelections(
     IReadOnlyList<ContentReference>? Cantrips,
-    IReadOnlyList<ContentReference>? PreparedSpells);
+    IReadOnlyList<ContentReference>? PreparedSpells,
+    IReadOnlyList<ContentReference>? Spellbook = null);

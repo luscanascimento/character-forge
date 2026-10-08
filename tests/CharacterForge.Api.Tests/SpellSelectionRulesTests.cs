@@ -80,15 +80,42 @@ public sealed class SpellSelectionRulesTests
     }
 
     [Fact]
-    public void KeepsWizardEmptyUntilSpellbookOwnershipIsSupported()
+    public void RequiresWizardPreparedSpellsToBeOwnedInTheCanonicalSpellbook()
     {
-        var wizard = BardLevelOne with { PreparedSpellSource = "spellbook", ClassSpells = [] };
+        var wizard = BardLevelOne with
+        {
+            PreparedSpellSource = "spellbook",
+            MinimumSpellbookSpells = 4
+        };
+        var spellbook = new[]
+        {
+            Reference("charm-person", "Charm Person"),
+            Reference("cure-wounds", "Cure Wounds"),
+            Reference("detect-magic", "Detect Magic"),
+            Reference("heroism", "Heroism")
+        };
+        var valid = ValidSelections() with { Spellbook = spellbook };
 
-        Assert.True(SpellSelectionRules.Validate(null, wizard).IsValid);
+        Assert.True(SpellSelectionRules.Validate(valid, wizard).IsValid);
 
-        var selected = SpellSelectionRules.Validate(ValidSelections(), wizard);
-        Assert.Contains(selected.Violations, violation =>
-            violation.Code == "character.spells.spellbook.required");
+        var missingOwnership = SpellSelectionRules.Validate(
+            valid with
+            {
+                Spellbook = spellbook.Take(3).ToArray(),
+                PreparedSpells =
+                [
+                    Reference("charm-person", "Charm Person"),
+                    Reference("cure-wounds", "Cure Wounds"),
+                    Reference("detect-magic", "Detect Magic"),
+                    Reference("heroism", "Heroism")
+                ]
+            },
+            wizard);
+        Assert.Contains(missingOwnership.Violations, violation =>
+            violation.Code == "character.spells.spellbook.count");
+        Assert.Contains(missingOwnership.Violations, violation =>
+            violation.Code == "character.spells.preparedSpells.level" &&
+            violation.Source == "spells.preparedSpells[3]");
     }
 
     [Fact]

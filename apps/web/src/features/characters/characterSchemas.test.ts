@@ -28,7 +28,7 @@ describe('createStoredCharacterDraft', () => {
         classProgressions: [{ class: null, level: 1, subclass: null }],
         proficiencyChoices: [],
         featureChoices: [],
-        spells: { cantrips: [], preparedSpells: [] },
+        spells: { cantrips: [], spellbook: [], preparedSpells: [] },
       },
     })
   })
@@ -104,6 +104,6 @@ describe('storedCharacterV1Schema', () => {
 
     expect(parsed.character.classProgressions[0]?.subclass).toBeNull()
     expect(parsed.character.featureChoices).toEqual([])
-    expect(parsed.character.spells).toEqual({ cantrips: [], preparedSpells: [] })
+    expect(parsed.character.spells).toEqual({ cantrips: [], spellbook: [], preparedSpells: [] })
   })
 })

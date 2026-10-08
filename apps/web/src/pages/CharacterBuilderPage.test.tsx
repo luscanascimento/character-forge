@@ -433,7 +433,7 @@ function bardSpellProgression(): ClassProgressionDocument {
       availableAtLevel: 1,
       ability: { id: 'cha', name: 'CHA' },
       policy: {
-        manifestVersion: 'SRD-5.2.1-SPELL-1',
+        manifestVersion: 'SRD-5.2.1-SPELL-2',
         preparedSpellSource: 'classSpellList',
         cantripReplacement: { trigger: 'classLevelGained', maximumReplacements: 1 },
         preparedSpellReplacement: { trigger: 'classLevelGained', maximumReplacements: 1 },
@@ -453,6 +453,34 @@ function bardSpellProgression(): ClassProgressionDocument {
   }
 }
 
+function wizardSpellProgression(): ClassProgressionDocument {
+  return {
+    ...classProgression('wizard'),
+    spellcasting: {
+      availableAtLevel: 1,
+      ability: { id: 'int', name: 'INT' },
+      policy: {
+        manifestVersion: 'SRD-5.2.1-SPELL-2',
+        preparedSpellSource: 'spellbook',
+        cantripReplacement: { trigger: 'longRest', maximumReplacements: 1 },
+        preparedSpellReplacement: { trigger: 'longRest', maximumReplacements: null },
+        slotPool: 'standard',
+        baseSlotRecovery: 'longRest',
+        usesUniformSlotLevel: false,
+        maximumSlotLevel: 9,
+        spellbook: { initialSpells: 6, spellsPerAdditionalClassLevel: 2 },
+        specialSpellAccess: [],
+      },
+      levels: Array.from({ length: 20 }, (_, index) => ({
+        classLevel: index + 1,
+        cantripsKnown: index < 3 ? 3 : 4,
+        preparedSpells: Math.min(index + 4, 22),
+        slots: [{ spellLevel: 1, count: 2 }],
+      })),
+    },
+  }
+}
+
 function spellCatalogPage(): CatalogPage {
   const items = [
     { id: 'dancing-lights', name: 'Dancing Lights', category: 'spells' as const, level: 0 },
@@ -462,6 +490,38 @@ function spellCatalogPage(): CatalogPage {
     { id: 'detect-magic', name: 'Detect Magic', category: 'spells' as const, level: 1 },
     { id: 'heroism', name: 'Heroism', category: 'spells' as const, level: 1 },
     { id: 'shatter', name: 'Shatter', category: 'spells' as const, level: 2 },
+  ]
+  return {
+    items,
+    page: 1,
+    pageSize: 48,
+    total: items.length,
+    totalPages: 1,
+    source: {
+      provider: 'D&D 5e SRD API',
+      ruleset: '2024',
+      rulesVersion: 'SRD-5.2.1',
+      fetchedAt: '2026-10-06T12:00:00Z',
+    },
+  }
+}
+
+function wizardSpellCatalogPage(): CatalogPage {
+  const items = [
+    ...['Fire Bolt', 'Light', 'Mage Hand'].map((name) => ({
+      id: name.toLowerCase().replaceAll(' ', '-'),
+      name,
+      category: 'spells' as const,
+      level: 0,
+    })),
+    ...['Alarm', 'Burning Hands', 'Charm Person', 'Detect Magic', 'Feather Fall', 'Shield'].map(
+      (name) => ({
+        id: name.toLowerCase().replaceAll(' ', '-'),
+        name,
+        category: 'spells' as const,
+        level: 1,
+      }),
+    ),
   ]
   return {
     items,
@@ -1495,6 +1555,7 @@ describe('CharacterBuilderPage', () => {
               { id: 'dancing-lights', name: 'Dancing Lights' },
               { id: 'light', name: 'Light' },
             ],
+            spellbook: [],
             preparedSpells: [
               { id: 'charm-person', name: 'Charm Person' },
               { id: 'cure-wounds', name: 'Cure Wounds' },
@@ -1514,6 +1575,79 @@ describe('CharacterBuilderPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'Review your character' }),
     ).toBeInTheDocument()
+  })
+
+  it('records Wizard spellbook ownership before prepared spells', async () => {
+    const user = userEvent.setup()
+    const storage = repository()
+    const catalogLoader = vi.fn<CatalogLoader>((category) => {
+      if (category === 'spells') return Promise.resolve(wizardSpellCatalogPage())
+      if (category === 'classes' || category === 'species' || category === 'backgrounds') {
+        return Promise.resolve(catalogPage(category))
+      }
+      return Promise.reject(new Error(`Unexpected category: ${category}`))
+    })
+    const progressionLoader = vi
+      .fn<ClassProgressionLoader>()
+      .mockResolvedValue(wizardSpellProgression())
+    renderPage(
+      storage,
+      undefined,
+      catalogLoader,
+      undefined,
+      undefined,
+      undefined,
+      progressionLoader,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Choose their spells' })).toBeInTheDocument()
+    await user.click(await screen.findByRole('checkbox', { name: /Fire Bolt/ }))
+    for (const name of ['Light', 'Mage Hand']) {
+      await user.click(screen.getByRole('checkbox', { name: new RegExp(name) }))
+    }
+    for (const name of [
+      'Alarm',
+      'Burning Hands',
+      'Charm Person',
+      'Detect Magic',
+      'Feather Fall',
+      'Shield',
+    ]) {
+      await user.click(
+        within(screen.getByRole('group', { name: 'Spellbook' })).getByRole('checkbox', {
+          name: new RegExp(name),
+        }),
+      )
+    }
+    for (const name of ['Alarm', 'Burning Hands', 'Charm Person', 'Detect Magic']) {
+      await user.click(
+        within(screen.getByRole('group', { name: 'Prepared spells' })).getByRole('checkbox', {
+          name: new RegExp(name),
+        }),
+      )
+    }
+    await user.click(screen.getByRole('button', { name: 'Review character' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          spells: expect.objectContaining({
+            spellbook: expect.arrayContaining([
+              { id: 'alarm', name: 'Alarm' },
+              { id: 'shield', name: 'Shield' },
+            ]),
+            preparedSpells: [
+              { id: 'alarm', name: 'Alarm' },
+              { id: 'burning-hands', name: 'Burning Hands' },
+              { id: 'charm-person', name: 'Charm Person' },
+              { id: 'detect-magic', name: 'Detect Magic' },
+            ],
+          }),
+        }),
+      }),
+      '2026-09-29T12:00:00.000Z',
+    )
   })
 
   it('retries canonical validation without changing the local draft', async () => {

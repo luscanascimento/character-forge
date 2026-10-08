@@ -35,7 +35,10 @@ public sealed class CharacterEndpointsTests : IDisposable
     {
         var response = await _client.PostAsJsonAsync(
             "/api/characters/validate",
-            CharacterValidatorTests.CreateValidCharacter(),
+            CharacterValidatorTests.CreateValidCharacter() with
+            {
+                Spells = CharacterValidatorTests.WizardSpells(level: 1)
+            },
             CancellationToken.None);
         var evaluation = await response.Content.ReadFromJsonAsync<CharacterEvaluation>(
             cancellationToken: CancellationToken.None);
@@ -147,7 +150,10 @@ public sealed class CharacterEndpointsTests : IDisposable
     {
         var response = await _client.PostAsJsonAsync(
             "/api/characters/validate",
-            CharacterValidatorTests.CreateValidCharacter(level: 5),
+            CharacterValidatorTests.CreateValidCharacter(level: 5) with
+            {
+                Spells = CharacterValidatorTests.WizardSpells(level: 5)
+            },
             CancellationToken.None);
         var evaluation = await response.Content.ReadFromJsonAsync<CharacterEvaluation>(
             cancellationToken: CancellationToken.None);
@@ -268,9 +274,10 @@ public sealed class CharacterEndpointsTests : IDisposable
             int? level,
             string? school,
             string? characterClass,
-            CancellationToken cancellationToken) => category == CatalogCategory.Spells && characterClass == "bard"
-                ? Task.FromResult<IReadOnlyList<CatalogItemSummary>>(
-                [
+            CancellationToken cancellationToken) => category == CatalogCategory.Spells
+                ? Task.FromResult<IReadOnlyList<CatalogItemSummary>>(characterClass == "bard"
+                    ?
+                    [
                     new("dancing-lights", "Dancing Lights", "spells", 0),
                     new("light", "Light", "spells", 0),
                     new("charm-person", "Charm Person", "spells", 1),
@@ -278,7 +285,21 @@ public sealed class CharacterEndpointsTests : IDisposable
                     new("detect-magic", "Detect Magic", "spells", 1),
                     new("heroism", "Heroism", "spells", 1),
                     new("shatter", "Shatter", "spells", 2)
-                ])
+                    ]
+                    : characterClass == "wizard"
+                        ? Enumerable.Range(1, 4)
+                            .Select(index => new CatalogItemSummary(
+                                $"wizard-cantrip-{index}",
+                                $"Wizard Cantrip {index}",
+                                "spells",
+                                0))
+                            .Concat(Enumerable.Range(1, 44).Select(index => new CatalogItemSummary(
+                                $"wizard-spell-{index}",
+                                $"Wizard Spell {index}",
+                                "spells",
+                                1)))
+                            .ToArray()
+                        : [])
                 : throw new NotSupportedException();
 
         public Task<CatalogItemDetail?> GetItemAsync(

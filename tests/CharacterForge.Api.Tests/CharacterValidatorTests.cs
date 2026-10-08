@@ -161,4 +161,21 @@ public sealed class CharacterValidatorTests
                 "species/elf/traits/keen-senses/proficiencies/0",
                 [new ContentReference("skill-perception", "Skill: Perception")])
         ]);
+
+    internal static SpellSelections WizardSpells(int level)
+    {
+        var cantripCount = level < 4 ? 3 : 4;
+        var spellbookCount = 6 + 2 * (level - 1);
+        var preparedCount = Math.Min(level + 3, 22);
+        return new SpellSelections(
+            Enumerable.Range(1, cantripCount)
+                .Select(index => new ContentReference($"wizard-cantrip-{index}", $"Wizard Cantrip {index}"))
+                .ToArray(),
+            Enumerable.Range(1, preparedCount)
+                .Select(index => new ContentReference($"wizard-spell-{index}", $"Wizard Spell {index}"))
+                .ToArray(),
+            Enumerable.Range(1, spellbookCount)
+                .Select(index => new ContentReference($"wizard-spell-{index}", $"Wizard Spell {index}"))
+                .ToArray());
+    }
 }

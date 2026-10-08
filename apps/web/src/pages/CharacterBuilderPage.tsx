@@ -109,8 +109,8 @@ type ProficiencyInputs = Record<string, string[]>
 type ProficiencyErrors = Record<string, string>
 type ClassErrors = { class?: string; subclass?: string; progression?: string }
 type FeatureChoiceInputs = Record<string, { branchId: string; selectionIds: string[] }>
-type SpellInputs = { cantripIds: string[]; preparedSpellIds: string[] }
-type SpellErrors = Partial<Record<'cantrips' | 'preparedSpells' | '_form', string>>
+type SpellInputs = { cantripIds: string[]; spellbookIds: string[]; preparedSpellIds: string[] }
+type SpellErrors = Partial<Record<'cantrips' | 'spellbook' | 'preparedSpells' | '_form', string>>
 type SavedProficiencyChoices = StoredCharacterV1['character']['proficiencyChoices']
 type EditableBuilderStep = Exclude<BuilderStep, 'review'>
 type SaveIntent = {
@@ -291,18 +291,20 @@ function BuilderWorkspace({
   const selectedProgression = document.character.classProgressions[0]
   const spellcasting = classProgressionQuery.data?.spellcasting
   const preparedSpellSource = spellcasting?.policy.preparedSpellSource
+  const spellbookPolicy = spellcasting?.policy.spellbook
   const spellLevelRule = spellcasting?.levels.find(
     (level) => level.classLevel === selectedProgression?.level,
   )
   const hasSavedSpells =
     document.character.spells.cantrips.length > 0 ||
+    document.character.spells.spellbook.length > 0 ||
     document.character.spells.preparedSpells.length > 0
   const spellOptionsQuery = useQuery({
     queryKey: ['builder-spell-options', selectedClass?.id],
     queryFn: ({ signal }) => getAllClassSpellOptions(catalogLoader, selectedClass!.id, signal),
     enabled:
       Boolean(selectedClass) &&
-      preparedSpellSource === 'classSpellList' &&
+      (preparedSpellSource === 'classSpellList' || preparedSpellSource === 'spellbook') &&
       (selectedStep === 'spells' || (reviewResumePending && selectedStep === 'proficiencies')),
     retry: false,
   })
@@ -392,9 +394,12 @@ function BuilderWorkspace({
     spellLevelRule,
     spellOptionsQuery.data,
     spellInputsFrom(document.character.spells),
+    spellbookPolicy,
   )
   const spellComplete =
-    preparedSpellSource === 'classSpellList' ? savedSpellResult.success : !hasSavedSpells
+    preparedSpellSource === 'classSpellList' || preparedSpellSource === 'spellbook'
+      ? savedSpellResult.success
+      : !hasSavedSpells
   const activeStep: BuilderStep = classResumeNeedsAttention
     ? 'class'
     : reviewResumePending &&
@@ -522,6 +527,7 @@ function BuilderWorkspace({
         spellLevelRule,
         spellOptionsQuery.data,
         spellInputs,
+        spellbookPolicy,
       )
       return result.success && !sameValue(result.spells, document.character.spells)
         ? { ...document.character, spells: result.spells }
@@ -779,6 +785,7 @@ function BuilderWorkspace({
       spellLevelRule,
       spellOptionsQuery.data,
       spellInputs,
+      spellbookPolicy,
     )
     if (!result.success) {
       setSpellErrors(result.errors)
@@ -1233,17 +1240,22 @@ function BuilderWorkspace({
               className={selectedClass?.name ?? 'This class'}
               preparedSpellSource={preparedSpellSource}
               levelRule={spellLevelRule}
+              spellbookPolicy={spellbookPolicy}
               options={spellOptionsQuery.data}
               inputs={spellInputs}
               savedSpells={document.character.spells}
               errors={spellErrors}
               pending={
                 classProgressionQuery.isPending ||
-                (preparedSpellSource === 'classSpellList' && spellOptionsQuery.isPending)
+                ((preparedSpellSource === 'classSpellList' ||
+                  preparedSpellSource === 'spellbook') &&
+                  spellOptionsQuery.isPending)
               }
               failed={
                 classProgressionQuery.isError ||
-                (preparedSpellSource === 'classSpellList' && spellOptionsQuery.isError)
+                ((preparedSpellSource === 'classSpellList' ||
+                  preparedSpellSource === 'spellbook') &&
+                  spellOptionsQuery.isError)
               }
               saved={
                 saveMutation.isSuccess &&
@@ -1253,7 +1265,12 @@ function BuilderWorkspace({
               saving={saveMutation.isPending}
               saveError={saveMutation.variables?.step === 'spells' ? saveMutation.error : null}
               onToggle={(group, id, checked) => {
-                const key = group === 'cantrips' ? 'cantripIds' : 'preparedSpellIds'
+                const key =
+                  group === 'cantrips'
+                    ? 'cantripIds'
+                    : group === 'spellbook'
+                      ? 'spellbookIds'
+                      : 'preparedSpellIds'
                 setSpellInputs((current) => ({
                   ...current,
                   [key]: checked
@@ -1265,7 +1282,12 @@ function BuilderWorkspace({
               }}
               onRetry={() => {
                 void classProgressionQuery.refetch()
-                if (preparedSpellSource === 'classSpellList') void spellOptionsQuery.refetch()
+                if (
+                  preparedSpellSource === 'classSpellList' ||
+                  preparedSpellSource === 'spellbook'
+                ) {
+                  void spellOptionsQuery.refetch()
+                }
               }}
               onSubmit={saveSpells}
             />
@@ -1296,6 +1318,7 @@ function SpellsStep({
   className,
   preparedSpellSource,
   levelRule,
+  spellbookPolicy,
   options,
   inputs,
   savedSpells,
@@ -1312,6 +1335,7 @@ function SpellsStep({
   className: string
   preparedSpellSource?: 'classSpellList' | 'spellbook'
   levelRule?: SpellcastingLevel
+  spellbookPolicy?: { initialSpells: number; spellsPerAdditionalClassLevel: number } | null
   options?: SpellOption[]
   inputs: SpellInputs
   savedSpells: CharacterDraft['spells']
@@ -1321,7 +1345,11 @@ function SpellsStep({
   saved: boolean
   saving: boolean
   saveError: Error | null
-  onToggle: (group: 'cantrips' | 'preparedSpells', id: string, checked: boolean) => void
+  onToggle: (
+    group: 'cantrips' | 'spellbook' | 'preparedSpells',
+    id: string,
+    checked: boolean,
+  ) => void
   onRetry: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
@@ -1350,11 +1378,18 @@ function SpellsStep({
   }
 
   const savedById = new Map(
-    [...savedSpells.cantrips, ...savedSpells.preparedSpells].map((spell) => [spell.id, spell]),
+    [...savedSpells.cantrips, ...savedSpells.spellbook, ...savedSpells.preparedSpells].map(
+      (spell) => [spell.id, spell],
+    ),
   )
   const optionsById = new Map((options ?? []).map((spell) => [spell.id, spell]))
-  const groupOptions = (group: 'cantrips' | 'preparedSpells') => {
-    const ids = group === 'cantrips' ? inputs.cantripIds : inputs.preparedSpellIds
+  const groupOptions = (group: 'cantrips' | 'spellbook' | 'preparedSpells') => {
+    const ids =
+      group === 'cantrips'
+        ? inputs.cantripIds
+        : group === 'spellbook'
+          ? inputs.spellbookIds
+          : inputs.preparedSpellIds
     const maximumLevel = Math.max(...(levelRule?.slots.map((slot) => slot.spellLevel) ?? [0]))
     const available = (options ?? []).filter((spell) =>
       group === 'cantrips'
@@ -1362,7 +1397,10 @@ function SpellsStep({
         : spell.level !== null &&
           spell.level !== undefined &&
           spell.level >= 1 &&
-          spell.level <= maximumLevel,
+          spell.level <= maximumLevel &&
+          (group !== 'preparedSpells' ||
+            preparedSpellSource !== 'spellbook' ||
+            inputs.spellbookIds.includes(spell.id)),
     )
     const unavailable = ids
       .filter((id) => !available.some((spell) => spell.id === id))
@@ -1372,13 +1410,18 @@ function SpellsStep({
       )
     return [...available, ...unavailable]
   }
-  const hasSelections = inputs.cantripIds.length > 0 || inputs.preparedSpellIds.length > 0
+  const hasSelections =
+    inputs.cantripIds.length > 0 ||
+    inputs.spellbookIds.length > 0 ||
+    inputs.preparedSpellIds.length > 0
   const lockedReason =
-    preparedSpellSource === 'spellbook'
-      ? 'Wizard spell preparation stays locked until Character Forge can record a canonical spellbook.'
-      : preparedSpellSource === undefined
-        ? `${className} does not use a supported class spell list.`
-        : null
+    preparedSpellSource === undefined
+      ? `${className} does not use a supported class spell list.`
+      : null
+  const minimumSpellbookSpells = spellbookPolicy
+    ? spellbookPolicy.initialSpells +
+      spellbookPolicy.spellsPerAdditionalClassLevel * ((levelRule?.classLevel ?? 1) - 1)
+    : 0
 
   return (
     <form className="builder-form builder-form--wide" onSubmit={onSubmit} noValidate>
@@ -1392,15 +1435,31 @@ function SpellsStep({
         </div>
       ) : (
         <p className="builder-field-help">
-          {className} prepares from its class list. Only spells supported by the current slot level
-          can be saved.
+          {preparedSpellSource === 'spellbook'
+            ? `${className} prepares only spells recorded in the spellbook. Record at least ${minimumSpellbookSpells} eligible spells.`
+            : `${className} prepares from its class list. Only spells supported by the current slot level can be saved.`}
         </p>
       )}
 
-      {(['cantrips', 'preparedSpells'] as const).map((group) => {
-        const ids = group === 'cantrips' ? inputs.cantripIds : inputs.preparedSpellIds
+      {(
+        [
+          'cantrips',
+          ...(preparedSpellSource === 'spellbook' ? (['spellbook'] as const) : []),
+          'preparedSpells',
+        ] as const
+      ).map((group) => {
+        const ids =
+          group === 'cantrips'
+            ? inputs.cantripIds
+            : group === 'spellbook'
+              ? inputs.spellbookIds
+              : inputs.preparedSpellIds
         const count =
-          group === 'cantrips' ? (levelRule?.cantripsKnown ?? 0) : (levelRule?.preparedSpells ?? 0)
+          group === 'cantrips'
+            ? (levelRule?.cantripsKnown ?? 0)
+            : group === 'spellbook'
+              ? minimumSpellbookSpells
+              : (levelRule?.preparedSpells ?? 0)
         const choices = groupOptions(group)
         if (lockedReason && ids.length === 0) return null
         return (
@@ -1410,11 +1469,19 @@ function SpellsStep({
             }
             key={group}
           >
-            <legend>{group === 'cantrips' ? 'Cantrips' : 'Prepared spells'}</legend>
+            <legend>
+              {group === 'cantrips'
+                ? 'Cantrips'
+                : group === 'spellbook'
+                  ? 'Spellbook'
+                  : 'Prepared spells'}
+            </legend>
             <p>
               {lockedReason
                 ? 'Remove retained selections before continuing.'
-                : `Choose exactly ${count}. ${ids.length} selected.`}
+                : group === 'spellbook'
+                  ? `Record at least ${count}. ${ids.length} recorded.`
+                  : `Choose exactly ${count}. ${ids.length} selected.`}
             </p>
             <div className="feature-choice__options">
               {choices.map((spell) => {
@@ -1427,7 +1494,10 @@ function SpellsStep({
                       catalogOption.level !== undefined &&
                       catalogOption.level >= 1 &&
                       catalogOption.level <=
-                        Math.max(...(levelRule?.slots.map((slot) => slot.spellLevel) ?? [0])))
+                        Math.max(...(levelRule?.slots.map((slot) => slot.spellLevel) ?? [0])) &&
+                      (group !== 'preparedSpells' ||
+                        preparedSpellSource !== 'spellbook' ||
+                        inputs.spellbookIds.includes(catalogOption.id)))
                 return (
                   <label key={spell.id}>
                     <input
@@ -2940,6 +3010,7 @@ function resumeStep(document: StoredCharacterV1): BuilderStep {
 function spellInputsFrom(spells: CharacterDraft['spells']): SpellInputs {
   return {
     cantripIds: spells.cantrips.map((spell) => spell.id),
+    spellbookIds: spells.spellbook.map((spell) => spell.id),
     preparedSpellIds: spells.preparedSpells.map((spell) => spell.id),
   }
 }
@@ -2949,17 +3020,17 @@ function validateSpellInputs(
   levelRule: SpellcastingLevel | undefined,
   options: SpellOption[] | undefined,
   inputs: SpellInputs,
+  spellbookPolicy?: { initialSpells: number; spellsPerAdditionalClassLevel: number } | null,
 ): { success: true; spells: CharacterDraft['spells'] } | { success: false; errors: SpellErrors } {
-  if (preparedSpellSource !== 'classSpellList') {
-    return inputs.cantripIds.length === 0 && inputs.preparedSpellIds.length === 0
-      ? { success: true, spells: { cantrips: [], preparedSpells: [] } }
+  if (preparedSpellSource === undefined) {
+    return inputs.cantripIds.length === 0 &&
+      inputs.spellbookIds.length === 0 &&
+      inputs.preparedSpellIds.length === 0
+      ? { success: true, spells: { cantrips: [], spellbook: [], preparedSpells: [] } }
       : {
           success: false,
           errors: {
-            _form:
-              preparedSpellSource === 'spellbook'
-                ? 'Remove retained selections until Wizard spellbook ownership is supported.'
-                : 'Remove retained selections or restore the class that granted them.',
+            _form: 'Remove retained selections or restore the class that granted them.',
           },
         }
   }
@@ -2996,6 +3067,31 @@ function validateSpellInputs(
     (option) => option.level === 0,
     'cantrips',
   )
+  if (preparedSpellSource === 'spellbook') {
+    const minimumSpellbookSpells = spellbookPolicy
+      ? spellbookPolicy.initialSpells +
+        spellbookPolicy.spellsPerAdditionalClassLevel * (levelRule.classLevel - 1)
+      : 0
+    if (
+      !spellbookPolicy ||
+      inputs.spellbookIds.length < minimumSpellbookSpells ||
+      new Set(inputs.spellbookIds).size !== inputs.spellbookIds.length ||
+      inputs.spellbookIds.some((id) => {
+        const option = optionsById.get(id)
+        return (
+          !option ||
+          option.level === null ||
+          option.level === undefined ||
+          option.level < 1 ||
+          option.level > maximumLevel
+        )
+      })
+    ) {
+      errors.spellbook = `Record at least ${minimumSpellbookSpells} distinct, available Wizard spells.`
+    }
+  } else if (inputs.spellbookIds.length > 0) {
+    errors.spellbook = 'Remove the retained spellbook or restore the Wizard class.'
+  }
   validateGroup(
     inputs.preparedSpellIds,
     levelRule.preparedSpells,
@@ -3003,7 +3099,8 @@ function validateSpellInputs(
       option.level !== null &&
       option.level !== undefined &&
       option.level >= 1 &&
-      option.level <= maximumLevel,
+      option.level <= maximumLevel &&
+      (preparedSpellSource !== 'spellbook' || inputs.spellbookIds.includes(option.id)),
     'preparedSpells',
   )
   if (Object.keys(errors).length > 0) return { success: false, errors }
@@ -3017,6 +3114,7 @@ function validateSpellInputs(
     success: true,
     spells: {
       cantrips: references(inputs.cantripIds),
+      spellbook: references(inputs.spellbookIds),
       preparedSpells: references(inputs.preparedSpellIds),
     },
   }

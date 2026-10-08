@@ -37,6 +37,13 @@ const spellcastingSchema = z
       baseSlotRecovery: z.enum(['longRest', 'shortOrLongRest']),
       usesUniformSlotLevel: z.boolean(),
       maximumSlotLevel: z.number().int().min(1).max(9),
+      spellbook: z
+        .object({
+          initialSpells: z.number().int().positive(),
+          spellsPerAdditionalClassLevel: z.number().int().positive(),
+        })
+        .nullable()
+        .optional(),
       specialSpellAccess: z.array(
         z.object({
           availableAtClassLevel: z.number().int().min(1).max(20),

@@ -9,6 +9,10 @@ describe('class progression schema', () => {
     expect(progression.subclasses[0]?.availableAtLevel).toBe(3)
     expect(progression.subclasses[0]?.levels[0]?.features[0]?.id).toBe('sculpt-spells')
     expect(progression.spellcasting?.levels[0]?.slots[0]).toEqual({ spellLevel: 1, count: 2 })
+    expect(progression.spellcasting?.policy.spellbook).toEqual({
+      initialSpells: 6,
+      spellsPerAdditionalClassLevel: 2,
+    })
   })
 
   it('rejects a spellcasting row that conflates spell and class levels', () => {
@@ -50,7 +54,7 @@ function progressionResponse() {
       availableAtLevel: 1,
       ability: { id: 'int', name: 'INT' },
       policy: {
-        manifestVersion: 'SRD-5.2.1-SPELL-1',
+        manifestVersion: 'SRD-5.2.1-SPELL-2',
         preparedSpellSource: 'spellbook',
         cantripReplacement: { trigger: 'longRest', maximumReplacements: 1 },
         preparedSpellReplacement: { trigger: 'longRest', maximumReplacements: null },
@@ -58,6 +62,7 @@ function progressionResponse() {
         baseSlotRecovery: 'longRest',
         usesUniformSlotLevel: false,
         maximumSlotLevel: 9,
+        spellbook: { initialSpells: 6, spellsPerAdditionalClassLevel: 2 },
         specialSpellAccess: [],
       },
       levels: Array.from({ length: 20 }, (_, index) => ({

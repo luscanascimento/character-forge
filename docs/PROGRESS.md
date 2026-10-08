@@ -126,18 +126,20 @@ Phases 0–5 are implemented. Phase 5 closed with trusted 1–20 class progressi
 - Added canonical server validation for exact selected-level counts, distinct ids, class-list membership, spell-level eligibility, and catalog names; invalidated selections remain in the draft for explicit correction.
 - Added a seventh builder step that loads every page of the class spell list, persists canonical references, filters prepared options by the current slot level, and routes structured spell violations back to the editable step.
 - Kept Wizard selections locked until spellbook ownership exists and rejected retained spell selections for noncasters without silently deleting either case.
+- Advanced the spellcasting policy manifest to `SRD-5.2.1-SPELL-2` with Wizard-only initial and per-level spellbook acquisition facts.
+- Added backward-compatible spellbook ownership to local drafts and canonical validation for the level-derived minimum, Wizard-list membership, spell level, distinct ids, names, and prepared-spell ownership.
+- Unlocked Wizard cantrip, spellbook, and prepared-spell controls in the builder while retaining invalidated selections for explicit correction.
 
 ## Work in progress
 
-Structured spellcasting progression, selected-level availability, Spell Save DC, spell attack modifier, provenance-backed preparation/Pact Magic policies, and class-list cantrip/prepared-spell selection are implemented. Wizard spellbook ownership is not implemented yet.
+Structured spellcasting progression, selected-level availability, Spell Save DC, spell attack modifier, provenance-backed preparation/Pact Magic policies, class-list selection, and Wizard spellbook ownership are implemented.
 
 ## Next step
 
 Continue the Phase 6 rule foundation:
 
-1. Add Wizard spellbook ownership before allowing Wizard prepared-spell selections.
-2. Revisit Blessed Warrior and Druidic Warrior through the now-typed class-cantrip policy.
-3. Model replacement events so the manifest's class-level and Long Rest limits can be enforced outside initial character construction.
+1. Revisit Blessed Warrior and Druidic Warrior through the now-typed class-cantrip policy.
+2. Model replacement events so the manifest's class-level and Long Rest limits can be enforced outside initial character construction.
 
 ## Pending decisions
 
@@ -156,15 +158,15 @@ Continue the Phase 6 rule foundation:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 87 passing across 13 files (`vitest run`)
+- Frontend unit tests: 89 passing across 13 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 133 passing
+- Backend unit/integration tests: 141 passing
 - Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses including Bard Expertise passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 
 ## Last checkpoint
 
-2026-10-07 (America/Sao_Paulo)
+2026-10-08 (America/Sao_Paulo)

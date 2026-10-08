@@ -9,7 +9,7 @@ public sealed class SpellcastingRuleManifestTests
     [Fact]
     public void Manifest_HasIndependentIdentityAndSrdProvenanceForEveryCaster()
     {
-        Assert.Equal("SRD-5.2.1-SPELL-1", SpellcastingRuleManifest.Version);
+        Assert.Equal("SRD-5.2.1-SPELL-2", SpellcastingRuleManifest.Version);
         Assert.Equal("2024", SpellcastingRuleManifest.Ruleset);
         Assert.Equal("SRD-5.2.1", SpellcastingRuleManifest.RulesVersion);
         Assert.Equal(
@@ -65,6 +65,8 @@ public sealed class SpellcastingRuleManifestTests
         Assert.Equal(1, paladin?.PreparedSpellReplacement.MaximumReplacements);
 
         Assert.Equal("spellbook", wizard?.PreparedSpellSource);
+        Assert.Equal(6, wizard?.Spellbook?.InitialSpells);
+        Assert.Equal(2, wizard?.Spellbook?.SpellsPerAdditionalClassLevel);
         Assert.Equal("longRest", wizard?.CantripReplacement?.Trigger);
         Assert.Null(wizard?.PreparedSpellReplacement.MaximumReplacements);
     }

@@ -12,6 +12,10 @@ public sealed record SpecialSpellAccessDocument(
     string ReplacementTrigger,
     bool RequiresSameSpellLevel);
 
+public sealed record SpellbookOwnershipDocument(
+    int InitialSpells,
+    int SpellsPerAdditionalClassLevel);
+
 public sealed record SpellcastingPolicyDocument(
     string ManifestVersion,
     string PreparedSpellSource,
@@ -21,4 +25,5 @@ public sealed record SpellcastingPolicyDocument(
     string BaseSlotRecovery,
     bool UsesUniformSlotLevel,
     int MaximumSlotLevel,
-    IReadOnlyList<SpecialSpellAccessDocument> SpecialSpellAccess);
+    IReadOnlyList<SpecialSpellAccessDocument> SpecialSpellAccess,
+    SpellbookOwnershipDocument? Spellbook = null);

@@ -57,13 +57,14 @@ public sealed record ClassSpellcastingPolicy(
     bool UsesUniformSlotLevel,
     int MaximumSlotLevel,
     IReadOnlyList<SpecialSpellAccess> SpecialSpellAccess,
-    IReadOnlyList<SpellcastingRuleProvenance> Provenance);
+    IReadOnlyList<SpellcastingRuleProvenance> Provenance,
+    SpellbookOwnershipDocument? Spellbook = null);
 
 public sealed class SpellcastingRuleContentException(string message) : Exception(message);
 
 public static class SpellcastingRuleManifest
 {
-    public const string Version = "SRD-5.2.1-SPELL-1";
+    public const string Version = "SRD-5.2.1-SPELL-2";
     public const string Ruleset = CharacterRules.Ruleset;
     public const string RulesVersion = CharacterRules.RulesVersion;
 
@@ -88,7 +89,15 @@ public static class SpellcastingRuleManifest
         Standard("ranger", "wis", PreparedSpellSource.ClassSpellList, null, OneAtLongRest, 5, 58),
         Standard("sorcerer", "cha", PreparedSpellSource.ClassSpellList, OneAtClassLevel, OneAtClassLevel, 9, 64, 65),
         PactMagic(),
-        Standard("wizard", "int", PreparedSpellSource.Spellbook, OneAtLongRest, AnyAtLongRest, 9, 77, 78)
+        Standard(
+            "wizard",
+            "int",
+            PreparedSpellSource.Spellbook,
+            OneAtLongRest,
+            AnyAtLongRest,
+            9,
+            [77, 78],
+            new SpellbookOwnershipDocument(InitialSpells: 6, SpellsPerAdditionalClassLevel: 2))
     ]);
 
     static SpellcastingRuleManifest() => ValidateManifest();
@@ -152,7 +161,25 @@ public static class SpellcastingRuleManifest
         SpellReplacementPolicy? cantripReplacement,
         SpellReplacementPolicy preparedReplacement,
         int maximumSlotLevel,
-        params int[] pages) => new(
+        params int[] pages) => Standard(
+            classId,
+            abilityId,
+            source,
+            cantripReplacement,
+            preparedReplacement,
+            maximumSlotLevel,
+            pages,
+            Spellbook: null);
+
+    private static ClassSpellcastingPolicy Standard(
+        string classId,
+        string abilityId,
+        PreparedSpellSource source,
+        SpellReplacementPolicy? cantripReplacement,
+        SpellReplacementPolicy preparedReplacement,
+        int maximumSlotLevel,
+        int[] pages,
+        SpellbookOwnershipDocument? Spellbook) => new(
             classId,
             abilityId,
             source,
@@ -163,7 +190,8 @@ public static class SpellcastingRuleManifest
             UsesUniformSlotLevel: false,
             maximumSlotLevel,
             [],
-            Provenance(classId, pages));
+            Provenance(classId, pages),
+            Spellbook);
 
     private static ClassSpellcastingPolicy PactMagic() => new(
         "warlock",
@@ -214,7 +242,8 @@ public static class SpellcastingRuleManifest
             access.Uses,
             Identifier(access.Recovery),
             Identifier(access.ReplacementTrigger),
-            access.RequiresSameSpellLevel)).ToArray());
+            access.RequiresSameSpellLevel)).ToArray(),
+        entry.Spellbook);
 
     private static SpellReplacementPolicyDocument Document(SpellReplacementPolicy policy) => new(
         Identifier(policy.Trigger),
@@ -230,7 +259,10 @@ public static class SpellcastingRuleManifest
                 entry.Provenance.Count == 0 ||
                 entry.Provenance.Any(source => source.Page <= 0) ||
                 entry.PreparedSpellReplacement.MaximumReplacements is <= 0 ||
-                entry.CantripReplacement?.MaximumReplacements is <= 0) ||
+                entry.CantripReplacement?.MaximumReplacements is <= 0 ||
+                (entry.PreparedSpellSource == PreparedSpellSource.Spellbook) != (entry.Spellbook is not null) ||
+                entry.Spellbook?.InitialSpells is <= 0 ||
+                entry.Spellbook?.SpellsPerAdditionalClassLevel is <= 0) ||
             Entries.Count(entry => entry.SlotPool == SpellSlotPool.PactMagic) != 1)
         {
             throw new InvalidOperationException(

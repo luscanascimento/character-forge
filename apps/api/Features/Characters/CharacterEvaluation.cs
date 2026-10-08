@@ -60,7 +60,8 @@ public sealed record SpellSelectionRule(
     int CantripCount,
     int PreparedSpellCount,
     int MaximumPreparedSpellLevel,
-    IReadOnlyList<SpellOptionRule> ClassSpells);
+    IReadOnlyList<SpellOptionRule> ClassSpells,
+    int MinimumSpellbookSpells = 0);
 
 public sealed record CharacterRulesContext(
     int HitDie,

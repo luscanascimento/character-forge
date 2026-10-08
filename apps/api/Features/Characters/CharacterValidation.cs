@@ -44,6 +44,7 @@ public static partial class CharacterValidator
         }
 
         ValidateSpellReferences(spells.Cantrips, "cantrips", "Cantrip", violations);
+        ValidateSpellReferences(spells.Spellbook, "spellbook", "Spellbook spell", violations);
         ValidateSpellReferences(spells.PreparedSpells, "preparedSpells", "Prepared spell", violations);
     }
 

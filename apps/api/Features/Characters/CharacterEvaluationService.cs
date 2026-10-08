@@ -136,19 +136,6 @@ public sealed class CharacterEvaluationService(
         }
         var maximumSpellLevel = level.Slots.Max(slot => slot.SpellLevel);
 
-        if (!string.Equals(
-            spellcasting.Policy.PreparedSpellSource,
-            "classSpellList",
-            StringComparison.Ordinal))
-        {
-            return new SpellSelectionRule(
-                spellcasting.Policy.PreparedSpellSource,
-                level.CantripsKnown,
-                level.PreparedSpells,
-                maximumSpellLevel,
-                []);
-        }
-
         var page = await catalog.GetPageAsync(
             CatalogCategory.Spells,
             new CatalogQuery(
@@ -164,11 +151,15 @@ public sealed class CharacterEvaluationService(
             new ContentReference(item.Id, item.Name),
             item.Level ?? throw new SrdProviderException(
                 $"Spell '{item.Id}' did not provide a spell level."))).ToArray();
+        var minimumSpellbookSpells = spellcasting.Policy.Spellbook is null
+            ? 0
+            : spellcasting.Policy.Spellbook.InitialSpells
+                + spellcasting.Policy.Spellbook.SpellsPerAdditionalClassLevel * (classLevel - 1);
         if (options.Select(option => option.Spell.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
                 options.Length ||
             options.Count(option => option.SpellLevel == 0) < level.CantripsKnown ||
             options.Count(option => option.SpellLevel is >= 1 && option.SpellLevel <= maximumSpellLevel) <
-            level.PreparedSpells)
+            Math.Max(level.PreparedSpells, minimumSpellbookSpells))
         {
             throw new SrdProviderException(
                 $"The spell catalog did not provide enough eligible options for class '{progression.Class.Id}'.");
@@ -179,7 +170,8 @@ public sealed class CharacterEvaluationService(
             level.CantripsKnown,
             level.PreparedSpells,
             maximumSpellLevel,
-            options);
+            options,
+            minimumSpellbookSpells);
     }
 
     private static SpellcastingProgressionRule? MapSpellcasting(

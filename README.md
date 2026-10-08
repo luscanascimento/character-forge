@@ -2,7 +2,7 @@
 
 Character Forge is a mobile-first, rule-aware character builder for the modern fifth-edition rules available in **SRD 5.2.1**. It aims to feel like an adventurer's workshop rather than a themed business form, while keeping the codebase straightforward and production-minded.
 
-The project currently contains the completed discovery, foundation, SRD catalog, character-domain, Character Builder MVP, and class-progression phases. It includes a responsive dark-fantasy landing experience, a searchable compendium, local IndexedDB character management, a six-step auto-saving builder, canonical validation/calculation, and trusted class progression controls through level 20. Phase 6 spellcasting is in progress with normalized progression, selected-level availability, spellcasting calculations, and provenance-backed preparation/Pact Magic policies.
+The project currently contains the completed discovery, foundation, SRD catalog, character-domain, Character Builder MVP, and class-progression phases. It includes a responsive dark-fantasy landing experience, a searchable compendium, local IndexedDB character management, a seven-step auto-saving builder, canonical validation/calculation, and trusted class progression controls through level 20. Phase 6 spellcasting is in progress with normalized progression, selected-level availability, spellcasting calculations, provenance-backed preparation/Pact Magic policies, canonical class-list selections, and Wizard spellbook ownership.
 
 ## Stack
 
