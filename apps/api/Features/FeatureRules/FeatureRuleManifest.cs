@@ -7,7 +7,7 @@ namespace CharacterForge.Api.Features.FeatureRules;
 
 public static class FeatureRuleManifest
 {
-    public const string Version = "SRD-5.2.1-CF-1";
+    public const string Version = "SRD-5.2.1-CF-2";
     public const string Ruleset = CharacterRules.Ruleset;
     public const string RulesVersion = CharacterRules.RulesVersion;
 
@@ -37,7 +37,7 @@ public static class FeatureRuleManifest
             level: 2,
             section: "Paladin — Level 2: Fighting Style",
             page: 54,
-            alternative: LockedCantripBranch("blessed-warrior", "cleric")),
+            alternative: ClassCantripBranch("blessed-warrior", "cleric")),
         FightingStyle(
             id: "ranger-fighting-style",
             classId: "ranger",
@@ -45,7 +45,7 @@ public static class FeatureRuleManifest
             level: 2,
             section: "Ranger — Level 2: Fighting Style",
             page: 59,
-            alternative: LockedCantripBranch("druidic-warrior", "druid")),
+            alternative: ClassCantripBranch("druidic-warrior", "druid")),
         Expertise(
             id: "bard-expertise-2",
             classId: "bard",
@@ -152,6 +152,22 @@ public static class FeatureRuleManifest
             branch.OptionSource.RequiredFeature,
             StringComparison.Ordinal);
 
+    public static void VerifyCantripOption(
+        FeatureChoiceBranch branch,
+        CatalogItemSummary spell)
+    {
+        ArgumentNullException.ThrowIfNull(branch);
+        ArgumentNullException.ThrowIfNull(spell);
+
+        if (branch.OptionSource.Kind != FeatureOptionSourceKind.ClassCantrips ||
+            !string.Equals(spell.Category, CatalogCategory.Spells.ToSlug(), StringComparison.Ordinal) ||
+            spell.Level != 0)
+        {
+            throw new FeatureRuleContentException(
+                $"Spell '{spell.Id}' does not match class-cantrip branch '{branch.Id}' in manifest '{Version}'.");
+        }
+    }
+
     private static FeatureChoiceRequirement FightingStyle(
         string id,
         string classId,
@@ -190,12 +206,11 @@ public static class FeatureRuleManifest
             new FeatureRuleProvenance(SourceDocument, section, page, SourceUrl));
     }
 
-    private static FeatureChoiceBranch LockedCantripBranch(string id, string spellClassId) => new(
+    private static FeatureChoiceBranch ClassCantripBranch(string id, string spellClassId) => new(
         id,
         SelectionCount: 2,
         new FeatureOptionSource(FeatureOptionSourceKind.ClassCantrips, spellClassId),
-        FeatureChoiceAvailability.Locked,
-        FeatureRuleDependency.Spellcasting);
+        FeatureChoiceAvailability.Supported);
 
     private static FeatureChoiceRequirement Expertise(
         string id,

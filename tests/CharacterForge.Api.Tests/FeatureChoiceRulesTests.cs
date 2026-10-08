@@ -24,6 +24,55 @@ public sealed class FeatureChoiceRulesTests
     }
 
     [Fact]
+    public void Validate_AcceptsTwoDistinctCanonicalClassCantrips()
+    {
+        var guidance = new ContentReference("guidance", "Guidance");
+        var light = new ContentReference("light", "Light");
+        var paladinStyle = FighterStyle with
+        {
+            Id = "paladin-fighting-style",
+            AvailableAtLevel = 2,
+            Branches =
+            [
+                .. FighterStyle.Branches,
+                new FeatureChoiceBranchRule("blessed-warrior", 2, true, [guidance, light])
+            ]
+        };
+
+        var result = FeatureChoiceRules.Validate(
+            [new FeatureChoiceSelection(paladinStyle.Id, "blessed-warrior", [guidance, light])],
+            [paladinStyle],
+            Progression("paladin", 2));
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Validate_RejectsAStaleClassCantripName()
+    {
+        var guidance = new ContentReference("guidance", "Guidance");
+        var light = new ContentReference("light", "Light");
+        var paladinStyle = FighterStyle with
+        {
+            Id = "paladin-fighting-style",
+            AvailableAtLevel = 2,
+            Branches = [new FeatureChoiceBranchRule("blessed-warrior", 2, true, [guidance, light])]
+        };
+
+        var result = FeatureChoiceRules.Validate(
+            [new FeatureChoiceSelection(
+                paladinStyle.Id,
+                "blessed-warrior",
+                [new ContentReference("guidance", "Old Guidance"), light])],
+            [paladinStyle],
+            Progression("paladin", 2));
+
+        Assert.Contains(result.Violations, violation =>
+            violation.Code == "character.featureChoice.selection.name.mismatch" &&
+            violation.Requirement == "Guidance");
+    }
+
+    [Fact]
     public void Validate_RequiresEveryActiveFeatureChoice()
     {
         var result = FeatureChoiceRules.Validate([], [FighterStyle], Progression("fighter", 1));

@@ -59,6 +59,7 @@ const catalogItems = {
   classes: [
     { id: 'bard', name: 'Bard', category: 'classes' as const },
     { id: 'fighter', name: 'Fighter', category: 'classes' as const },
+    { id: 'paladin', name: 'Paladin', category: 'classes' as const },
     { id: 'wizard', name: 'Wizard', category: 'classes' as const },
   ],
   species: [
@@ -101,6 +102,7 @@ function catalogItem(category: 'classes' | 'species' | 'backgrounds', id: string
     wizard: 'Wizard',
     bard: 'Bard',
     fighter: 'Fighter',
+    paladin: 'Paladin',
     elf: 'Elf',
     human: 'Human',
     acolyte: 'Acolyte',
@@ -251,12 +253,15 @@ function defaultValidationLoader(): CharacterValidationLoader {
 function classProgression(classId: string): ClassProgressionDocument {
   const isFighter = classId === 'fighter'
   const isBard = classId === 'bard'
-  const className = isFighter ? 'Fighter' : isBard ? 'Bard' : 'Wizard'
+  const isPaladin = classId === 'paladin'
+  const className = isFighter ? 'Fighter' : isBard ? 'Bard' : isPaladin ? 'Paladin' : 'Wizard'
   const subclass = isFighter
     ? { id: 'champion', name: 'Champion' }
     : isBard
       ? { id: 'lore', name: 'College of Lore' }
-      : { id: 'evoker', name: 'Evoker' }
+      : isPaladin
+        ? { id: 'devotion', name: 'Oath of Devotion' }
+        : { id: 'evoker', name: 'Evoker' }
 
   return {
     class: { id: classId, name: className },
@@ -304,7 +309,7 @@ function defaultProgressionLoader(): ClassProgressionLoader {
 function defaultFeatureChoicesLoader(): FeatureChoicesLoader {
   return vi.fn((classId: string) =>
     Promise.resolve<FeatureChoiceDocument>({
-      manifestVersion: 'SRD-5.2.1-CF-1',
+      manifestVersion: 'SRD-5.2.1-CF-2',
       ruleset: '2024',
       rulesVersion: 'SRD-5.2.1',
       class: { id: classId, name: classId === 'fighter' ? 'Fighter' : 'Wizard' },
@@ -316,7 +321,7 @@ function defaultFeatureChoicesLoader(): FeatureChoicesLoader {
 function bardFeatureChoicesLoader(): FeatureChoicesLoader {
   return vi.fn((classId: string) =>
     Promise.resolve<FeatureChoiceDocument>({
-      manifestVersion: 'SRD-5.2.1-CF-1',
+      manifestVersion: 'SRD-5.2.1-CF-2',
       ruleset: '2024',
       rulesVersion: 'SRD-5.2.1',
       class: { id: classId, name: classId === 'bard' ? 'Bard' : classId },
@@ -943,23 +948,23 @@ describe('CharacterBuilderPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('persists a canonical Fighting Style and keeps spellcasting alternatives locked', async () => {
+  it('persists Blessed Warrior with exactly two canonical Cleric cantrips', async () => {
     const user = userEvent.setup()
     const storage = repository({ get: vi.fn().mockResolvedValue(classlessCharacter()) })
     const featureChoicesLoader: FeatureChoicesLoader = vi.fn((classId: string) =>
       Promise.resolve<FeatureChoiceDocument>({
-        manifestVersion: 'SRD-5.2.1-CF-1',
+        manifestVersion: 'SRD-5.2.1-CF-2',
         ruleset: '2024',
         rulesVersion: 'SRD-5.2.1',
-        class: { id: classId, name: 'Fighter' },
+        class: { id: classId, name: 'Paladin' },
         requirements:
-          classId === 'fighter'
+          classId === 'paladin'
             ? [
                 {
-                  id: 'fighter-fighting-style',
+                  id: 'paladin-fighting-style',
                   subclassId: null,
-                  featureId: 'fighter-fighting-style',
-                  availableAtLevel: 1,
+                  featureId: 'paladin-fighting-style',
+                  availableAtLevel: 2,
                   count: 1,
                   branches: [
                     {
@@ -968,18 +973,19 @@ describe('CharacterBuilderPage', () => {
                       optionSource: 'featType',
                       availability: 'supported',
                       dependency: null,
-                      options: [
-                        { id: 'archery', name: 'Archery' },
-                        { id: 'defense', name: 'Defense' },
-                      ],
+                      options: [{ id: 'defense', name: 'Defense' }],
                     },
                     {
                       id: 'blessed-warrior',
                       selectionCount: 2,
                       optionSource: 'classCantrips',
-                      availability: 'locked',
-                      dependency: 'spellcasting',
-                      options: [],
+                      availability: 'supported',
+                      dependency: null,
+                      options: [
+                        { id: 'guidance', name: 'Guidance' },
+                        { id: 'light', name: 'Light' },
+                        { id: 'thaumaturgy', name: 'Thaumaturgy' },
+                      ],
                     },
                   ],
                 },
@@ -998,10 +1004,10 @@ describe('CharacterBuilderPage', () => {
       featureChoicesLoader,
     )
 
-    await user.click(await screen.findByRole('radio', { name: 'Fighter' }))
-    await user.click(await screen.findByRole('radio', { name: 'Archery' }))
-    expect(screen.getByText('Blessed Warrior')).toBeInTheDocument()
-    expect(screen.getByText(/after Spellcasting is implemented/)).toBeInTheDocument()
+    await user.click(await screen.findByRole('radio', { name: 'Paladin' }))
+    await user.selectOptions(await screen.findByLabelText('Current class level'), '2')
+    await user.click(await screen.findByRole('checkbox', { name: 'Guidance' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Light' }))
     await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
@@ -1010,9 +1016,12 @@ describe('CharacterBuilderPage', () => {
         character: expect.objectContaining({
           featureChoices: [
             {
-              requirementId: 'fighter-fighting-style',
-              branchId: 'fighting-style-feat',
-              selections: [{ id: 'archery', name: 'Archery' }],
+              requirementId: 'paladin-fighting-style',
+              branchId: 'blessed-warrior',
+              selections: [
+                { id: 'guidance', name: 'Guidance' },
+                { id: 'light', name: 'Light' },
+              ],
             },
           ],
         }),

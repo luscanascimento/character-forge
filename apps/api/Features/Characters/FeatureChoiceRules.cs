@@ -166,10 +166,9 @@ public static class FeatureChoiceRules
                 "Choose distinct options.");
         }
 
-        var allowedIds = branch.Options
-            .Select(option => option.Id!)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (selectedIds.Any(id => !allowedIds.Contains(id)))
+        var optionsById = branch.Options
+            .ToDictionary(option => option.Id!, StringComparer.OrdinalIgnoreCase);
+        if (selectedIds.Any(id => !optionsById.ContainsKey(id)))
         {
             AddViolation(
                 violations,
@@ -177,6 +176,22 @@ public static class FeatureChoiceRules
                 "A selected feature option is not allowed by the active rules.",
                 $"{source}.selections",
                 "Choose only options supplied by the active feature rules.");
+        }
+
+        for (var index = 0; index < selected.Count; index++)
+        {
+            var option = selected[index];
+            if (!string.IsNullOrWhiteSpace(option.Id) &&
+                optionsById.TryGetValue(option.Id, out var canonical) &&
+                !string.Equals(option.Name, canonical.Name, StringComparison.Ordinal))
+            {
+                AddViolation(
+                    violations,
+                    "character.featureChoice.selection.name.mismatch",
+                    $"The saved name for {option.Id} does not match the active catalog.",
+                    $"{source}.selections[{index}].name",
+                    canonical.Name!);
+            }
         }
     }
 

@@ -800,6 +800,16 @@
   gap: 0.45rem;
 }
 
+.feature-choice__branch + .feature-choice__branch {
+  margin-top: 0.8rem;
+}
+
+.feature-choice__branch > p {
+  margin: 0 0 0.45rem;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+
 .feature-choice__options label,
 .feature-choice__locked {
   display: grid;

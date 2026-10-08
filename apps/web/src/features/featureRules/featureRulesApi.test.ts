@@ -35,7 +35,7 @@ describe('feature rules API', () => {
 
 function featureChoiceResponse() {
   return {
-    manifestVersion: 'SRD-5.2.1-CF-1',
+    manifestVersion: 'SRD-5.2.1-CF-2',
     ruleset: '2024',
     rulesVersion: 'SRD-5.2.1',
     class: { id: 'paladin', name: 'Paladin' },

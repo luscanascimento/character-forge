@@ -37,6 +37,15 @@ public sealed class FeatureRuleService(
         var featOptions = featRequirements.Length == 0
             ? []
             : await GetFeatOptionsAsync(featRequirements, cancellationToken);
+        var cantripBranches = requirements
+            .SelectMany(requirement => requirement.Branches)
+            .Where(branch =>
+                branch.Availability == FeatureChoiceAvailability.Supported &&
+                branch.OptionSource.Kind == FeatureOptionSourceKind.ClassCantrips)
+            .ToArray();
+        var cantripOptions = cantripBranches.Length == 0
+            ? new Dictionary<string, IReadOnlyList<ContentReference>>(StringComparer.OrdinalIgnoreCase)
+            : await GetClassCantripOptionsAsync(cantripBranches, cancellationToken);
 
         return new FeatureChoiceDocument(
             FeatureRuleManifest.Version,
@@ -56,12 +65,16 @@ public sealed class FeatureRuleService(
                     branch.Availability.ToString().ToLowerInvariant(),
                     branch.Dependency?.ToString().ToLowerInvariant(),
                     branch.Availability == FeatureChoiceAvailability.Supported
-                        && branch.OptionSource.Kind == FeatureOptionSourceKind.FeatType
-                        ? featOptions
+                        ? branch.OptionSource.Kind switch
+                        {
+                            FeatureOptionSourceKind.FeatType => featOptions
                             .Where(feat => FeatureRuleManifest.MatchesFeatOption(branch, feat))
                             .Select(feat => new ContentReference(feat.Id, feat.Name))
                             .OrderBy(option => option.Name, StringComparer.OrdinalIgnoreCase)
-                            .ToArray()
+                            .ToArray(),
+                            FeatureOptionSourceKind.ClassCantrips => cantripOptions[branch.Id],
+                            _ => []
+                        }
                         : [])).ToArray())).ToArray());
     }
 
@@ -102,6 +115,49 @@ public sealed class FeatureRuleService(
         }
 
         return feats;
+    }
+
+    private async Task<Dictionary<string, IReadOnlyList<ContentReference>>> GetClassCantripOptionsAsync(
+        IReadOnlyList<FeatureChoiceBranch> branches,
+        CancellationToken cancellationToken)
+    {
+        var pages = await Task.WhenAll(branches
+            .Select(branch => branch.OptionSource.Filter)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(async classId => (
+                ClassId: classId,
+                Page: await catalog.GetPageAsync(
+                    CatalogCategory.Spells,
+                    new CatalogQuery(null, 1, int.MaxValue, "name", 0, null, classId),
+                    cancellationToken))));
+        var pagesByClass = pages.ToDictionary(
+            result => result.ClassId,
+            result => result.Page,
+            StringComparer.OrdinalIgnoreCase);
+        var options = new Dictionary<string, IReadOnlyList<ContentReference>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var branch in branches)
+        {
+            var spells = pagesByClass[branch.OptionSource.Filter].Items;
+            if (spells.Count < branch.SelectionCount ||
+                spells.Select(spell => spell.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() != spells.Count)
+            {
+                throw new SrdProviderException(
+                    $"The spell catalog did not provide enough distinct options for feature-rule branch '{branch.Id}'.");
+            }
+
+            foreach (var spell in spells)
+            {
+                FeatureRuleManifest.VerifyCantripOption(branch, spell);
+            }
+
+            options[branch.Id] = spells
+                .Select(spell => new ContentReference(spell.Id, spell.Name))
+                .OrderBy(option => option.Name, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        return options;
     }
 
     private static string OptionSourceContract(FeatureOptionSourceKind kind) => kind switch

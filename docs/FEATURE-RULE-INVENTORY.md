@@ -43,7 +43,7 @@ The manifest will:
 
 This order gives the builder honest level-dependent choices without pretending that all prose-only mechanics are already modeled.
 
-Steps 1 and 2 are implemented. Manifest `SRD-5.2.1-CF-1` contains the Fighter, Champion, Paladin, and Ranger Fighting Style requirements with exact feature ids, acquisition levels, branch counts, option sources, availability, and SRD page provenance. The hybrid feature-choice endpoint joins those requirements to provider-owned feat ids and names; drafts persist and canonically validate the supported feat branch. Blessed Warrior and Druidic Warrior remain explicitly locked by the spellcasting dependency, and their cantrip rules have not been pulled into Phase 5.
+Steps 1 and 2 established manifest `SRD-5.2.1-CF-1` with the Fighter, Champion, Paladin, and Ranger Fighting Style requirements. ADR-015 advances it to `SRD-5.2.1-CF-2`: the hybrid endpoint still joins feat branches to provider-owned feat ids/names and now joins Blessed Warrior/Druidic Warrior to provider-filtered Cleric/Druid cantrips. Drafts persist and canonically validate both branch shapes; the spell-granting alternatives remain Phase 6-owned rather than retroactively expanding Phase 5.
 
 Step 3 is implemented. The manifest records Bard Expertise at levels 2/9, Ranger Expertise through Deft Explorer at level 2 and the named feature at level 9, and Rogue Expertise at levels 1/6. Normalized proficiency facts retain structured skill identity; canonical evaluation derives eligible options from resolved skill grants and rejects a skill that already has Expertise. The Proficiencies step persists canonical choices, retains now-invalid selections after level changes, and presents valid Expertise in review.
 

@@ -9,7 +9,7 @@ public sealed class FeatureRuleManifestTests
     [Fact]
     public void Manifest_HasIndependentRulesIdentity()
     {
-        Assert.Equal("SRD-5.2.1-CF-1", FeatureRuleManifest.Version);
+        Assert.Equal("SRD-5.2.1-CF-2", FeatureRuleManifest.Version);
         Assert.Equal("2024", FeatureRuleManifest.Ruleset);
         Assert.Equal("SRD-5.2.1", FeatureRuleManifest.RulesVersion);
     }
@@ -77,7 +77,7 @@ public sealed class FeatureRuleManifestTests
     }
 
     [Fact]
-    public void Manifest_KeepsSpellGrantingAlternativesLockedBehindSpellcasting()
+    public void Manifest_SupportsSpellGrantingAlternativesThroughTypedClassCantripSources()
     {
         var alternatives = FeatureRuleManifest.Requirements
             .SelectMany(requirement => requirement.Branches)
@@ -88,10 +88,25 @@ public sealed class FeatureRuleManifestTests
         Assert.All(alternatives, branch =>
         {
             Assert.Equal(2, branch.SelectionCount);
-            Assert.Equal(FeatureChoiceAvailability.Locked, branch.Availability);
-            Assert.Equal(FeatureRuleDependency.Spellcasting, branch.Dependency);
+            Assert.Equal(FeatureChoiceAvailability.Supported, branch.Availability);
+            Assert.Null(branch.Dependency);
         });
         Assert.Equal(["cleric", "druid"], alternatives.Select(branch => branch.OptionSource.Filter));
+    }
+
+    [Fact]
+    public void VerifyCantripOption_RequiresALevelZeroSpell()
+    {
+        var branch = FeatureRuleManifest.Requirements
+            .SelectMany(requirement => requirement.Branches)
+            .Single(candidate => candidate.Id == "blessed-warrior");
+
+        FeatureRuleManifest.VerifyCantripOption(
+            branch,
+            new CatalogItemSummary("guidance", "Guidance", "spells", 0));
+        Assert.Throws<FeatureRuleContentException>(() => FeatureRuleManifest.VerifyCantripOption(
+            branch,
+            new CatalogItemSummary("bless", "Bless", "spells", 1)));
     }
 
     [Fact]

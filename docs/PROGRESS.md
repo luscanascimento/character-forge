@@ -129,17 +129,19 @@ Phases 0–5 are implemented. Phase 5 closed with trusted 1–20 class progressi
 - Advanced the spellcasting policy manifest to `SRD-5.2.1-SPELL-2` with Wizard-only initial and per-level spellbook acquisition facts.
 - Added backward-compatible spellbook ownership to local drafts and canonical validation for the level-derived minimum, Wizard-list membership, spell level, distinct ids, names, and prepared-spell ownership.
 - Unlocked Wizard cantrip, spellbook, and prepared-spell controls in the builder while retaining invalidated selections for explicit correction.
+- Advanced the feature-rule manifest to `SRD-5.2.1-CF-2` and unlocked Blessed Warrior/Druidic Warrior through typed Cleric/Druid cantrip sources.
+- Resolved canonical level-0 options from provider-filtered class lists and fail closed on insufficient, duplicate, or non-cantrip results.
+- Added multi-selection Fighting Style controls for the exact two-cantrip branches and preserved branch identity alongside selected cantrips in review.
 
 ## Work in progress
 
-Structured spellcasting progression, selected-level availability, Spell Save DC, spell attack modifier, provenance-backed preparation/Pact Magic policies, class-list selection, and Wizard spellbook ownership are implemented.
+Structured spellcasting progression, selected-level availability, Spell Save DC, spell attack modifier, provenance-backed preparation/Pact Magic policies, class-list selection, Wizard spellbook ownership, and the two spell-granting Fighting Styles are implemented.
 
 ## Next step
 
 Continue the Phase 6 rule foundation:
 
-1. Revisit Blessed Warrior and Druidic Warrior through the now-typed class-cantrip policy.
-2. Model replacement events so the manifest's class-level and Long Rest limits can be enforced outside initial character construction.
+1. Model replacement events so the manifest's class-level and Long Rest limits can be enforced outside initial character construction.
 
 ## Pending decisions
 
@@ -162,8 +164,8 @@ Continue the Phase 6 rule foundation:
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 141 passing
-- Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses including Bard Expertise passing
+- Backend unit/integration tests: 144 passing
+- Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses including Bard Expertise passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 

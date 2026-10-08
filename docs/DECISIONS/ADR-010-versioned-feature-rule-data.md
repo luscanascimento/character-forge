@@ -36,4 +36,4 @@ Adopt a hybrid rules boundary:
 
 ## Implementation note
 
-Manifest `SRD-5.2.1-CF-1` now defines the Fighter, Champion, Paladin, and Ranger Fighting Style requirements. It verifies manifest feature ids and levels against normalized progression data, verifies candidate feats against provider-owned structured prerequisites, and keeps the Paladin/Ranger cantrip alternatives locked behind the spellcasting dependency.
+Manifest `SRD-5.2.1-CF-1` initially defined the Fighter, Champion, Paladin, and Ranger Fighting Style requirements. It verifies manifest feature ids and levels against normalized progression data and verifies candidate feats against provider-owned structured prerequisites. ADR-015 later advances the manifest to `SRD-5.2.1-CF-2` and unlocks the Paladin/Ranger cantrip alternatives through canonical class-cantrip sources.

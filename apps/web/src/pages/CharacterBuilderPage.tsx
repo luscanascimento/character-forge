@@ -1109,10 +1109,10 @@ function BuilderWorkspace({
                 setClassErrors((current) => ({ ...current, subclass: undefined }))
                 if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
               }}
-              onFeatureChoice={(requirementId, branchId, optionId) => {
+              onFeatureChoice={(requirementId, branchId, selectionIds) => {
                 setFeatureChoiceInputs((current) => ({
                   ...current,
-                  [requirementId]: { branchId, selectionIds: [optionId] },
+                  [requirementId]: { branchId, selectionIds },
                 }))
                 setFeatureChoiceErrors((current) => omitKey(current, requirementId))
                 if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
@@ -1630,9 +1630,9 @@ function ReviewStep({
 
   const derived = evaluation.derived!
   const selectedClass = document.character.classProgressions[0]
-  const fightingStyles = document.character.featureChoices
-    .filter((choice) => choice.requirementId.includes('fighting-style'))
-    .flatMap((choice) => choice.selections)
+  const fightingStyles = document.character.featureChoices.filter((choice) =>
+    choice.requirementId.includes('fighting-style'),
+  )
   const expertise = document.character.featureChoices
     .filter((choice) => isExpertiseRequirementId(choice.requirementId))
     .flatMap((choice) => choice.selections)
@@ -1681,7 +1681,17 @@ function ReviewStep({
           {fightingStyles.length > 0 && (
             <div>
               <dt>Fighting style</dt>
-              <dd>{fightingStyles.map((selection) => selection.name).join(', ')}</dd>
+              <dd>
+                {fightingStyles
+                  .map((choice) =>
+                    choice.branchId === 'fighting-style-feat'
+                      ? choice.selections.map((selection) => selection.name).join(', ')
+                      : `${lockedBranchLabel(choice.branchId)} — ${choice.selections
+                          .map((selection) => selection.name)
+                          .join(', ')}`,
+                  )
+                  .join('; ')}
+              </dd>
             </div>
           )}
           {expertise.length > 0 && (
@@ -2157,7 +2167,7 @@ function ClassStep({
   onLevelChange: (level: string) => void
   onSubclassChange: (id: string) => void
   onRemoveSubclass: () => void
-  onFeatureChoice: (requirementId: string, branchId: string, optionId: string) => void
+  onFeatureChoice: (requirementId: string, branchId: string, selectionIds: string[]) => void
   onRemoveFeatureChoice: (requirementId: string) => void
   onRetry: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
@@ -2287,7 +2297,7 @@ function FeatureChoicesFields({
   subclassId: string | null
   inputs: FeatureChoiceInputs
   errors: Record<string, string>
-  onChoose: (requirementId: string, branchId: string, optionId: string) => void
+  onChoose: (requirementId: string, branchId: string, selectionIds: string[]) => void
   onRemove: (requirementId: string) => void
 }) {
   const active = document.requirements.filter((requirement) =>
@@ -2338,28 +2348,46 @@ function FeatureChoicesFields({
                   <LockKeyhole aria-hidden="true" size={16} />
                   <span>
                     <strong>{lockedBranchLabel(branch.id)}</strong>
-                    <small>Available after Spellcasting is implemented in Phase 6.</small>
+                    <small>This path depends on rules that are not implemented yet.</small>
                   </span>
                 </div>
               ) : (
-                <div className="feature-choice__options" key={branch.id}>
-                  {branch.options.map((option) => (
-                    <label key={option.id}>
-                      <input
-                        type="radio"
-                        name={`feature-choice-${requirement.id}`}
-                        checked={
-                          selection?.branchId === branch.id &&
-                          selection.selectionIds.includes(option.id)
-                        }
-                        onChange={() => onChoose(requirement.id, branch.id, option.id)}
-                      />
-                      <span aria-hidden="true">
-                        {selection?.selectionIds.includes(option.id) ? <Check size={14} /> : null}
-                      </span>
-                      <strong>{option.name}</strong>
-                    </label>
-                  ))}
+                <div className="feature-choice__branch" key={branch.id}>
+                  {branch.selectionCount > 1 && (
+                    <p>
+                      <strong>{lockedBranchLabel(branch.id)}</strong> · Choose exactly{' '}
+                      {branch.selectionCount} cantrips.
+                    </p>
+                  )}
+                  <div className="feature-choice__options">
+                    {branch.options.map((option) => {
+                      const selectedIds =
+                        selection?.branchId === branch.id ? selection.selectionIds : []
+                      const checked = selectedIds.includes(option.id)
+                      return (
+                        <label key={option.id}>
+                          <input
+                            type={branch.selectionCount === 1 ? 'radio' : 'checkbox'}
+                            name={`feature-choice-${requirement.id}`}
+                            checked={checked}
+                            onChange={(event) =>
+                              onChoose(
+                                requirement.id,
+                                branch.id,
+                                branch.selectionCount === 1
+                                  ? [option.id]
+                                  : event.target.checked
+                                    ? [...selectedIds, option.id]
+                                    : selectedIds.filter((id) => id !== option.id),
+                              )
+                            }
+                          />
+                          <span aria-hidden="true">{checked ? <Check size={14} /> : null}</span>
+                          <strong>{option.name}</strong>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
               ),
             )}

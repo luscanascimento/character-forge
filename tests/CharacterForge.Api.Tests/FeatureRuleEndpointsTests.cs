@@ -30,7 +30,7 @@ public sealed class FeatureRuleEndpointsTests : IDisposable
     }
 
     [Fact]
-    public async Task Get_ReturnsManifestBackedRequirementsAndProviderOwnedFeatOptions()
+    public async Task Get_ReturnsManifestBackedFeatAndClassCantripOptions()
     {
         var response = await _client.GetAsync(
             "/api/classes/paladin/feature-choices",
@@ -40,7 +40,7 @@ public sealed class FeatureRuleEndpointsTests : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(document);
-        Assert.Equal("SRD-5.2.1-CF-1", document.ManifestVersion);
+        Assert.Equal("SRD-5.2.1-CF-2", document.ManifestVersion);
         var requirement = Assert.Single(document.Requirements);
         Assert.Equal("paladin-fighting-style", requirement.Id);
         Assert.Collection(
@@ -53,10 +53,10 @@ public sealed class FeatureRuleEndpointsTests : IDisposable
             },
             branch =>
             {
-                Assert.Equal("locked", branch.Availability);
+                Assert.Equal("supported", branch.Availability);
                 Assert.Equal("classCantrips", branch.OptionSource);
-                Assert.Equal("spellcasting", branch.Dependency);
-                Assert.Empty(branch.Options);
+                Assert.Null(branch.Dependency);
+                Assert.Equal(["guidance", "light"], branch.Options.Select(option => option.Id));
             });
     }
 
@@ -112,7 +112,15 @@ public sealed class FeatureRuleEndpointsTests : IDisposable
             string? school,
             string? characterClass,
             CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<CatalogItemSummary>>(
-                [new CatalogItemSummary("archery", "Archery", "feats")]);
+                category == CatalogCategory.Feats
+                    ? [new CatalogItemSummary("archery", "Archery", "feats")]
+                    : category == CatalogCategory.Spells && level == 0 && characterClass == "cleric"
+                        ?
+                        [
+                            new CatalogItemSummary("guidance", "Guidance", "spells", 0),
+                            new CatalogItemSummary("light", "Light", "spells", 0)
+                        ]
+                        : []);
 
         public Task<CatalogItemDetail?> GetItemAsync(
             CatalogCategory category,
