@@ -52,7 +52,21 @@ internal sealed record SrdClassDetail(
 internal sealed record SrdClassLevel(
     int Level,
     [property: JsonPropertyName("prof_bonus")] int ProficiencyBonus,
-    IReadOnlyList<SrdReference>? Features);
+    IReadOnlyList<SrdReference>? Features,
+    SrdClassLevelSpellcasting? Spellcasting);
+
+internal sealed record SrdClassLevelSpellcasting(
+    [property: JsonPropertyName("cantrips_known")] int? CantripsKnown,
+    [property: JsonPropertyName("prepared_spells")] int? PreparedSpells,
+    [property: JsonPropertyName("spell_slots_level_1")] int? SpellSlotsLevel1,
+    [property: JsonPropertyName("spell_slots_level_2")] int? SpellSlotsLevel2,
+    [property: JsonPropertyName("spell_slots_level_3")] int? SpellSlotsLevel3,
+    [property: JsonPropertyName("spell_slots_level_4")] int? SpellSlotsLevel4,
+    [property: JsonPropertyName("spell_slots_level_5")] int? SpellSlotsLevel5,
+    [property: JsonPropertyName("spell_slots_level_6")] int? SpellSlotsLevel6,
+    [property: JsonPropertyName("spell_slots_level_7")] int? SpellSlotsLevel7,
+    [property: JsonPropertyName("spell_slots_level_8")] int? SpellSlotsLevel8,
+    [property: JsonPropertyName("spell_slots_level_9")] int? SpellSlotsLevel9);
 
 internal sealed record SrdSubclassLevel(
     int Level,

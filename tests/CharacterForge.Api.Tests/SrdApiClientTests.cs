@@ -59,6 +59,93 @@ public sealed class SrdApiClientTests
     }
 
     [Fact]
+    public async Task GetClassProgression_NormalizesSpellLevelsIndependentlyFromClassLevels()
+    {
+        var client = CreateClient(request => request.RequestUri!.PathAndQuery switch
+        {
+            "/api/2024/classes/wizard" => Json("""
+                {
+                  "index": "wizard",
+                  "name": "Wizard",
+                  "hit_die": 6,
+                  "spellcasting": {
+                    "level": 1,
+                    "spellcasting_ability": { "index": "int", "name": "INT" }
+                  }
+                }
+                """),
+            "/api/2024/classes/wizard/levels" => Json(SpellcastingClassLevelsJson("wizard")),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        });
+
+        var progression = await client.GetClassProgressionAsync("wizard", CancellationToken.None);
+
+        Assert.NotNull(progression?.Spellcasting);
+        Assert.Equal(1, progression.Spellcasting.AvailableAtLevel);
+        Assert.Equal(new CatalogReference("int", "INT"), progression.Spellcasting.Ability);
+        Assert.Equal(20, progression.Spellcasting.Levels.Count);
+
+        var classLevelFive = progression.Spellcasting.Levels.Single(level => level.ClassLevel == 5);
+        Assert.Equal(4, classLevelFive.CantripsKnown);
+        Assert.Equal(9, classLevelFive.PreparedSpells);
+        Assert.Equal(
+            [new SpellSlotCapacity(1, 4), new SpellSlotCapacity(2, 3), new SpellSlotCapacity(3, 2)],
+            classLevelFive.Slots);
+    }
+
+    [Fact]
+    public async Task GetClassProgression_RejectsAnIncompleteSpellcastingTable()
+    {
+        var client = CreateClient(request => request.RequestUri!.PathAndQuery switch
+        {
+            "/api/2024/classes/wizard" => Json("""
+                {
+                  "index": "wizard",
+                  "name": "Wizard",
+                  "hit_die": 6,
+                  "spellcasting": {
+                    "level": 1,
+                    "spellcasting_ability": { "index": "int", "name": "INT" }
+                  }
+                }
+                """),
+            "/api/2024/classes/wizard/levels" => Json(SpellcastingClassLevelsJson(
+                "wizard",
+                includeSpellcasting: level => level != 12)),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        });
+
+        await Assert.ThrowsAsync<SrdProviderException>(() =>
+            client.GetClassProgressionAsync("wizard", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetClassProgression_RejectsAnImpossibleSpellcastingCapacity()
+    {
+        var client = CreateClient(request => request.RequestUri!.PathAndQuery switch
+        {
+            "/api/2024/classes/wizard" => Json("""
+                {
+                  "index": "wizard",
+                  "name": "Wizard",
+                  "hit_die": 6,
+                  "spellcasting": {
+                    "level": 1,
+                    "spellcasting_ability": { "index": "int", "name": "INT" }
+                  }
+                }
+                """),
+            "/api/2024/classes/wizard/levels" => Json(
+                SpellcastingClassLevelsJson("wizard")
+                    .Replace("\"cantrips_known\": 3", "\"cantrips_known\": 7")),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        });
+
+        await Assert.ThrowsAsync<SrdProviderException>(() =>
+            client.GetClassProgressionAsync("wizard", CancellationToken.None));
+    }
+
+    [Fact]
     public async Task GetClassProgression_RejectsAnIncompleteLevelTable()
     {
         var client = CreateClient(request => request.RequestUri!.PathAndQuery switch
@@ -563,6 +650,36 @@ public sealed class SrdApiClientTests
               "features": {{(level == 1
                   ? $$"""[{ "index": "{{classId}}-spellcasting", "name": "Spellcasting" }]"""
                   : "[]")}}
+            }
+            """))}]";
+
+    private static string SpellcastingClassLevelsJson(
+        string classId,
+        Func<int, bool>? includeSpellcasting = null) => $"[{string.Join(',',
+        Enumerable.Range(1, 20).Select(level => $$"""
+            {
+              "level": {{level}},
+              "prof_bonus": {{2 + ((level - 1) / 4)}},
+              "features": {{(level == 1
+                  ? $$"""[{ "index": "{{classId}}-spellcasting", "name": "Spellcasting" }]"""
+                  : "[]")}},
+              {{(includeSpellcasting?.Invoke(level) ?? true
+                  ? $$"""
+                    "spellcasting": {
+                      "cantrips_known": {{(level < 4 ? 3 : 4)}},
+                      "prepared_spells": {{(level == 5 ? 9 : Math.Min(level + 3, 22))}},
+                      "spell_slots_level_1": {{(level == 1 ? 2 : level == 2 ? 3 : 4)}},
+                      "spell_slots_level_2": {{(level >= 3 ? 3 : 0)}},
+                      "spell_slots_level_3": {{(level >= 5 ? 2 : 0)}},
+                      "spell_slots_level_4": 0,
+                      "spell_slots_level_5": 0,
+                      "spell_slots_level_6": 0,
+                      "spell_slots_level_7": 0,
+                      "spell_slots_level_8": 0,
+                      "spell_slots_level_9": 0
+                    }
+                    """
+                  : "\"spellcasting\": null")}}
             }
             """))}]";
 

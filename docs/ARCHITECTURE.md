@@ -52,7 +52,7 @@ New catalog functionality should live in its feature area, with shared infrastru
 - `GET /api/meta` for the active Character Forge rules contract
 - `GET /api/catalog/{category}` for normalized, searched, filtered, and paginated summaries
 - `GET /api/catalog/{category}/{id}` for normalized detail
-- `GET /api/classes/{classId}/progression` for normalized 1–20 class and subclass feature timelines
+- `GET /api/classes/{classId}/progression` for normalized 1–20 class, subclass, and structured spellcasting timelines
 - `GET /health`
 - `POST /api/characters/validate` for non-persisting draft validation and calculations
 - `/openapi/v1.json` in Development
@@ -84,7 +84,9 @@ Character evaluation resolves the selected class, species, and background throug
 
 The evaluator calculates unarmored AC and deterministic fixed HP through level 20, validates every required proficiency choice, canonicalizes selected references, rejects stale/disallowed/duplicate selections, merges unavoidable fixed duplicates, and retains every source that supplied a grant. SRD 5.2.1 says proficiency bonuses do not stack but does not carry forward the 2014 rule that allowed arbitrary replacement of duplicate proficiencies, so Character Forge does not invent such replacements.
 
-Phase 5 progression reads use a separate provider-neutral contract: a complete 1–20 class timeline, canonical proficiency bonuses and feature references, plus sparse subclass timelines with an explicit availability level. Hit die remains typed for HP rules. Spellcasting and polymorphic class-specific counters are excluded until their own rule models exist; feature names are never parsed to invent choices.
+Phase 5 progression reads use a provider-neutral contract: a complete 1–20 class timeline, canonical proficiency bonuses and feature references, plus sparse subclass timelines with an explicit availability level. Hit die remains typed for HP rules. Polymorphic class-specific counters stay excluded, and feature names are never parsed to invent choices.
+
+ADR-011 adds a separate nested spellcasting model to that response from the same provider fetch. It identifies the start level and spellcasting ability, then records `classLevel` separately from each positive slot's `spellLevel`, alongside structured cantrip and prepared-spell capacities. Complete casting tables are required through level 20; noncasters return no spellcasting model. Narrative-only preparation cadence, Wizard spellbook membership, slot recovery, always-prepared grants, and Mystic Arcanum remain outside the contract until typed rules with SRD provenance exist.
 
 The builder validates this contract at its API boundary and uses it for level, subclass, and per-level feature presentation. A subclass that becomes unavailable after a level decrease remains in the local draft and is shown as locked until the user explicitly raises the level, replaces it, or removes it. Feature references remain informational because the provider's feature descriptions do not expose structured option or prerequisite rules (ADR-009).
 

@@ -2,7 +2,7 @@
 
 Character Forge is a mobile-first, rule-aware character builder for the modern fifth-edition rules available in **SRD 5.2.1**. It aims to feel like an adventurer's workshop rather than a themed business form, while keeping the codebase straightforward and production-minded.
 
-The project currently contains the completed discovery, foundation, SRD catalog, character-domain, Character Builder MVP, and class-progression phases. It includes a responsive dark-fantasy landing experience, a searchable compendium, local IndexedDB character management, a six-step auto-saving builder, canonical validation/calculation, and trusted class progression controls through level 20. Phase 6 spellcasting is the next planned phase.
+The project currently contains the completed discovery, foundation, SRD catalog, character-domain, Character Builder MVP, and class-progression phases. It includes a responsive dark-fantasy landing experience, a searchable compendium, local IndexedDB character management, a six-step auto-saving builder, canonical validation/calculation, and trusted class progression controls through level 20. Phase 6 spellcasting is in progress with a normalized class spellcasting progression contract.
 
 ## Stack
 
@@ -83,7 +83,7 @@ Draft characters can be submitted to `POST /api/characters/validate` for canonic
 
 ## Current limitations
 
-- Armor/equipment AC, rolled/manual HP, narrative-only class feature choices, spellcasting, import/export, and print layouts are future work.
+- Armor/equipment AC, rolled/manual HP, narrative-only class feature choices, spell selection and calculations, import/export, and print layouts are future work.
 - Spell list filtering currently supports name, level, school, and class. Ritual/concentration filters require a richer local index because the upstream 2024 list contract does not expose those fields; that index is deferred until spellcasting work justifies it.
 - The API exposes no immutable content snapshot identifier in its normal resource responses; Character Forge must retain its own provider-observation metadata when caching catalog content.
 

@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**Phase 6 — Spellcasting: not started.**
+**Phase 6 — Spellcasting: in progress.**
 
 Phases 0–5 are implemented. Phase 5 closed with trusted 1–20 class progression, subclass rules, fixed HP, Fighting Style, and Expertise without pulling spellcasting, equipment, or character-sheet scope forward.
 
@@ -110,19 +110,23 @@ Phases 0–5 are implemented. Phase 5 closed with trusted 1–20 class progressi
 - Reconciled the Phase 5 completion criteria against the supported rule boundary and kept Weapon Mastery and Ability Score Improvement assigned to Phase 7, where their equipment and feat-effect dependencies belong.
 - Live-smoke-tested every manifested Fighting Style and Expertise requirement against the current provider and validated a complete level-2 Bard with canonical proficient-skill Expertise selections.
 - Closed Phase 5 after the complete build, lint, test, format, dependency-audit, and provider-smoke gate passed.
+- Audited spellcasting metadata and every class-level spellcasting row across all twelve live 2024 classes, including preparation-cadence gaps and the Warlock's Pact Magic shape.
+- Added an optional provider-neutral spellcasting progression to the class contract with explicit class levels, spell levels, cantrip/prepared capacities, positive slot capacities, and spellcasting ability.
+- Added fail-closed checks for incomplete caster tables, missing fields, invalid capacities, and class-detail/level-table disagreement while keeping noncasters explicitly without spellcasting progression.
+- Extended the frontend progression schema and recorded the implemented boundary in ADR-011 without treating prose-only preparation, recovery, spellbook, or Mystic Arcanum behavior as canonical.
 
 ## Work in progress
 
-No implementation is currently in progress. Phase 6 can begin from the completed Phase 5 progression and feature-choice boundaries.
+The structured spellcasting progression foundation is implemented. It exposes availability facts but intentionally does not yet authorize spell selections whose preparation or recovery semantics remain narrative-only.
 
 ## Next step
 
-Begin Phase 6 with a narrow spellcasting foundation:
+Continue the Phase 6 rule foundation:
 
-1. Audit the live 2024 spellcasting progression fields for every SRD class and document known/prepared distinctions.
-2. Define a provider-neutral progression contract that keeps spell level independent from character and class level.
-3. Add canonical spell-slot availability, spell save DC, and spell attack modifier rules before introducing selection UI.
-4. Revisit Blessed Warrior and Druidic Warrior only after class-cantrip eligibility can be validated through that contract.
+1. Add canonical spell-slot availability for the selected class and level from the normalized progression.
+2. Add spell save DC and spell attack modifier calculations from the canonical ability modifier and proficiency bonus.
+3. Define provenance-backed preparation/replacement and Pact Magic rules before introducing spell selection persistence.
+4. Revisit Blessed Warrior and Druidic Warrior only after class-cantrip eligibility can be validated end to end.
 
 ## Pending decisions
 
@@ -141,15 +145,15 @@ Begin Phase 6 with a narrow spellcasting foundation:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 86 passing across 13 files (`vitest run`)
+- Frontend unit tests: 87 passing across 13 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 117 passing
-- Live provider smoke checks: classes, class/subclass progression, feature-choice manifests, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses including Bard Expertise passing
+- Backend unit/integration tests: 120 passing
+- Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses including Bard Expertise passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 
 ## Last checkpoint
 
-2026-10-05 (America/Sao_Paulo)
+2026-10-07 (America/Sao_Paulo)

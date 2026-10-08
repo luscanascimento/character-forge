@@ -7,7 +7,8 @@ public sealed record ClassProgressionDocument(
     int HitDie,
     IReadOnlyList<ClassLevelProgression> Levels,
     IReadOnlyList<SubclassProgression> Subclasses,
-    CatalogSource? Source = null);
+    CatalogSource? Source = null,
+    ClassSpellcastingProgression? Spellcasting = null);
 
 public sealed record ClassLevelProgression(
     int Level,
@@ -22,3 +23,18 @@ public sealed record SubclassProgression(
 public sealed record SubclassLevelProgression(
     int Level,
     IReadOnlyList<CatalogReference> Features);
+
+public sealed record ClassSpellcastingProgression(
+    int AvailableAtLevel,
+    CatalogReference Ability,
+    IReadOnlyList<ClassSpellcastingLevel> Levels);
+
+public sealed record ClassSpellcastingLevel(
+    int ClassLevel,
+    int CantripsKnown,
+    int PreparedSpells,
+    IReadOnlyList<SpellSlotCapacity> Slots);
+
+public sealed record SpellSlotCapacity(
+    int SpellLevel,
+    int Count);

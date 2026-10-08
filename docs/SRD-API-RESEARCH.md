@@ -6,6 +6,8 @@ Phase 2 implementation verification: **2026-09-28**
 
 Phase 5 progression verification: **2026-10-04**
 
+Phase 6 spellcasting verification: **2026-10-07**
+
 ## Legal source
 
 Wizards of the Coast publishes [SRD 5.2.1](https://www.dndbeyond.com/srd) under CC BY 4.0. The PDF's required attribution statement is reproduced verbatim in `ATTRIBUTIONS.md` and in the application's attributions page.
@@ -118,3 +120,22 @@ Those facts are not complete requirements. Paladin, Ranger, and Rogue Weapon Mas
 ADR-010 therefore adopts a narrow, versioned Character Forge manifest for missing semantics while retaining provider-owned ids, names, option lists, and structured prerequisites. The detailed boundary and implementation order are recorded in `FEATURE-RULE-INVENTORY.md`.
 
 The normalized feat-detail contract now consumes those provider-owned facts directly: machine feat type, minimum level, required feature name, repeatability, and `ability-scores` option sets with their choose count and minimum scores. Unsupported or malformed prerequisite shapes fail at the adapter boundary rather than degrading into display-only data. The Character Forge manifest remains responsible only for the missing feature-to-choice relationships defined by ADR-010.
+
+## Phase 6 spellcasting progression surface
+
+Live verification on 2026-10-07 inspected class detail and all twenty level rows for every 2024 class. The structured spellcasting surface exists for eight classes; the authoritative per-class result is below.
+
+| Class    | Ability | Structured start | Level rows | Level-1 cantrips / prepared / slots |
+| -------- | ------- | ---------------: | ---------: | ----------------------------------- |
+| Bard     | CHA     |                1 |         20 | 2 / 4 / two level-1                 |
+| Cleric   | WIS     |                1 |         20 | 3 / 4 / two level-1                 |
+| Druid    | WIS     |                1 |         20 | 2 / 4 / two level-1                 |
+| Paladin  | CHA     |                1 |         20 | 0 / 2 / two level-1                 |
+| Ranger   | WIS     |                1 |         20 | 0 / 2 / two level-1                 |
+| Sorcerer | CHA     |                1 |         20 | 4 / 2 / two level-1                 |
+| Warlock  | CHA     |                1 |         20 | 2 / 2 / one level-1                 |
+| Wizard   | INT     |                1 |         20 | 3 / 4 / two level-1                 |
+
+Barbarian, Fighter, Monk, and Rogue expose neither class spellcasting metadata nor spellcasting level rows. Every observed caster row uses the same eleven keys: `cantrips_known`, `prepared_spells`, and `spell_slots_level_1` through `spell_slots_level_9`.
+
+The uniform field names do not imply uniform selection behavior. The class prose says Bard, Sorcerer, and Warlock replace one prepared spell when gaining a class level; Cleric and Druid can change their prepared lists after a Long Rest; Paladin and Ranger replace one prepared spell after a Long Rest; and Wizard prepares from a separately learned spellbook. Pact Magic recovery and Mystic Arcanum are also not represented by a dedicated structured field. Character Forge therefore normalizes the numeric progression but does not infer these behaviors from prose. ADR-011 records the implemented contract and the deferred rule boundary.

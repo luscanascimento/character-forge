@@ -52,6 +52,7 @@ public sealed class ClassProgressionEndpointsTests : IDisposable
         Assert.Equal(first.Source.FetchedAt, second?.Source?.FetchedAt);
         Assert.Equal(1, _source.ProgressionRequestCount);
         Assert.Equal(3, Assert.Single(first.Subclasses).AvailableAtLevel);
+        Assert.Equal(2, Assert.Single(first.Spellcasting!.Levels).Slots[0].Count);
     }
 
     [Fact]
@@ -132,7 +133,15 @@ public sealed class ClassProgressionEndpointsTests : IDisposable
                                 3,
                                 [new CatalogReference("evocation-savant", "Evocation Savant")])
                         ])
-                ]));
+                ],
+                Spellcasting: new ClassSpellcastingProgression(
+                    1,
+                    new CatalogReference("int", "INT"),
+                    [new ClassSpellcastingLevel(
+                        1,
+                        3,
+                        4,
+                        [new SpellSlotCapacity(1, 2)])])));
         }
 
         public Task<IReadOnlyList<CatalogItemSummary>> GetItemsAsync(
