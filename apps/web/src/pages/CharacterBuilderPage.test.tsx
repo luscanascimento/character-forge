@@ -210,6 +210,14 @@ function validEvaluation(): CharacterEvaluation {
       armorClass: 12,
       hitPointMaximum: 7,
       hitDie: 6,
+      spellcasting: {
+        ability: { id: 'int', name: 'INT' },
+        cantripsKnown: 3,
+        preparedSpells: 4,
+        slots: [{ spellLevel: 1, count: 2 }],
+        spellSaveDc: 11,
+        spellAttackModifier: 3,
+      },
       grantedProficiencies: [
         {
           proficiency: { id: 'simple-weapons', name: 'Simple Weapons' },
@@ -1326,6 +1334,10 @@ describe('CharacterBuilderPage', () => {
     expect(within(derived).getByText('12')).toBeInTheDocument()
     expect(within(derived).getByText('7')).toBeInTheDocument()
     expect(within(derived).getByText('+2')).toBeInTheDocument()
+    expect(within(derived).getByText('Spell save DC')).toBeInTheDocument()
+    expect(within(derived).getByText('11')).toBeInTheDocument()
+    expect(within(derived).getByText('Spell attack')).toBeInTheDocument()
+    expect(within(derived).getByText('+3')).toBeInTheDocument()
     expect(within(derived).getAllByText('d6')).toHaveLength(2)
     expect(screen.getByText('Skill: Arcana')).toBeInTheDocument()
     expect(validationLoader).toHaveBeenCalledWith(character, expect.anything())

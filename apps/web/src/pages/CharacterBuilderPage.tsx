@@ -1347,6 +1347,20 @@ function ReviewStep({
           <span>Hit die</span>
           <strong>d{derived.hitDie}</strong>
         </div>
+        {derived.spellcasting && (
+          <>
+            <div>
+              <Sparkles aria-hidden="true" size={20} />
+              <span>Spell save DC</span>
+              <strong>{derived.spellcasting.spellSaveDc}</strong>
+            </div>
+            <div>
+              <Sparkles aria-hidden="true" size={20} />
+              <span>Spell attack</span>
+              <strong>{formatModifier(derived.spellcasting.spellAttackModifier)}</strong>
+            </div>
+          </>
+        )}
       </section>
 
       <section className="review-section" aria-labelledby="review-proficiencies-heading">

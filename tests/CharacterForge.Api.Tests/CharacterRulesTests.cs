@@ -27,6 +27,25 @@ public sealed class CharacterRulesTests
     }
 
     [Theory]
+    [InlineData("int", 12)]
+    [InlineData("wis", 10)]
+    [InlineData("cha", 16)]
+    public void AbilityScore_ResolvesCanonicalProviderIds(string abilityId, int expected)
+    {
+        var abilities = CharacterValidatorTests.CreateValidCharacter().Abilities!;
+
+        Assert.Equal(expected, AbilityRules.GetScore(abilities, abilityId));
+    }
+
+    [Fact]
+    public void AbilityScore_RejectsAnUnknownProviderId()
+    {
+        var abilities = CharacterValidatorTests.CreateValidCharacter().Abilities!;
+
+        Assert.Throws<ArgumentException>(() => AbilityRules.GetScore(abilities, "luck"));
+    }
+
+    [Theory]
     [InlineData(1, 2)]
     [InlineData(4, 2)]
     [InlineData(5, 3)]

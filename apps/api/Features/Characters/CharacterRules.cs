@@ -12,6 +12,10 @@ public static class CharacterRules
 
 public static class AbilityRules
 {
+    private static readonly HashSet<string> SupportedIds = new(
+        ["str", "dex", "con", "int", "wis", "cha"],
+        StringComparer.OrdinalIgnoreCase);
+
     public static int GetModifier(int score)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(score, CharacterRules.MinimumAbilityScore);
@@ -19,6 +23,27 @@ public static class AbilityRules
 
         return (int)Math.Floor((score - 10) / 2d);
     }
+
+    public static int GetScore(AbilityScores abilities, string abilityId)
+    {
+        ArgumentNullException.ThrowIfNull(abilities);
+
+        return abilityId.ToLowerInvariant() switch
+        {
+            "str" => abilities.Strength,
+            "dex" => abilities.Dexterity,
+            "con" => abilities.Constitution,
+            "int" => abilities.Intelligence,
+            "wis" => abilities.Wisdom,
+            "cha" => abilities.Charisma,
+            _ => throw new ArgumentException(
+                $"'{abilityId}' is not a supported ability id.",
+                nameof(abilityId))
+        };
+    }
+
+    public static bool IsSupportedId(string? abilityId) =>
+        abilityId is not null && SupportedIds.Contains(abilityId);
 }
 
 public static class ProficiencyRules

@@ -4,6 +4,8 @@ namespace CharacterForge.Api.Tests;
 
 public sealed class SpellcastingRulesTests
 {
+    private static readonly AbilityScores Abilities = new(8, 14, 13, 16, 12, 10);
+
     private static readonly SpellcastingProgressionRule WizardProgression = new(
         1,
         new ContentReference("int", "INT"),
@@ -27,7 +29,7 @@ public sealed class SpellcastingRulesTests
     [Fact]
     public void Resolve_ReturnsTheAvailabilityForTheSelectedClassLevel()
     {
-        var result = SpellcastingRules.Resolve(WizardProgression, 5);
+        var result = SpellcastingRules.Resolve(WizardProgression, 5, Abilities);
 
         Assert.NotNull(result);
         Assert.Equal("int", result.Ability.Id);
@@ -36,13 +38,18 @@ public sealed class SpellcastingRulesTests
         Assert.Equal(
             [new SpellSlotAvailability(1, 4), new SpellSlotAvailability(2, 3), new SpellSlotAvailability(3, 2)],
             result.Slots);
+        Assert.Equal(14, result.SpellSaveDc);
+        Assert.Equal(6, result.SpellAttackModifier);
     }
 
     [Fact]
     public void Resolve_ReturnsNoAvailabilityForANonCasterOrBeforeSpellcastingStarts()
     {
-        Assert.Null(SpellcastingRules.Resolve(null, 1));
-        Assert.Null(SpellcastingRules.Resolve(WizardProgression with { AvailableAtLevel = 3 }, 2));
+        Assert.Null(SpellcastingRules.Resolve(null, 1, Abilities));
+        Assert.Null(SpellcastingRules.Resolve(
+            WizardProgression with { AvailableAtLevel = 3 },
+            2,
+            Abilities));
     }
 
     [Theory]
@@ -51,6 +58,6 @@ public sealed class SpellcastingRulesTests
     public void Resolve_RejectsClassLevelsOutsideCanonicalBounds(int classLevel)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            SpellcastingRules.Resolve(WizardProgression, classLevel));
+            SpellcastingRules.Resolve(WizardProgression, classLevel, Abilities));
     }
 }

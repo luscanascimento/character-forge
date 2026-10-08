@@ -110,6 +110,8 @@ export const characterEvaluationSchema = z.object({
               count: z.number().int().min(1).max(4),
             }),
           ),
+          spellSaveDc: z.number().int(),
+          spellAttackModifier: z.number().int(),
         })
         .nullable()
         .optional(),

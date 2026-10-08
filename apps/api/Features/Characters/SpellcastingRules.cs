@@ -19,7 +19,8 @@ public static class SpellcastingRules
 {
     public static SpellcastingDerivedValues? Resolve(
         SpellcastingProgressionRule? progression,
-        int classLevel)
+        int classLevel,
+        AbilityScores abilities)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(classLevel, CharacterRules.MinimumLevel);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(classLevel, CharacterRules.MaximumLevel);
@@ -33,10 +34,16 @@ public static class SpellcastingRules
             ?? throw new InvalidOperationException(
                 $"Spellcasting progression does not contain class level {classLevel}.");
 
+        var abilityModifier = AbilityRules.GetModifier(
+            AbilityRules.GetScore(abilities, progression.Ability.Id!));
+        var proficiencyBonus = ProficiencyRules.GetBonus(classLevel);
+
         return new SpellcastingDerivedValues(
             progression.Ability,
             level.CantripsKnown,
             level.PreparedSpells,
-            level.Slots);
+            level.Slots,
+            8 + abilityModifier + proficiencyBonus,
+            abilityModifier + proficiencyBonus);
     }
 }

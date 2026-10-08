@@ -21,7 +21,9 @@ public sealed record SpellcastingDerivedValues(
     ContentReference Ability,
     int CantripsKnown,
     int PreparedSpells,
-    IReadOnlyList<SpellSlotAvailability> Slots);
+    IReadOnlyList<SpellSlotAvailability> Slots,
+    int SpellSaveDc,
+    int SpellAttackModifier);
 
 public sealed record ProficiencySource(
     string Category,
@@ -116,7 +118,10 @@ public static class CharacterEvaluator
                     classProgression.Level),
                 context.HitDie,
                 grantedProficiencies,
-                SpellcastingRules.Resolve(context.Spellcasting, classProgression.Level)));
+                SpellcastingRules.Resolve(
+                    context.Spellcasting,
+                    classProgression.Level,
+                    abilities)));
     }
 
     private static IReadOnlyList<FeatureChoiceRequirementRule> ResolveFeatureChoiceOptions(

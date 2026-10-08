@@ -123,7 +123,8 @@ internal static class SrdProgressionMapper
         if (metadata.SpellcastingAbility is null ||
             metadata.Level is < CharacterRules.MinimumLevel or > CharacterRules.MaximumLevel ||
             string.IsNullOrWhiteSpace(metadata.SpellcastingAbility.Index) ||
-            string.IsNullOrWhiteSpace(metadata.SpellcastingAbility.Name))
+            string.IsNullOrWhiteSpace(metadata.SpellcastingAbility.Name) ||
+            !AbilityRules.IsSupportedId(metadata.SpellcastingAbility.Index))
         {
             throw InvalidSpellcasting(characterClass.Index);
         }

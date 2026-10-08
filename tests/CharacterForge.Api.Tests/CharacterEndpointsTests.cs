@@ -53,6 +53,8 @@ public sealed class CharacterEndpointsTests : IDisposable
         Assert.NotNull(evaluation.Derived.Spellcasting);
         Assert.Equal("int", evaluation.Derived.Spellcasting.Ability.Id);
         Assert.Equal([new SpellSlotAvailability(1, 2)], evaluation.Derived.Spellcasting.Slots);
+        Assert.Equal(11, evaluation.Derived.Spellcasting.SpellSaveDc);
+        Assert.Equal(3, evaluation.Derived.Spellcasting.SpellAttackModifier);
         Assert.Contains(
             evaluation.Derived.GrantedProficiencies,
             proficiency => proficiency.Proficiency.Id == "simple-weapons");
