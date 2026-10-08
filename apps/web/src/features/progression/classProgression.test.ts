@@ -49,6 +49,17 @@ function progressionResponse() {
     spellcasting: {
       availableAtLevel: 1,
       ability: { id: 'int', name: 'INT' },
+      policy: {
+        manifestVersion: 'SRD-5.2.1-SPELL-1',
+        preparedSpellSource: 'spellbook',
+        cantripReplacement: { trigger: 'longRest', maximumReplacements: 1 },
+        preparedSpellReplacement: { trigger: 'longRest', maximumReplacements: null },
+        slotPool: 'standard',
+        baseSlotRecovery: 'longRest',
+        usesUniformSlotLevel: false,
+        maximumSlotLevel: 9,
+        specialSpellAccess: [],
+      },
       levels: Array.from({ length: 20 }, (_, index) => ({
         classLevel: index + 1,
         cantripsKnown: 3,

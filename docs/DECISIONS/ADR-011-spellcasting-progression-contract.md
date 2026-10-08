@@ -30,3 +30,7 @@ The spellcasting model travels with the existing class progression response beca
 - Malformed or partial upstream tables cannot silently produce partial spell availability.
 - The contract does not yet authorize spell selection: class-specific preparation and recovery behavior still needs an explicit rule source.
 - Warlock slot rows remain accurately represented as positive capacities at their current slot level, but no standard/Pact recovery claim is made yet.
+
+## Follow-up
+
+ADR-012 now supplies the separately versioned preparation, replacement, standard/Pact pool, recovery, and Mystic Arcanum policies that this numeric contract intentionally omitted.

@@ -20,6 +20,34 @@ const spellcastingSchema = z
   .object({
     availableAtLevel: z.number().int().min(1).max(20),
     ability: referenceSchema,
+    policy: z.object({
+      manifestVersion: z.string().min(1),
+      preparedSpellSource: z.enum(['classSpellList', 'spellbook']),
+      cantripReplacement: z
+        .object({
+          trigger: z.enum(['classLevelGained', 'longRest']),
+          maximumReplacements: z.number().int().positive().nullable(),
+        })
+        .nullable(),
+      preparedSpellReplacement: z.object({
+        trigger: z.enum(['classLevelGained', 'longRest']),
+        maximumReplacements: z.number().int().positive().nullable(),
+      }),
+      slotPool: z.enum(['standard', 'pactMagic']),
+      baseSlotRecovery: z.enum(['longRest', 'shortOrLongRest']),
+      usesUniformSlotLevel: z.boolean(),
+      maximumSlotLevel: z.number().int().min(1).max(9),
+      specialSpellAccess: z.array(
+        z.object({
+          availableAtClassLevel: z.number().int().min(1).max(20),
+          spellLevel: z.number().int().min(1).max(9),
+          uses: z.number().int().positive(),
+          recovery: z.enum(['longRest', 'shortOrLongRest']),
+          replacementTrigger: z.enum(['classLevelGained', 'longRest']),
+          requiresSameSpellLevel: z.boolean(),
+        }),
+      ),
+    }),
     levels: z.array(
       z.object({
         classLevel: z.number().int().min(1).max(20),

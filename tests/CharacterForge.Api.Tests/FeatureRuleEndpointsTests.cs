@@ -95,7 +95,15 @@ public sealed class FeatureRuleEndpointsTests : IDisposable
                             ? [new CatalogReference("paladin-fighting-style", "Fighting Style")]
                             : []))
                     .ToArray(),
-                []));
+                [],
+                Spellcasting: new ClassSpellcastingProgression(
+                    1,
+                    new CatalogReference("cha", "CHA"),
+                    [new ClassSpellcastingLevel(
+                        1,
+                        0,
+                        2,
+                        [new SpellSlotCapacity(1, 2)])])));
         }
 
         public Task<IReadOnlyList<CatalogItemSummary>> GetItemsAsync(

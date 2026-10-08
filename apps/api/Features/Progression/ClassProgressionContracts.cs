@@ -1,4 +1,5 @@
 using CharacterForge.Api.Features.Catalog;
+using CharacterForge.Api.Features.Spellcasting;
 
 namespace CharacterForge.Api.Features.Progression;
 
@@ -27,7 +28,8 @@ public sealed record SubclassLevelProgression(
 public sealed record ClassSpellcastingProgression(
     int AvailableAtLevel,
     CatalogReference Ability,
-    IReadOnlyList<ClassSpellcastingLevel> Levels);
+    IReadOnlyList<ClassSpellcastingLevel> Levels,
+    SpellcastingPolicyDocument? Policy = null);
 
 public sealed record ClassSpellcastingLevel(
     int ClassLevel,

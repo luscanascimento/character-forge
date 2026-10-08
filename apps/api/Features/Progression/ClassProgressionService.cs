@@ -1,5 +1,6 @@
 using CharacterForge.Api.Features.Catalog;
 using CharacterForge.Api.Infrastructure.Srd;
+using CharacterForge.Api.Features.Spellcasting;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
@@ -24,9 +25,33 @@ public sealed class ClassProgressionService(
             cache.Set(key, snapshot, TimeSpan.FromMinutes(options.Value.CacheDurationMinutes));
         }
 
-        return snapshot.Value is null
-            ? null
-            : snapshot.Value with { Source = CatalogSource.Create(snapshot.FetchedAt) };
+        if (snapshot.Value is null)
+        {
+            return null;
+        }
+
+        var progression = snapshot.Value with
+        {
+            Source = CatalogSource.Create(snapshot.FetchedAt)
+        };
+        SpellcastingPolicyDocument? policy;
+        try
+        {
+            policy = SpellcastingRuleManifest.GetVerifiedPolicy(progression);
+        }
+        catch (SpellcastingRuleContentException exception)
+        {
+            throw new SrdProviderException(
+                "The class progression did not agree with the active spellcasting-rule manifest.",
+                exception);
+        }
+
+        return progression.Spellcasting is null
+            ? progression
+            : progression with
+            {
+                Spellcasting = progression.Spellcasting with { Policy = policy }
+            };
     }
 
     private sealed record ProgressionSnapshot(
