@@ -14,7 +14,14 @@ public sealed record CharacterDerivedValues(
     int ArmorClass,
     int? HitPointMaximum,
     int HitDie,
-    IReadOnlyList<GrantedProficiency> GrantedProficiencies);
+    IReadOnlyList<GrantedProficiency> GrantedProficiencies,
+    SpellcastingDerivedValues? Spellcasting = null);
+
+public sealed record SpellcastingDerivedValues(
+    ContentReference Ability,
+    int CantripsKnown,
+    int PreparedSpells,
+    IReadOnlyList<SpellSlotAvailability> Slots);
 
 public sealed record ProficiencySource(
     string Category,
@@ -47,7 +54,8 @@ public sealed record CharacterRulesContext(
     IReadOnlyList<ProficiencyGrant> ProficiencyGrants,
     IReadOnlyList<ProficiencyChoiceRule> ProficiencyChoices,
     IReadOnlyList<SubclassRule> Subclasses,
-    IReadOnlyList<FeatureChoiceRequirementRule>? FeatureChoices = null);
+    IReadOnlyList<FeatureChoiceRequirementRule>? FeatureChoices = null,
+    SpellcastingProgressionRule? Spellcasting = null);
 
 public sealed record CharacterEvaluation(
     ValidationResult Validation,
@@ -107,7 +115,8 @@ public static class CharacterEvaluator
                     abilities.Constitution,
                     classProgression.Level),
                 context.HitDie,
-                grantedProficiencies));
+                grantedProficiencies,
+                SpellcastingRules.Resolve(context.Spellcasting, classProgression.Level)));
     }
 
     private static IReadOnlyList<FeatureChoiceRequirementRule> ResolveFeatureChoiceOptions(

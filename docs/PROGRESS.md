@@ -114,19 +114,20 @@ Phases 0–5 are implemented. Phase 5 closed with trusted 1–20 class progressi
 - Added an optional provider-neutral spellcasting progression to the class contract with explicit class levels, spell levels, cantrip/prepared capacities, positive slot capacities, and spellcasting ability.
 - Added fail-closed checks for incomplete caster tables, missing fields, invalid capacities, and class-detail/level-table disagreement while keeping noncasters explicitly without spellcasting progression.
 - Extended the frontend progression schema and recorded the implemented boundary in ADR-011 without treating prose-only preparation, recovery, spellbook, or Mystic Arcanum behavior as canonical.
+- Added canonical character-level spellcasting availability that resolves the selected class level into spellcasting ability, cantrip/prepared capacities, and positive spell-slot capacities.
+- Kept noncasters and pre-spellcasting levels explicit with no derived spellcasting block, and exposed the trusted result through character validation without adding spell-selection persistence.
 
 ## Work in progress
 
-The structured spellcasting progression foundation is implemented. It exposes availability facts but intentionally does not yet authorize spell selections whose preparation or recovery semantics remain narrative-only.
+The structured spellcasting progression and selected-level availability foundation is implemented. It intentionally does not yet authorize spell selections whose preparation or recovery semantics remain narrative-only.
 
 ## Next step
 
 Continue the Phase 6 rule foundation:
 
-1. Add canonical spell-slot availability for the selected class and level from the normalized progression.
-2. Add spell save DC and spell attack modifier calculations from the canonical ability modifier and proficiency bonus.
-3. Define provenance-backed preparation/replacement and Pact Magic rules before introducing spell selection persistence.
-4. Revisit Blessed Warrior and Druidic Warrior only after class-cantrip eligibility can be validated end to end.
+1. Add spell save DC and spell attack modifier calculations from the canonical ability modifier and proficiency bonus.
+2. Define provenance-backed preparation/replacement and Pact Magic rules before introducing spell selection persistence.
+3. Revisit Blessed Warrior and Druidic Warrior only after class-cantrip eligibility can be validated end to end.
 
 ## Pending decisions
 
@@ -149,7 +150,7 @@ Continue the Phase 6 rule foundation:
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 120 passing
+- Backend unit/integration tests: 124 passing
 - Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses including Bard Expertise passing
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10

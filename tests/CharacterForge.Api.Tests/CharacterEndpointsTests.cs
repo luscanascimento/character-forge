@@ -50,6 +50,9 @@ public sealed class CharacterEndpointsTests : IDisposable
         Assert.Equal(12, evaluation.Derived.ArmorClass);
         Assert.Equal(7, evaluation.Derived.HitPointMaximum);
         Assert.Equal(6, evaluation.Derived.HitDie);
+        Assert.NotNull(evaluation.Derived.Spellcasting);
+        Assert.Equal("int", evaluation.Derived.Spellcasting.Ability.Id);
+        Assert.Equal([new SpellSlotAvailability(1, 2)], evaluation.Derived.Spellcasting.Slots);
         Assert.Contains(
             evaluation.Derived.GrantedProficiencies,
             proficiency => proficiency.Proficiency.Id == "simple-weapons");
@@ -151,6 +154,9 @@ public sealed class CharacterEndpointsTests : IDisposable
         Assert.NotNull(evaluation?.Derived);
         Assert.Equal(3, evaluation.Derived.ProficiencyBonus);
         Assert.Equal(27, evaluation.Derived.HitPointMaximum);
+        Assert.Equal(
+            [new SpellSlotAvailability(1, 4), new SpellSlotAvailability(2, 3), new SpellSlotAvailability(3, 2)],
+            evaluation.Derived.Spellcasting?.Slots);
     }
 
     [Fact]
@@ -313,6 +319,28 @@ public sealed class CharacterEndpointsTests : IDisposable
                                         3,
                                         [new CatalogReference("sculpt-spells", "Sculpt Spells")])
                                 ])
-                        ]));
+                        ],
+                        Spellcasting: new ClassSpellcastingProgression(
+                            1,
+                            new CatalogReference("int", "INT"),
+                            Enumerable.Range(1, 20)
+                                .Select(level => new ClassSpellcastingLevel(
+                                    level,
+                                    level < 4 ? 3 : 4,
+                                    Math.Min(level + 3, 22),
+                                    SpellSlots(level)))
+                                .ToArray())));
+
+        private static IReadOnlyList<SpellSlotCapacity> SpellSlots(int level) => level switch
+        {
+            1 => [new SpellSlotCapacity(1, 2)],
+            2 => [new SpellSlotCapacity(1, 3)],
+            3 or 4 => [new SpellSlotCapacity(1, 4), new SpellSlotCapacity(2, level == 3 ? 2 : 3)],
+            _ => [
+                new SpellSlotCapacity(1, 4),
+                new SpellSlotCapacity(2, 3),
+                new SpellSlotCapacity(3, 2)
+            ]
+        };
     }
 }

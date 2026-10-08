@@ -105,8 +105,23 @@ public sealed class CharacterEvaluationService(
                         string.Equals(
                             branch.OptionSource,
                             "proficientSkills",
-                            StringComparison.Ordinal))).ToArray())).ToArray()));
+                            StringComparison.Ordinal))).ToArray())).ToArray(),
+                MapSpellcasting(classProgression.Spellcasting)));
     }
+
+    private static SpellcastingProgressionRule? MapSpellcasting(
+        ClassSpellcastingProgression? progression) => progression is null
+            ? null
+            : new SpellcastingProgressionRule(
+                progression.AvailableAtLevel,
+                new ContentReference(progression.Ability.Id, progression.Ability.Name),
+                progression.Levels.Select(level => new SpellcastingLevelRule(
+                    level.ClassLevel,
+                    level.CantripsKnown,
+                    level.PreparedSpells,
+                    level.Slots.Select(slot => new SpellSlotAvailability(
+                        slot.SpellLevel,
+                        slot.Count)).ToArray())).ToArray());
 
     private static List<RuleViolation> MissingContentViolations(
         CatalogItemDetail? selectedClass,

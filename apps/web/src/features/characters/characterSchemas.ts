@@ -99,6 +99,20 @@ export const characterEvaluationSchema = z.object({
           isSkill: z.boolean(),
         }),
       ),
+      spellcasting: z
+        .object({
+          ability: contentReferenceSchema,
+          cantripsKnown: z.number().int().min(0).max(6),
+          preparedSpells: z.number().int().min(0).max(22),
+          slots: z.array(
+            z.object({
+              spellLevel: z.number().int().min(1).max(9),
+              count: z.number().int().min(1).max(4),
+            }),
+          ),
+        })
+        .nullable()
+        .optional(),
     })
     .nullable(),
 })
