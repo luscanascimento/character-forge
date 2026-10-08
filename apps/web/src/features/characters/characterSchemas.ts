@@ -50,6 +50,12 @@ export const characterDraftSchema = z.object({
       }),
     )
     .default([]),
+  spells: z
+    .object({
+      cantrips: z.array(contentReferenceSchema),
+      preparedSpells: z.array(contentReferenceSchema),
+    })
+    .default({ cantrips: [], preparedSpells: [] }),
 })
 
 const documentIdentitySchema = z.object({
@@ -150,6 +156,7 @@ export function createStoredCharacterDraft({
       classProgressions: [{ class: null, level: 1, subclass: null }],
       proficiencyChoices: [],
       featureChoices: [],
+      spells: { cantrips: [], preparedSpells: [] },
     },
   })
 }

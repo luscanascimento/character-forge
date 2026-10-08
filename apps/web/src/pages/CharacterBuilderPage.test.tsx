@@ -401,6 +401,83 @@ function proficiencylessCharacter(): StoredCharacterV1 {
   }
 }
 
+function bardSpellcaster(): StoredCharacterV1 {
+  const character = createStoredCharacter()
+  return {
+    ...character,
+    character: {
+      ...character.character,
+      classProgressions: [{ class: { id: 'bard', name: 'Bard' }, level: 1, subclass: null }],
+      proficiencyChoices: [
+        {
+          choiceId: 'classes/bard/proficiencies/0',
+          selections: [
+            { id: 'skill-arcana', name: 'Skill: Arcana' },
+            { id: 'skill-performance', name: 'Skill: Performance' },
+            { id: 'skill-persuasion', name: 'Skill: Persuasion' },
+          ],
+        },
+        {
+          choiceId: 'species/elf/traits/keen-senses/proficiencies/0',
+          selections: [{ id: 'skill-perception', name: 'Skill: Perception' }],
+        },
+      ],
+    },
+  }
+}
+
+function bardSpellProgression(): ClassProgressionDocument {
+  return {
+    ...classProgression('bard'),
+    spellcasting: {
+      availableAtLevel: 1,
+      ability: { id: 'cha', name: 'CHA' },
+      policy: {
+        manifestVersion: 'SRD-5.2.1-SPELL-1',
+        preparedSpellSource: 'classSpellList',
+        cantripReplacement: { trigger: 'classLevelGained', maximumReplacements: 1 },
+        preparedSpellReplacement: { trigger: 'classLevelGained', maximumReplacements: 1 },
+        slotPool: 'standard',
+        baseSlotRecovery: 'longRest',
+        usesUniformSlotLevel: false,
+        maximumSlotLevel: 9,
+        specialSpellAccess: [],
+      },
+      levels: Array.from({ length: 20 }, (_, index) => ({
+        classLevel: index + 1,
+        cantripsKnown: 2,
+        preparedSpells: 4,
+        slots: [{ spellLevel: 1, count: 2 }],
+      })),
+    },
+  }
+}
+
+function spellCatalogPage(): CatalogPage {
+  const items = [
+    { id: 'dancing-lights', name: 'Dancing Lights', category: 'spells' as const, level: 0 },
+    { id: 'light', name: 'Light', category: 'spells' as const, level: 0 },
+    { id: 'charm-person', name: 'Charm Person', category: 'spells' as const, level: 1 },
+    { id: 'cure-wounds', name: 'Cure Wounds', category: 'spells' as const, level: 1 },
+    { id: 'detect-magic', name: 'Detect Magic', category: 'spells' as const, level: 1 },
+    { id: 'heroism', name: 'Heroism', category: 'spells' as const, level: 1 },
+    { id: 'shatter', name: 'Shatter', category: 'spells' as const, level: 2 },
+  ]
+  return {
+    items,
+    page: 1,
+    pageSize: 48,
+    total: items.length,
+    totalPages: 1,
+    source: {
+      provider: 'D&D 5e SRD API',
+      ruleset: '2024',
+      rulesVersion: 'SRD-5.2.1',
+      fetchedAt: '2026-10-06T12:00:00Z',
+    },
+  }
+}
+
 function renderPage(
   storage: CharacterRepository,
   now: () => Date = () => new Date('2026-10-01T15:00:00.000Z'),
@@ -457,7 +534,7 @@ describe('CharacterBuilderPage', () => {
     expect(await screen.findByRole('radio', { name: 'Elf' })).not.toBeChecked()
 
     const steps = within(screen.getByRole('navigation', { name: 'Character creation steps' }))
-    expect(steps.getAllByRole('listitem')).toHaveLength(6)
+    expect(steps.getAllByRole('listitem')).toHaveLength(7)
     expect(steps.getByRole('button', { name: 'Name' })).not.toHaveAttribute('aria-current')
     expect(steps.getByRole('button', { name: 'Origins' })).toHaveAttribute('aria-current', 'step')
     expect(loader).toHaveBeenCalledWith('species', { page: 1, pageSize: 48 }, expect.anything())
@@ -1374,6 +1451,69 @@ describe('CharacterBuilderPage', () => {
       await screen.findByRole('heading', { name: 'Choose their proficiencies' }),
     ).toBeInTheDocument()
     expect(storage.save).not.toHaveBeenCalled()
+  })
+
+  it('persists exact canonical spell selections from the class list', async () => {
+    const user = userEvent.setup()
+    const storage = repository({ get: vi.fn().mockResolvedValue(bardSpellcaster()) })
+    const catalogLoader = vi.fn<CatalogLoader>((category) => {
+      if (category === 'spells') return Promise.resolve(spellCatalogPage())
+      if (category === 'classes' || category === 'species' || category === 'backgrounds') {
+        return Promise.resolve(catalogPage(category))
+      }
+      return Promise.reject(new Error(`Unexpected category: ${category}`))
+    })
+    const progressionLoader = vi
+      .fn<ClassProgressionLoader>()
+      .mockResolvedValue(bardSpellProgression())
+    renderPage(
+      storage,
+      undefined,
+      catalogLoader,
+      undefined,
+      undefined,
+      undefined,
+      progressionLoader,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Choose their spells' })).toBeInTheDocument()
+    await user.click(await screen.findByRole('checkbox', { name: /Dancing Lights/ }))
+    await user.click(screen.getByRole('checkbox', { name: /^Light/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Charm Person/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Cure Wounds/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Detect Magic/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Heroism/ }))
+    expect(screen.queryByRole('checkbox', { name: /Shatter/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Review character' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          spells: {
+            cantrips: [
+              { id: 'dancing-lights', name: 'Dancing Lights' },
+              { id: 'light', name: 'Light' },
+            ],
+            preparedSpells: [
+              { id: 'charm-person', name: 'Charm Person' },
+              { id: 'cure-wounds', name: 'Cure Wounds' },
+              { id: 'detect-magic', name: 'Detect Magic' },
+              { id: 'heroism', name: 'Heroism' },
+            ],
+          },
+        }),
+      }),
+      '2026-09-29T12:00:00.000Z',
+    )
+    expect(catalogLoader).toHaveBeenCalledWith(
+      'spells',
+      { page: 1, pageSize: 48, characterClass: 'bard', sort: 'level' },
+      expect.anything(),
+    )
+    expect(
+      await screen.findByRole('heading', { name: 'Review your character' }),
+    ).toBeInTheDocument()
   })
 
   it('retries canonical validation without changing the local draft', async () => {

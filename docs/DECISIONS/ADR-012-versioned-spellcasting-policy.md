@@ -49,4 +49,4 @@ Base recovery deliberately excludes additional class features such as Arcane Rec
 - Pact Magic cannot be mistaken for the standard full-caster slot table.
 - Mystic Arcanum remains separate from slots, preventing level 6–9 Warlock access from disappearing merely because Pact Magic stops at level 5.
 - Provider drift fails closed before incomplete policy reaches the browser.
-- Persisted spell selections and their invalidation paths are still future work; this decision supplies the rule contract they require.
+- ADR-013 now uses this policy for persisted class-list selections and non-destructive invalidation; Wizard spellbook ownership remains future work.

@@ -10,7 +10,8 @@ public sealed record Character(
     ContentReference? Background,
     IReadOnlyList<ClassProgression>? ClassProgressions,
     IReadOnlyList<ProficiencyChoiceSelection>? ProficiencyChoices,
-    IReadOnlyList<FeatureChoiceSelection>? FeatureChoices = null);
+    IReadOnlyList<FeatureChoiceSelection>? FeatureChoices = null,
+    SpellSelections? Spells = null);
 
 public sealed record AbilityScores(
     int Strength,
@@ -35,3 +36,7 @@ public sealed record FeatureChoiceSelection(
     string? RequirementId,
     string? BranchId,
     IReadOnlyList<ContentReference>? Selections);
+
+public sealed record SpellSelections(
+    IReadOnlyList<ContentReference>? Cantrips,
+    IReadOnlyList<ContentReference>? PreparedSpells);

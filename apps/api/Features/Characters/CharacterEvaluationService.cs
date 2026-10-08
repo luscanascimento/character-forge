@@ -73,6 +73,11 @@ public sealed class CharacterEvaluationService(
             throw new SrdProviderException("The selected class did not provide matching feature rules.");
         }
 
+        var spellSelectionRule = await GetSpellSelectionRuleAsync(
+            classProgression,
+            progression.Level,
+            cancellationToken);
+
         var grants = new List<ProficiencyGrant>();
         var choices = new List<ProficiencyChoiceRule>();
         AddFacts(grants, choices, selectedClass!, classFacts);
@@ -106,7 +111,75 @@ public sealed class CharacterEvaluationService(
                             branch.OptionSource,
                             "proficientSkills",
                             StringComparison.Ordinal))).ToArray())).ToArray(),
-                MapSpellcasting(classProgression.Spellcasting)));
+                MapSpellcasting(classProgression.Spellcasting),
+                spellSelectionRule));
+    }
+
+    private async Task<SpellSelectionRule?> GetSpellSelectionRuleAsync(
+        ClassProgressionDocument progression,
+        int classLevel,
+        CancellationToken cancellationToken)
+    {
+        var spellcasting = progression.Spellcasting;
+        if (spellcasting?.Policy is null || classLevel < spellcasting.AvailableAtLevel)
+        {
+            return null;
+        }
+
+        var level = spellcasting.Levels.SingleOrDefault(level => level.ClassLevel == classLevel)
+            ?? throw new SrdProviderException(
+                $"The selected class did not provide spellcasting for class level {classLevel}.");
+        if (level.Slots.Count == 0)
+        {
+            throw new SrdProviderException(
+                $"The selected class did not provide spell slots for class level {classLevel}.");
+        }
+        var maximumSpellLevel = level.Slots.Max(slot => slot.SpellLevel);
+
+        if (!string.Equals(
+            spellcasting.Policy.PreparedSpellSource,
+            "classSpellList",
+            StringComparison.Ordinal))
+        {
+            return new SpellSelectionRule(
+                spellcasting.Policy.PreparedSpellSource,
+                level.CantripsKnown,
+                level.PreparedSpells,
+                maximumSpellLevel,
+                []);
+        }
+
+        var page = await catalog.GetPageAsync(
+            CatalogCategory.Spells,
+            new CatalogQuery(
+                Search: null,
+                Page: 1,
+                PageSize: int.MaxValue,
+                Sort: "level",
+                Level: null,
+                School: null,
+                CharacterClass: progression.Class.Id),
+            cancellationToken);
+        var options = page.Items.Select(item => new SpellOptionRule(
+            new ContentReference(item.Id, item.Name),
+            item.Level ?? throw new SrdProviderException(
+                $"Spell '{item.Id}' did not provide a spell level."))).ToArray();
+        if (options.Select(option => option.Spell.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
+                options.Length ||
+            options.Count(option => option.SpellLevel == 0) < level.CantripsKnown ||
+            options.Count(option => option.SpellLevel is >= 1 && option.SpellLevel <= maximumSpellLevel) <
+            level.PreparedSpells)
+        {
+            throw new SrdProviderException(
+                $"The spell catalog did not provide enough eligible options for class '{progression.Class.Id}'.");
+        }
+
+        return new SpellSelectionRule(
+            spellcasting.Policy.PreparedSpellSource,
+            level.CantripsKnown,
+            level.PreparedSpells,
+            maximumSpellLevel,
+            options);
     }
 
     private static SpellcastingProgressionRule? MapSpellcasting(

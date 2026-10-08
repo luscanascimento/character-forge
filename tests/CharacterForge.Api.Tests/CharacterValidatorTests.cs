@@ -118,6 +118,26 @@ public sealed class CharacterValidatorTests
                 violation.Source == "species.id");
     }
 
+    [Fact]
+    public void Validate_RejectsMalformedSpellReferences()
+    {
+        var character = CreateValidCharacter() with
+        {
+            Spells = new SpellSelections(
+                [new ContentReference("Bad Id", "")],
+                [new ContentReference(null, "Missing")])
+        };
+
+        var result = CharacterValidator.Validate(character);
+
+        Assert.Contains(result.Violations, violation =>
+            violation.Source == "spells.cantrips[0].id");
+        Assert.Contains(result.Violations, violation =>
+            violation.Source == "spells.cantrips[0].name");
+        Assert.Contains(result.Violations, violation =>
+            violation.Source == "spells.preparedSpells[0]");
+    }
+
     internal static Character CreateValidCharacter(int level = 1) => new(
         Guid.Parse("f33771b4-ae75-47b6-bad0-df2a80896a67"),
         "Arannis",

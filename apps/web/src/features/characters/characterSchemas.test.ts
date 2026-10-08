@@ -28,6 +28,7 @@ describe('createStoredCharacterDraft', () => {
         classProgressions: [{ class: null, level: 1, subclass: null }],
         proficiencyChoices: [],
         featureChoices: [],
+        spells: { cantrips: [], preparedSpells: [] },
       },
     })
   })
@@ -83,8 +84,11 @@ describe('duplicateStoredCharacter', () => {
 
 describe('storedCharacterV1Schema', () => {
   it('keeps existing schema-version-1 drafts compatible by defaulting subclass to null', () => {
-    const { featureChoices: _featureChoices, ...legacyCharacter } =
-      createStoredCharacterDraft().character
+    const {
+      featureChoices: _featureChoices,
+      spells: _spells,
+      ...legacyCharacter
+    } = createStoredCharacterDraft().character
     const legacyDocument = {
       ...createStoredCharacterDraft({
         id: '7a28dfb1-c349-436b-a420-9c09de991368',
@@ -100,5 +104,6 @@ describe('storedCharacterV1Schema', () => {
 
     expect(parsed.character.classProgressions[0]?.subclass).toBeNull()
     expect(parsed.character.featureChoices).toEqual([])
+    expect(parsed.character.spells).toEqual({ cantrips: [], preparedSpells: [] })
   })
 })

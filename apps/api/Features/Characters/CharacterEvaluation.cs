@@ -51,13 +51,25 @@ public sealed record SubclassRule(
     ContentReference Subclass,
     int AvailableAtLevel);
 
+public sealed record SpellOptionRule(
+    ContentReference Spell,
+    int SpellLevel);
+
+public sealed record SpellSelectionRule(
+    string PreparedSpellSource,
+    int CantripCount,
+    int PreparedSpellCount,
+    int MaximumPreparedSpellLevel,
+    IReadOnlyList<SpellOptionRule> ClassSpells);
+
 public sealed record CharacterRulesContext(
     int HitDie,
     IReadOnlyList<ProficiencyGrant> ProficiencyGrants,
     IReadOnlyList<ProficiencyChoiceRule> ProficiencyChoices,
     IReadOnlyList<SubclassRule> Subclasses,
     IReadOnlyList<FeatureChoiceRequirementRule>? FeatureChoices = null,
-    SpellcastingProgressionRule? Spellcasting = null);
+    SpellcastingProgressionRule? Spellcasting = null,
+    SpellSelectionRule? SpellSelections = null);
 
 public sealed record CharacterEvaluation(
     ValidationResult Validation,
@@ -89,9 +101,13 @@ public static class CharacterEvaluator
             character.FeatureChoices,
             featureChoiceRules,
             classProgression);
+        var spellSelectionValidation = SpellSelectionRules.Validate(
+            character.Spells,
+            context.SpellSelections);
         var ruleViolations = progressionValidation.Violations
             .Concat(proficiencyResolution.Validation.Violations)
             .Concat(featureChoiceValidation.Violations)
+            .Concat(spellSelectionValidation.Violations)
             .ToArray();
         if (ruleViolations.Length > 0)
         {

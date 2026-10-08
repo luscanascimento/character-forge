@@ -29,8 +29,39 @@ public static partial class CharacterValidator
         ValidateReference(character.Background, "background", "background", "Background", violations);
         ValidateClassProgressions(character.ClassProgressions, violations);
         ValidateFeatureChoices(character.FeatureChoices, violations);
+        ValidateSpellSelections(character.Spells, violations);
 
         return new ValidationResult(violations);
+    }
+
+    private static void ValidateSpellSelections(
+        SpellSelections? spells,
+        ICollection<RuleViolation> violations)
+    {
+        if (spells is null)
+        {
+            return;
+        }
+
+        ValidateSpellReferences(spells.Cantrips, "cantrips", "Cantrip", violations);
+        ValidateSpellReferences(spells.PreparedSpells, "preparedSpells", "Prepared spell", violations);
+    }
+
+    private static void ValidateSpellReferences(
+        IReadOnlyList<ContentReference>? references,
+        string group,
+        string label,
+        ICollection<RuleViolation> violations)
+    {
+        for (var index = 0; index < (references?.Count ?? 0); index++)
+        {
+            ValidateReference(
+                references![index],
+                $"spell.{group}.reference",
+                $"spells.{group}[{index}]",
+                label,
+                violations);
+        }
     }
 
     private static void ValidateFeatureChoices(

@@ -37,6 +37,7 @@ export function createStoredCharacter(
         },
       ],
       featureChoices: [],
+      spells: { cantrips: [], preparedSpells: [] },
     },
     ...overrides,
   }

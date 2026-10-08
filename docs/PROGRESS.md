@@ -122,18 +122,22 @@ Phases 0–5 are implemented. Phase 5 closed with trusted 1–20 class progressi
 - Modeled Warlock Pact Magic as a uniform level 1–5 pool recovered on a Short or Long Rest, with Mystic Arcanum represented separately at class levels 11/13/15/17 for spell levels 6/7/8/9.
 - Verified each manifest policy against normalized provider ability and slot facts, exposed the typed policy through class progression, and fail closed on disagreement.
 - Live-smoke-tested all twelve class progression endpoints: eight caster policies matched and four noncasters remained explicitly without spellcasting policy.
+- Added schema-compatible cantrip and prepared-spell selections to version-1 local drafts, with empty defaults for existing documents.
+- Added canonical server validation for exact selected-level counts, distinct ids, class-list membership, spell-level eligibility, and catalog names; invalidated selections remain in the draft for explicit correction.
+- Added a seventh builder step that loads every page of the class spell list, persists canonical references, filters prepared options by the current slot level, and routes structured spell violations back to the editable step.
+- Kept Wizard selections locked until spellbook ownership exists and rejected retained spell selections for noncasters without silently deleting either case.
 
 ## Work in progress
 
-Structured spellcasting progression, selected-level availability, Spell Save DC, spell attack modifier, and provenance-backed preparation/Pact Magic policies are implemented. Spell selections are not persisted yet.
+Structured spellcasting progression, selected-level availability, Spell Save DC, spell attack modifier, provenance-backed preparation/Pact Magic policies, and class-list cantrip/prepared-spell selection are implemented. Wizard spellbook ownership is not implemented yet.
 
 ## Next step
 
 Continue the Phase 6 rule foundation:
 
-1. Add schema-compatible cantrip and prepared-spell selections with canonical class-list, spell-level, count, and invalidation rules.
-2. Add Wizard spellbook ownership before allowing Wizard prepared-spell selections.
-3. Revisit Blessed Warrior and Druidic Warrior through the now-typed class-cantrip policy.
+1. Add Wizard spellbook ownership before allowing Wizard prepared-spell selections.
+2. Revisit Blessed Warrior and Druidic Warrior through the now-typed class-cantrip policy.
+3. Model replacement events so the manifest's class-level and Long Rest limits can be enforced outside initial character construction.
 
 ## Pending decisions
 

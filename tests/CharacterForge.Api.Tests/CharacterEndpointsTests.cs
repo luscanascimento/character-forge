@@ -162,6 +162,52 @@ public sealed class CharacterEndpointsTests : IDisposable
     }
 
     [Fact]
+    public async Task Validate_AcceptsCanonicalSelectionsFromTheClassSpellList()
+    {
+        var character = CharacterValidatorTests.CreateValidCharacter() with
+        {
+            ClassProgressions = [new ClassProgression(new ContentReference("bard", "Bard"), 1)],
+            ProficiencyChoices =
+            [
+                new ProficiencyChoiceSelection(
+                    "classes/bard/proficiencies/0",
+                    [
+                        new ContentReference("skill-arcana", "Skill: Arcana"),
+                        new ContentReference("skill-history", "Skill: History"),
+                        new ContentReference("skill-performance", "Skill: Performance")
+                    ]),
+                new ProficiencyChoiceSelection(
+                    "species/elf/traits/keen-senses/proficiencies/0",
+                    [new ContentReference("skill-perception", "Skill: Perception")])
+            ],
+            Spells = new SpellSelections(
+                [
+                    new ContentReference("dancing-lights", "Dancing Lights"),
+                    new ContentReference("light", "Light")
+                ],
+                [
+                    new ContentReference("charm-person", "Charm Person"),
+                    new ContentReference("cure-wounds", "Cure Wounds"),
+                    new ContentReference("detect-magic", "Detect Magic"),
+                    new ContentReference("heroism", "Heroism")
+                ])
+        };
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/characters/validate",
+            character,
+            CancellationToken.None);
+        var evaluation = await response.Content.ReadFromJsonAsync<CharacterEvaluation>(
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(evaluation?.Derived);
+        Assert.True(evaluation.Validation.IsValid);
+        Assert.Equal(8, evaluation.Derived.HitDie);
+        Assert.Equal("cha", evaluation.Derived.Spellcasting?.Ability.Id);
+    }
+
+    [Fact]
     public async Task Validate_RetainsButInvalidatesSubclassAfterLevelDecrease()
     {
         var character = CharacterValidatorTests.CreateValidCharacter(level: 5) with
@@ -222,7 +268,18 @@ public sealed class CharacterEndpointsTests : IDisposable
             int? level,
             string? school,
             string? characterClass,
-            CancellationToken cancellationToken) => throw new NotSupportedException();
+            CancellationToken cancellationToken) => category == CatalogCategory.Spells && characterClass == "bard"
+                ? Task.FromResult<IReadOnlyList<CatalogItemSummary>>(
+                [
+                    new("dancing-lights", "Dancing Lights", "spells", 0),
+                    new("light", "Light", "spells", 0),
+                    new("charm-person", "Charm Person", "spells", 1),
+                    new("cure-wounds", "Cure Wounds", "spells", 1),
+                    new("detect-magic", "Detect Magic", "spells", 1),
+                    new("heroism", "Heroism", "spells", 1),
+                    new("shatter", "Shatter", "spells", 2)
+                ])
+                : throw new NotSupportedException();
 
         public Task<CatalogItemDetail?> GetItemAsync(
             CatalogCategory category,
@@ -242,21 +299,31 @@ public sealed class CharacterEndpointsTests : IDisposable
             var facts = category switch
             {
                 CatalogCategory.Classes => new CatalogCharacterCreationFacts(
-                    6,
+                    id == "bard" ? 8 : 6,
                     [
                         new CatalogProficiencyReference("simple-weapons", "Simple Weapons", false),
                         new CatalogProficiencyReference("saving-throw-int", "Saving Throw: INT", false)
                     ],
                     [
-                        new CatalogProficiencyChoice(
-                            "classes/wizard/proficiencies/0",
-                            "Choose two Wizard skills",
-                            2,
-                            [
-                                new CatalogProficiencyReference("skill-arcana", "Skill: Arcana", true),
-                                new CatalogProficiencyReference("skill-history", "Skill: History", true),
-                                new CatalogProficiencyReference("skill-insight", "Skill: Insight", true)
-                            ])
+                        id == "bard"
+                            ? new CatalogProficiencyChoice(
+                                "classes/bard/proficiencies/0",
+                                "Choose three Bard skills",
+                                3,
+                                [
+                                    new CatalogProficiencyReference("skill-arcana", "Skill: Arcana", true),
+                                    new CatalogProficiencyReference("skill-history", "Skill: History", true),
+                                    new CatalogProficiencyReference("skill-performance", "Skill: Performance", true)
+                                ])
+                            : new CatalogProficiencyChoice(
+                                "classes/wizard/proficiencies/0",
+                                "Choose two Wizard skills",
+                                2,
+                                [
+                                    new CatalogProficiencyReference("skill-arcana", "Skill: Arcana", true),
+                                    new CatalogProficiencyReference("skill-history", "Skill: History", true),
+                                    new CatalogProficiencyReference("skill-insight", "Skill: Insight", true)
+                                ])
                     ]),
                 CatalogCategory.Backgrounds => new CatalogCharacterCreationFacts(
                     null,
@@ -286,7 +353,7 @@ public sealed class CharacterEndpointsTests : IDisposable
                 id,
                 category switch
                 {
-                    CatalogCategory.Classes => "Wizard",
+                    CatalogCategory.Classes => id == "bard" ? "Bard" : "Wizard",
                     CatalogCategory.Species => "Elf",
                     CatalogCategory.Backgrounds => "Acolyte",
                     _ => id
@@ -304,17 +371,21 @@ public sealed class CharacterEndpointsTests : IDisposable
                 classId == "missing"
                     ? null
                     : new ClassProgressionDocument(
-                        new CatalogReference("wizard", "Wizard"),
-                        6,
+                        new CatalogReference(classId, classId == "bard" ? "Bard" : "Wizard"),
+                        classId == "bard" ? 8 : 6,
                         Enumerable.Range(1, 20)
                             .Select(level => new ClassLevelProgression(
                                 level,
                                 ProficiencyRules.GetBonus(level),
-                                []))
+                                classId == "bard" && level is 2 or 9
+                                    ? [new CatalogReference("bard-expertise", "Expertise")]
+                                    : []))
                             .ToArray(),
                         [
                             new SubclassProgression(
-                                new CatalogReference("evoker", "Evoker"),
+                                new CatalogReference(
+                                    classId == "bard" ? "lore" : "evoker",
+                                    classId == "bard" ? "College of Lore" : "Evoker"),
                                 3,
                                 [
                                     new SubclassLevelProgression(
@@ -324,12 +395,14 @@ public sealed class CharacterEndpointsTests : IDisposable
                         ],
                         Spellcasting: new ClassSpellcastingProgression(
                             1,
-                            new CatalogReference("int", "INT"),
+                            new CatalogReference(
+                                classId == "bard" ? "cha" : "int",
+                                classId == "bard" ? "CHA" : "INT"),
                             Enumerable.Range(1, 20)
                                 .Select(level => new ClassSpellcastingLevel(
                                     level,
-                                    level < 4 ? 3 : 4,
-                                    Math.Min(level + 3, 22),
+                                    classId == "bard" ? 2 : level < 4 ? 3 : 4,
+                                    classId == "bard" ? 4 : Math.Min(level + 3, 22),
                                     SpellSlots(level)))
                                 .ToArray())));
 
