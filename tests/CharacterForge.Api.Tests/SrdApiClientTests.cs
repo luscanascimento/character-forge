@@ -259,6 +259,102 @@ public sealed class SrdApiClientTests
     }
 
     [Fact]
+    public async Task GetClass_NormalizesStartingEquipmentPackagesAndNestedCategoryChoices()
+    {
+        var client = CreateClient(_ => Json("""
+            {
+              "index": "monk",
+              "name": "Monk",
+              "hit_die": 8,
+              "starting_equipment_options": [{
+                "desc": "Choose equipment or gold",
+                "choose": 1,
+                "type": "equipment",
+                "from": {
+                  "option_set_type": "options_array",
+                  "options": [
+                    {
+                      "option_type": "multiple",
+                      "items": [
+                        {
+                          "option_type": "counted_reference",
+                          "count": 2,
+                          "of": {
+                            "index": "dagger",
+                            "name": "Dagger",
+                            "url": "/api/2024/equipment/dagger"
+                          }
+                        },
+                        {
+                          "option_type": "choice",
+                          "choice": {
+                            "desc": "Choose an Artisan's Tool",
+                            "choose": 1,
+                            "type": "equipment",
+                            "from": {
+                              "option_set_type": "equipment_category",
+                              "equipment_category": {
+                                "index": "artisans-tools",
+                                "name": "Artisan's Tools",
+                                "url": "/api/2024/equipment-categories/artisans-tools"
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    { "option_type": "money", "count": 50, "unit": "gp" }
+                  ]
+                }
+              }]
+            }
+            """));
+
+        var item = await client.GetItemAsync(CatalogCategory.Classes, "monk", CancellationToken.None);
+
+        Assert.NotNull(item?.CharacterCreation);
+        var choice = Assert.Single(item.CharacterCreation.EquipmentChoices!);
+        Assert.Equal("classes/monk/equipment/0", choice.Id);
+        Assert.Equal(1, choice.Count);
+        var bundle = choice.Options[0];
+        Assert.Equal("bundle", bundle.Kind);
+        Assert.Equal("item", bundle.Items![0].Kind);
+        Assert.Equal(2, bundle.Items[0].Quantity);
+        Assert.Equal("dagger", bundle.Items[0].Reference!.Id);
+        var nested = bundle.Items[1].Choice;
+        Assert.NotNull(nested);
+        Assert.Equal("artisans-tools", nested.EquipmentCategory!.Id);
+        Assert.Empty(nested.Options);
+        Assert.Equal("currency", choice.Options[1].Kind);
+        Assert.Equal(50, choice.Options[1].Quantity);
+        Assert.Equal("gp", choice.Options[1].CurrencyUnit);
+    }
+
+    [Fact]
+    public async Task GetClass_RejectsUnknownStartingEquipmentOptionShape()
+    {
+        var client = CreateClient(_ => Json("""
+            {
+              "index": "fighter",
+              "name": "Fighter",
+              "hit_die": 10,
+              "starting_equipment_options": [{
+                "desc": "Choose equipment",
+                "choose": 1,
+                "type": "equipment",
+                "from": {
+                  "option_set_type": "options_array",
+                  "options": [{ "option_type": "string", "string": "a sword" }]
+                }
+              }]
+            }
+            """));
+
+        await Assert.ThrowsAsync<SrdProviderException>(() =>
+            client.GetItemAsync(CatalogCategory.Classes, "fighter", CancellationToken.None));
+    }
+
+    [Fact]
     public async Task GetItem_ReturnsNullForMissingResource()
     {
         var client = CreateClient(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
@@ -560,6 +656,94 @@ public sealed class SrdApiClientTests
 
         Assert.NotNull(item);
         Assert.Contains("A practical adventuring item.", item.Description);
+    }
+
+    [Fact]
+    public async Task GetEquipment_NormalizesWeaponRuleFacts()
+    {
+        var client = CreateClient(_ => Json("""
+            {
+              "index": "longsword",
+              "name": "Longsword",
+              "equipment_categories": [
+                { "index": "martial-weapons", "name": "Martial Weapons" },
+                { "index": "weapons", "name": "Weapons" }
+              ],
+              "cost": { "quantity": 15, "unit": "gp" },
+              "weight": 3,
+              "damage": {
+                "damage_dice": "1d8",
+                "damage_type": { "index": "slashing", "name": "Slashing" }
+              },
+              "two_handed_damage": {
+                "damage_dice": "1d10",
+                "damage_type": { "index": "slashing", "name": "Slashing" }
+              },
+              "range": { "normal": 5 },
+              "properties": [{ "index": "versatile", "name": "Versatile" }],
+              "mastery": { "index": "sap", "name": "Sap" }
+            }
+            """));
+
+        var item = await client.GetItemAsync(CatalogCategory.Equipment, "longsword", CancellationToken.None);
+
+        Assert.NotNull(item?.Equipment?.Weapon);
+        Assert.Null(item.Equipment.Armor);
+        Assert.Equal("1d8", item.Equipment.Weapon.Damage.Dice);
+        Assert.Equal("slashing", item.Equipment.Weapon.Damage.Type.Id);
+        Assert.Equal(5, item.Equipment.Weapon.Range!.Normal);
+        Assert.Null(item.Equipment.Weapon.Range.Long);
+        Assert.Equal("sap", item.Equipment.Weapon.Mastery.Id);
+        Assert.Contains(item.Equipment.Categories, category => category.Id == "martial-weapons");
+    }
+
+    [Fact]
+    public async Task GetEquipment_NormalizesArmorRuleFacts()
+    {
+        var client = CreateClient(_ => Json("""
+            {
+              "index": "chain-mail",
+              "name": "Chain Mail",
+              "equipment_categories": [
+                { "index": "armor", "name": "Armor" },
+                { "index": "heavy-armor", "name": "Heavy Armor" }
+              ],
+              "armor_class": { "base": 16, "dex_bonus": false, "max_bonus": 0 },
+              "str_minimum": 13,
+              "stealth_disadvantage": true,
+              "cost": { "quantity": 75, "unit": "gp" },
+              "weight": 55
+            }
+            """));
+
+        var item = await client.GetItemAsync(CatalogCategory.Equipment, "chain-mail", CancellationToken.None);
+
+        Assert.NotNull(item?.Equipment?.Armor);
+        Assert.Null(item.Equipment.Weapon);
+        Assert.Equal(16, item.Equipment.Armor.BaseArmorClass);
+        Assert.False(item.Equipment.Armor.AddsDexterity);
+        Assert.Null(item.Equipment.Armor.MaximumDexterityBonus);
+        Assert.Equal(13, item.Equipment.Armor.StrengthMinimum);
+        Assert.True(item.Equipment.Armor.ImposesStealthDisadvantage);
+    }
+
+    [Fact]
+    public async Task GetEquipment_RejectsWeaponWithoutCanonicalMastery()
+    {
+        var client = CreateClient(_ => Json("""
+            {
+              "index": "broken-sword",
+              "name": "Broken Sword",
+              "equipment_categories": [{ "index": "weapons", "name": "Weapons" }],
+              "damage": {
+                "damage_dice": "1d6",
+                "damage_type": { "index": "slashing", "name": "Slashing" }
+              }
+            }
+            """));
+
+        await Assert.ThrowsAsync<SrdProviderException>(() =>
+            client.GetItemAsync(CatalogCategory.Equipment, "broken-sword", CancellationToken.None));
     }
 
     [Fact]

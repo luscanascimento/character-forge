@@ -21,14 +21,19 @@ internal sealed record SrdChoice(
 
 internal sealed record SrdOptionSet(
     [property: JsonPropertyName("option_set_type")] string OptionSetType,
-    IReadOnlyList<SrdOption>? Options);
+    IReadOnlyList<SrdOption>? Options,
+    [property: JsonPropertyName("equipment_category")] SrdReference? EquipmentCategory = null);
 
 internal sealed record SrdOption(
     [property: JsonPropertyName("option_type")] string OptionType,
     SrdReference? Item,
     SrdChoice? Choice,
     [property: JsonPropertyName("ability_score")] SrdReference? AbilityScore,
-    [property: JsonPropertyName("minimum_score")] int? MinimumScore);
+    [property: JsonPropertyName("minimum_score")] int? MinimumScore,
+    SrdReference? Of = null,
+    int? Count = null,
+    string? Unit = null,
+    IReadOnlyList<SrdOption>? Items = null);
 
 internal sealed record SrdPrimaryAbility(
     string Desc,
@@ -46,6 +51,7 @@ internal sealed record SrdClassDetail(
     IReadOnlyList<SrdReference>? Proficiencies,
     [property: JsonPropertyName("proficiency_choices")] IReadOnlyList<SrdChoice>? ProficiencyChoices,
     [property: JsonPropertyName("saving_throws")] IReadOnlyList<SrdReference>? SavingThrows,
+    [property: JsonPropertyName("starting_equipment_options")] IReadOnlyList<SrdChoice>? StartingEquipmentOptions,
     IReadOnlyList<SrdReference>? Subclasses,
     SrdSpellcasting? Spellcasting);
 
@@ -94,7 +100,8 @@ internal sealed record SrdBackgroundDetail(
     [property: JsonPropertyName("ability_scores")] IReadOnlyList<SrdReference>? AbilityScores,
     SrdReference? Feat,
     IReadOnlyList<SrdReference>? Proficiencies,
-    [property: JsonPropertyName("proficiency_choices")] IReadOnlyList<SrdChoice>? ProficiencyChoices);
+    [property: JsonPropertyName("proficiency_choices")] IReadOnlyList<SrdChoice>? ProficiencyChoices,
+    [property: JsonPropertyName("equipment_options")] IReadOnlyList<SrdChoice>? EquipmentOptions);
 
 internal sealed record SrdTraitDetail(
     string Index,

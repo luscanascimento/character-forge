@@ -36,6 +36,44 @@ const proficiencyReferenceSchema = referenceSchema.extend({
   isSkill: z.boolean().optional(),
 })
 
+type EquipmentChoice = {
+  id: string
+  prompt: string
+  count: number
+  options: EquipmentOption[]
+  equipmentCategory?: z.infer<typeof referenceSchema> | null
+}
+
+type EquipmentOption = {
+  kind: 'bundle' | 'item' | 'equipmentCategory' | 'currency' | 'choice'
+  quantity: number
+  reference?: z.infer<typeof referenceSchema> | null
+  currencyUnit?: string | null
+  items?: EquipmentOption[] | null
+  choice?: EquipmentChoice | null
+}
+
+const equipmentOptionSchema: z.ZodType<EquipmentOption> = z.lazy(() =>
+  z.object({
+    kind: z.enum(['bundle', 'item', 'equipmentCategory', 'currency', 'choice']),
+    quantity: z.number().int().nonnegative(),
+    reference: referenceSchema.nullable().optional(),
+    currencyUnit: z.string().min(1).nullable().optional(),
+    items: z.array(equipmentOptionSchema).nullable().optional(),
+    choice: equipmentChoiceSchema.nullable().optional(),
+  }),
+)
+
+const equipmentChoiceSchema: z.ZodType<EquipmentChoice> = z.lazy(() =>
+  z.object({
+    id: z.string().min(1),
+    prompt: z.string(),
+    count: z.number().int().positive(),
+    options: z.array(equipmentOptionSchema),
+    equipmentCategory: referenceSchema.nullable().optional(),
+  }),
+)
+
 const characterCreationSchema = z.object({
   hitDie: z.number().int().positive().nullable(),
   grantedProficiencies: z.array(proficiencyReferenceSchema),
@@ -47,6 +85,10 @@ const characterCreationSchema = z.object({
       options: z.array(proficiencyReferenceSchema),
     }),
   ),
+  equipmentChoices: z
+    .array(equipmentChoiceSchema)
+    .nullish()
+    .transform((choices) => choices ?? []),
 })
 
 const abilityScorePrerequisiteChoiceSchema = z
@@ -69,6 +111,40 @@ const featFactsSchema = z.object({
   requiredFeature: z.string().min(1).nullable(),
   isRepeatable: z.boolean(),
   abilityScorePrerequisite: abilityScorePrerequisiteChoiceSchema.nullable(),
+})
+
+const damageSchema = z.object({
+  dice: z.string().min(1),
+  type: referenceSchema,
+})
+
+const equipmentFactsSchema = z.object({
+  categories: z.array(referenceSchema).min(1),
+  cost: z.object({ quantity: z.number().nonnegative(), unit: z.string().min(1) }).nullable(),
+  weight: z.number().nonnegative().nullable(),
+  weapon: z
+    .object({
+      damage: damageSchema,
+      twoHandedDamage: damageSchema.nullable(),
+      range: z
+        .object({
+          normal: z.number().int().positive(),
+          long: z.number().int().positive().nullable(),
+        })
+        .nullable(),
+      properties: z.array(referenceSchema),
+      mastery: referenceSchema,
+    })
+    .nullable(),
+  armor: z
+    .object({
+      baseArmorClass: z.number().int().positive(),
+      addsDexterity: z.boolean(),
+      maximumDexterityBonus: z.number().int().nonnegative().nullable(),
+      strengthMinimum: z.number().int().min(0).max(30),
+      imposesStealthDisadvantage: z.boolean(),
+    })
+    .nullable(),
 })
 
 export const catalogPageSchema = z.object({
@@ -99,6 +175,7 @@ export const catalogItemSchema = z.object({
   characterCreation: characterCreationSchema.nullable().optional(),
   source: sourceSchema,
   feat: featFactsSchema.nullable().optional(),
+  equipment: equipmentFactsSchema.nullable().optional(),
 })
 
 export type CatalogPage = z.infer<typeof catalogPageSchema>

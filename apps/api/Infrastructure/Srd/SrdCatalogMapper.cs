@@ -24,7 +24,8 @@ internal static class SrdCatalogMapper
         CharacterCreation: new CatalogCharacterCreationFacts(
             item.HitDie,
             ProficiencyReferences(item.Proficiencies),
-            ProficiencyChoices($"classes/{item.Index}", item.ProficiencyChoices)));
+            ProficiencyChoices($"classes/{item.Index}", item.ProficiencyChoices),
+            EquipmentChoices($"classes/{item.Index}", item.StartingEquipmentOptions)));
 
     public static CatalogItemDetail Map(
         SrdSpeciesDetail item,
@@ -70,7 +71,8 @@ internal static class SrdCatalogMapper
         CharacterCreation: new CatalogCharacterCreationFacts(
             HitDie: null,
             ProficiencyReferences(item.Proficiencies),
-            ProficiencyChoices($"backgrounds/{item.Index}", item.ProficiencyChoices)));
+            ProficiencyChoices($"backgrounds/{item.Index}", item.ProficiencyChoices),
+            EquipmentChoices($"backgrounds/{item.Index}", item.EquipmentOptions)));
 
     public static CatalogItemDetail Map(SrdFeatDetail item) => new(
         item.Index,
@@ -136,7 +138,8 @@ internal static class SrdCatalogMapper
                     : $"{item.DonTime ?? "—"} / {item.DoffTime ?? "—"}"),
                 new("Mastery", item.Mastery?.Name ?? string.Empty)
             ]),
-            CompactSections([Section("Properties", item.Properties)]));
+            CompactSections([Section("Properties", item.Properties)]),
+            Equipment: EquipmentFacts(item));
     }
 
     private static List<string> Text(params string?[] values) => values
@@ -180,6 +183,88 @@ internal static class SrdCatalogMapper
 
         return new CatalogProficiencyChoice(id, choice.Desc, choice.Choose, options);
     }
+
+    private static IReadOnlyList<CatalogEquipmentChoice> EquipmentChoices(
+        string source,
+        IReadOnlyList<SrdChoice>? choices) => choices?
+        .Select((choice, index) => EquipmentChoice($"{source}/equipment/{index}", choice))
+        .ToArray() ?? [];
+
+    private static CatalogEquipmentChoice EquipmentChoice(string id, SrdChoice choice)
+    {
+        if (!string.Equals(choice.Type, "equipment", StringComparison.Ordinal) || choice.Choose < 1)
+        {
+            throw InvalidEquipmentChoice(id);
+        }
+
+        if (string.Equals(choice.From.OptionSetType, "equipment_category", StringComparison.Ordinal))
+        {
+            var category = choice.From.EquipmentCategory;
+            if (choice.Choose != 1 || choice.From.Options is { Count: > 0 } || !ValidReference(category))
+            {
+                throw InvalidEquipmentChoice(id);
+            }
+
+            return new CatalogEquipmentChoice(
+                id,
+                choice.Desc,
+                choice.Choose,
+                [],
+                Reference(category!));
+        }
+
+        if (!string.Equals(choice.From.OptionSetType, "options_array", StringComparison.Ordinal) ||
+            choice.From.Options is not { Count: > 0 } options ||
+            options.Count < choice.Choose)
+        {
+            throw InvalidEquipmentChoice(id);
+        }
+
+        return new CatalogEquipmentChoice(
+            id,
+            choice.Desc,
+            choice.Choose,
+            options.Select((option, index) => EquipmentOption($"{id}/options/{index}", option)).ToArray());
+    }
+
+    private static CatalogEquipmentOption EquipmentOption(string id, SrdOption option) => option.OptionType switch
+    {
+        "multiple" when option.Items is { Count: > 0 } => new CatalogEquipmentOption(
+            "bundle",
+            1,
+            Items: option.Items.Select((item, index) => EquipmentOption($"{id}/items/{index}", item)).ToArray()),
+        "counted_reference" when option.Count is > 0 && ValidReference(option.Of) => new CatalogEquipmentOption(
+            EquipmentReferenceKind(id, option.Of!),
+            option.Count.Value,
+            Reference(option.Of!)),
+        "money" when option.Count is >= 0 && !string.IsNullOrWhiteSpace(option.Unit) => new CatalogEquipmentOption(
+            "currency",
+            option.Count.Value,
+            CurrencyUnit: option.Unit.Trim().ToLowerInvariant()),
+        "choice" when option.Choice is not null => new CatalogEquipmentOption(
+            "choice",
+            1,
+            Choice: EquipmentChoice($"{id}/choice", option.Choice)),
+        _ => throw InvalidEquipmentChoice(id)
+    };
+
+    private static string EquipmentReferenceKind(string id, SrdReference reference)
+    {
+        if (reference.Url?.StartsWith("/api/2024/equipment/", StringComparison.Ordinal) == true)
+        {
+            return "item";
+        }
+
+        if (reference.Url?.StartsWith("/api/2024/equipment-categories/", StringComparison.Ordinal) == true)
+        {
+            return "equipmentCategory";
+        }
+
+        throw InvalidEquipmentChoice(id);
+    }
+
+    private static SrdProviderException InvalidEquipmentChoice(string id) => new(
+        $"The SRD provider returned an invalid equipment choice at '{id}'.");
 
     private static IEnumerable<CatalogProficiencyReference> FlattenProficiencyOptions(SrdChoice choice)
     {
@@ -285,6 +370,96 @@ internal static class SrdCatalogMapper
 
         return new CatalogAbilityScorePrerequisiteChoice(choice.Choose, options);
     }
+
+    private static CatalogEquipmentFacts EquipmentFacts(SrdEquipmentDetail item)
+    {
+        if (item.EquipmentCategories is not { Count: > 0 } ||
+            item.EquipmentCategories.Any(category => !ValidReference(category)) ||
+            item.EquipmentCategories.Select(category => category.Index)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count() != item.EquipmentCategories.Count ||
+            item.Cost is { Quantity: < 0 } ||
+            item.Cost is not null && string.IsNullOrWhiteSpace(item.Cost.Unit) ||
+            item.Weight is < 0)
+        {
+            throw new SrdProviderException($"The SRD provider returned invalid equipment facts for '{item.Index}'.");
+        }
+
+        var categories = References(item.EquipmentCategories);
+        var categoryIds = categories.Select(category => category.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var isWeapon = categoryIds.Contains("weapons");
+        var isArmor = categoryIds.Contains("armor");
+        if (isWeapon == isArmor ||
+            !isWeapon && (item.Damage is not null || item.TwoHandedDamage is not null || item.Mastery is not null) ||
+            !isArmor && item.ArmorClass is not null)
+        {
+            if (isWeapon || isArmor || item.Damage is not null || item.TwoHandedDamage is not null ||
+                item.Mastery is not null || item.ArmorClass is not null)
+            {
+                throw new SrdProviderException($"The SRD provider returned conflicting equipment facts for '{item.Index}'.");
+            }
+        }
+
+        return new CatalogEquipmentFacts(
+            categories,
+            item.Cost is null ? null : new CatalogMoney(item.Cost.Quantity, item.Cost.Unit.Trim().ToLowerInvariant()),
+            item.Weight,
+            isWeapon ? WeaponFacts(item) : null,
+            isArmor ? ArmorFacts(item) : null);
+    }
+
+    private static CatalogWeaponFacts WeaponFacts(SrdEquipmentDetail item)
+    {
+        if (!ValidDamage(item.Damage) || !ValidReference(item.Mastery) ||
+            item.TwoHandedDamage is not null && !ValidDamage(item.TwoHandedDamage) ||
+            item.Range is not null && item.Range.Normal is not > 0 ||
+            item.Range is { Long: not null } && item.Range.Long <= item.Range.Normal ||
+            item.Properties?.Any(property => !ValidReference(property)) == true)
+        {
+            throw new SrdProviderException($"The SRD provider returned invalid weapon facts for '{item.Index}'.");
+        }
+
+        return new CatalogWeaponFacts(
+            Damage(item.Damage!),
+            item.TwoHandedDamage is null ? null : Damage(item.TwoHandedDamage),
+            item.Range is null ? null : new CatalogRange(item.Range.Normal!.Value, item.Range.Long),
+            References(item.Properties),
+            Reference(item.Mastery!));
+    }
+
+    private static CatalogArmorFacts ArmorFacts(SrdEquipmentDetail item)
+    {
+        if (item.ArmorClass is null || item.ArmorClass.Base < 1 ||
+            item.ArmorClass.MaxBonus is < 0 ||
+            !item.ArmorClass.DexBonus && item.ArmorClass.MaxBonus is > 0 ||
+            item.StrengthMinimum is null or < 0 or > CharacterRules.MaximumAbilityScore ||
+            item.StealthDisadvantage is null)
+        {
+            throw new SrdProviderException($"The SRD provider returned invalid armor facts for '{item.Index}'.");
+        }
+
+        return new CatalogArmorFacts(
+            item.ArmorClass.Base,
+            item.ArmorClass.DexBonus,
+            item.ArmorClass.DexBonus ? item.ArmorClass.MaxBonus : null,
+            item.StrengthMinimum.Value,
+            item.StealthDisadvantage.Value);
+    }
+
+    private static bool ValidDamage(SrdDamage? damage) => damage is not null &&
+        !string.IsNullOrWhiteSpace(damage.DamageDice) && ValidReference(damage.DamageType);
+
+    private static CatalogDamage Damage(SrdDamage damage) => new(
+        damage.DamageDice!,
+        Reference(damage.DamageType!));
+
+    private static bool ValidReference(SrdReference? reference) => reference is not null &&
+        !string.IsNullOrWhiteSpace(reference.Index) &&
+        !string.IsNullOrWhiteSpace(reference.Name);
+
+    private static CatalogReference Reference(SrdReference reference) => new(
+        reference.Index,
+        reference.Name,
+        reference.Note);
 
     private static string JoinNames(IReadOnlyList<SrdReference>? references) =>
         references is null ? string.Empty : string.Join(", ", references.Select(reference => reference.Name));

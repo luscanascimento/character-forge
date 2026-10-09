@@ -177,6 +177,7 @@ function catalogItem(category: 'classes' | 'species' | 'backgrounds', id: string
           ? [{ id: 'simple-weapons', name: 'Simple Weapons', isSkill: false }]
           : [],
       proficiencyChoices,
+      equipmentChoices: [],
     },
     source: {
       provider: 'D&D 5e SRD API',

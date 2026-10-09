@@ -42,7 +42,50 @@ public sealed record CatalogProficiencyChoice(
 public sealed record CatalogCharacterCreationFacts(
     int? HitDie,
     IReadOnlyList<CatalogProficiencyReference> GrantedProficiencies,
-    IReadOnlyList<CatalogProficiencyChoice> ProficiencyChoices);
+    IReadOnlyList<CatalogProficiencyChoice> ProficiencyChoices,
+    IReadOnlyList<CatalogEquipmentChoice>? EquipmentChoices = null);
+
+public sealed record CatalogEquipmentChoice(
+    string Id,
+    string Prompt,
+    int Count,
+    IReadOnlyList<CatalogEquipmentOption> Options,
+    CatalogReference? EquipmentCategory = null);
+
+public sealed record CatalogEquipmentOption(
+    string Kind,
+    int Quantity,
+    CatalogReference? Reference = null,
+    string? CurrencyUnit = null,
+    IReadOnlyList<CatalogEquipmentOption>? Items = null,
+    CatalogEquipmentChoice? Choice = null);
+
+public sealed record CatalogMoney(decimal Quantity, string Unit);
+
+public sealed record CatalogDamage(string Dice, CatalogReference Type);
+
+public sealed record CatalogRange(int Normal, int? Long);
+
+public sealed record CatalogWeaponFacts(
+    CatalogDamage Damage,
+    CatalogDamage? TwoHandedDamage,
+    CatalogRange? Range,
+    IReadOnlyList<CatalogReference> Properties,
+    CatalogReference Mastery);
+
+public sealed record CatalogArmorFacts(
+    int BaseArmorClass,
+    bool AddsDexterity,
+    int? MaximumDexterityBonus,
+    int StrengthMinimum,
+    bool ImposesStealthDisadvantage);
+
+public sealed record CatalogEquipmentFacts(
+    IReadOnlyList<CatalogReference> Categories,
+    CatalogMoney? Cost,
+    decimal? Weight,
+    CatalogWeaponFacts? Weapon,
+    CatalogArmorFacts? Armor);
 
 public sealed record CatalogAbilityScorePrerequisite(
     CatalogReference Ability,
@@ -69,7 +112,8 @@ public sealed record CatalogItemDetail(
     IReadOnlyList<CatalogTextSection>? TextSections = null,
     CatalogCharacterCreationFacts? CharacterCreation = null,
     CatalogSource? Source = null,
-    CatalogFeatFacts? Feat = null);
+    CatalogFeatFacts? Feat = null,
+    CatalogEquipmentFacts? Equipment = null);
 
 public sealed record CatalogPage(
     IReadOnlyList<CatalogItemSummary> Items,
