@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**Phase 6 — Spellcasting: complete. Phase 7 is next.**
+**Phase 7 — Feats & Equipment: in progress.**
 
 Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, selection, calculations, class-specific policy, spellbook ownership, and replacement transitions without pulling equipment or character-sheet scope forward.
 
@@ -139,11 +139,11 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 
 ## Work in progress
 
-Phase 6 is complete: progression, availability, calculations, preparation/Pact Magic policy, canonical selections, Wizard spellbook ownership, spell-granting Fighting Styles, and lifecycle replacement validation are implemented.
+Phase 7 began with a source-backed implementation audit. The provider has strong structured equipment detail and recursive starting-package data, partial structured feat prerequisites, and incomplete semantics for feat effects and some Weapon Mastery capacities. ADR-017 records the dependency order and fail-closed boundary.
 
 ## Next step
 
-Begin Phase 7 — Feats & Equipment with an implementation audit for feat prerequisites, equipment choices, armor/weapon rules, and the deferred Weapon Mastery and Ability Score Improvement feature branches.
+Normalize provider-owned equipment rule facts and class/background starting-equipment choices without leaking recursive provider DTOs into Character Forge contracts.
 
 ## Pending decisions
 
@@ -173,4 +173,4 @@ Begin Phase 7 — Feats & Equipment with an implementation audit for feat prereq
 
 ## Last checkpoint
 
-2026-10-08 (America/Sao_Paulo)
+2026-10-09 (America/Sao_Paulo)
