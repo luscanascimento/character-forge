@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createStoredCharacter } from '../../test/characterFixture'
-import { CharacterValidationRequestError, validateCharacter } from './characterApi'
+import {
+  CharacterValidationRequestError,
+  validateCharacter,
+  validateSpellReplacement,
+} from './characterApi'
 
 describe('character validation API', () => {
   afterEach(() => vi.restoreAllMocks())
@@ -40,5 +44,44 @@ describe('character validation API', () => {
       name: 'CharacterValidationRequestError',
       status: 503,
     } satisfies Partial<CharacterValidationRequestError>)
+  })
+
+  it('sends canonical previous and current states for spell replacement validation', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          validation: { isValid: false, violations: [] },
+          derived: null,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    const previous = createStoredCharacter()
+    const current = {
+      ...previous,
+      updatedAt: '2026-10-08T18:00:00.000Z',
+      character: {
+        ...previous.character,
+        classProgressions: [
+          {
+            ...previous.character.classProgressions[0]!,
+            level: 2,
+          },
+        ],
+      },
+    }
+
+    await validateSpellReplacement(previous, current, 'classLevelGained')
+
+    const request = fetchMock.mock.calls[0]
+    expect(request?.[0]).toBe('/api/characters/validate-spell-replacement')
+    const body = JSON.parse((request?.[1]?.body as string) ?? '{}') as Record<string, unknown>
+    expect(body).toMatchObject({
+      trigger: 'classLevelGained',
+      previous: { id: previous.id, classProgressions: [{ level: 1 }] },
+      current: { id: current.id, classProgressions: [{ level: 2 }] },
+    })
+    expect(body.previous).not.toHaveProperty('schemaVersion')
+    expect(body.current).not.toHaveProperty('updatedAt')
   })
 })

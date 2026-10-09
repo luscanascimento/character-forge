@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 6 — Spellcasting: in progress.**
+**Phase 6 — Spellcasting: complete. Phase 7 is next.**
 
-Phases 0–5 are implemented. Phase 5 closed with trusted 1–20 class progression, subclass rules, fixed HP, Fighting Style, and Expertise without pulling spellcasting, equipment, or character-sheet scope forward.
+Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, selection, calculations, class-specific policy, spellbook ownership, and replacement transitions without pulling equipment or character-sheet scope forward.
 
 ## Last completed work
 
@@ -132,16 +132,18 @@ Phases 0–5 are implemented. Phase 5 closed with trusted 1–20 class progressi
 - Advanced the feature-rule manifest to `SRD-5.2.1-CF-2` and unlocked Blessed Warrior/Druidic Warrior through typed Cleric/Druid cantrip sources.
 - Resolved canonical level-0 options from provider-filtered class lists and fail closed on insufficient, duplicate, or non-cantrip results.
 - Added multi-selection Fighting Style controls for the exact two-cantrip branches and preserved branch identity alongside selected cantrips in review.
+- Added pure spell-replacement transition rules for class-level and Long Rest events, counting removed prior selections without treating progression capacity as replacement.
+- Added `POST /api/characters/validate-spell-replacement`, which canonically validates both states before enforcing same-character, same-class, level-shape, trigger, and maximum-replacement rules.
+- Added a schema-validated frontend adapter for future character lifecycle UI without adding transition history to the creation-draft schema.
+- Closed Phase 6 after the complete build, lint, test, format, dependency-audit, provider-smoke, and rule-boundary review passed.
 
 ## Work in progress
 
-Structured spellcasting progression, selected-level availability, Spell Save DC, spell attack modifier, provenance-backed preparation/Pact Magic policies, class-list selection, Wizard spellbook ownership, and the two spell-granting Fighting Styles are implemented.
+Phase 6 is complete: progression, availability, calculations, preparation/Pact Magic policy, canonical selections, Wizard spellbook ownership, spell-granting Fighting Styles, and lifecycle replacement validation are implemented.
 
 ## Next step
 
-Continue the Phase 6 rule foundation:
-
-1. Model replacement events so the manifest's class-level and Long Rest limits can be enforced outside initial character construction.
+Begin Phase 7 — Feats & Equipment with an implementation audit for feat prerequisites, equipment choices, armor/weapon rules, and the deferred Weapon Mastery and Ability Score Improvement feature branches.
 
 ## Pending decisions
 
@@ -160,12 +162,12 @@ Continue the Phase 6 rule foundation:
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 89 passing across 13 files (`vitest run`)
+- Frontend unit tests: 90 passing across 13 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 144 passing
-- Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, and complete character validation responses including Bard Expertise passing
+- Backend unit/integration tests: 155 passing
+- Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, complete character validation, and a valid Bard level-gain spell replacement with Expertise
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 

@@ -53,6 +53,7 @@ builder.Services.AddHttpClient<ISrdContentSource, SrdApiClient>((services, clien
 });
 builder.Services.AddScoped<CatalogService>();
 builder.Services.AddScoped<CharacterEvaluationService>();
+builder.Services.AddScoped<SpellReplacementEvaluationService>();
 builder.Services.AddScoped<ClassProgressionService>();
 builder.Services.AddScoped<FeatureRuleService>();
 

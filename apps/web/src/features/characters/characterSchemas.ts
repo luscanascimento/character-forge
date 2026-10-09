@@ -126,10 +126,13 @@ export const characterEvaluationSchema = z.object({
     .nullable(),
 })
 
+export const spellReplacementEvaluationSchema = characterEvaluationSchema
+
 export type CharacterDraft = z.infer<typeof characterDraftSchema>
 export type StoredCharacterV1 = z.infer<typeof storedCharacterV1Schema>
 export type CharacterRequest = z.infer<typeof characterRequestSchema>
 export type CharacterEvaluation = z.infer<typeof characterEvaluationSchema>
+export type SpellReplacementEvaluation = z.infer<typeof spellReplacementEvaluationSchema>
 
 type NewStoredCharacterOptions = {
   id?: string

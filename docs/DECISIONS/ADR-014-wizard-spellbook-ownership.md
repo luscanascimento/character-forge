@@ -28,4 +28,4 @@ Additional eligible spellbook entries are accepted because copied spells have no
 - Wizard preparation now has the same server-owned canonical boundary as other spell selection.
 - Preparation cannot grant implicit ownership.
 - The model supports copied spells without inventing a maximum.
-- Acquisition history and replacement-event limits remain separate lifecycle work.
+- ADR-016 keeps acquisition history separate while enforcing replacement-event limits through canonical state transitions.

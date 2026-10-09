@@ -1,7 +1,9 @@
 import {
   characterEvaluationSchema,
+  spellReplacementEvaluationSchema,
   toCharacterRequest,
   type CharacterEvaluation,
+  type SpellReplacementEvaluation,
   type StoredCharacterV1,
 } from './characterSchemas'
 
@@ -16,6 +18,8 @@ export class CharacterValidationRequestError extends Error {
     this.status = status
   }
 }
+
+export type SpellReplacementTrigger = 'classLevelGained' | 'longRest'
 
 export async function validateCharacter(
   document: StoredCharacterV1,
@@ -36,4 +40,31 @@ export async function validateCharacter(
   }
 
   return characterEvaluationSchema.parse(await response.json())
+}
+
+export async function validateSpellReplacement(
+  previous: StoredCharacterV1,
+  current: StoredCharacterV1,
+  trigger: SpellReplacementTrigger,
+  signal?: AbortSignal,
+): Promise<SpellReplacementEvaluation> {
+  const response = await fetch(`${apiBaseUrl}/api/characters/validate-spell-replacement`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      previous: toCharacterRequest(previous),
+      current: toCharacterRequest(current),
+      trigger,
+    }),
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new CharacterValidationRequestError(response.status)
+  }
+
+  return spellReplacementEvaluationSchema.parse(await response.json())
 }

@@ -68,5 +68,26 @@ Content-Type: application/json
         { "id": "skill-perception", "name": "Skill: Perception" }
       ]
     }
-  ]
+  ],
+  "spells": {
+    "cantrips": [
+      { "id": "fire-bolt", "name": "Fire Bolt" },
+      { "id": "light", "name": "Light" },
+      { "id": "mage-hand", "name": "Mage Hand" }
+    ],
+    "spellbook": [
+      { "id": "alarm", "name": "Alarm" },
+      { "id": "burning-hands", "name": "Burning Hands" },
+      { "id": "charm-person", "name": "Charm Person" },
+      { "id": "detect-magic", "name": "Detect Magic" },
+      { "id": "feather-fall", "name": "Feather Fall" },
+      { "id": "shield", "name": "Shield" }
+    ],
+    "preparedSpells": [
+      { "id": "alarm", "name": "Alarm" },
+      { "id": "burning-hands", "name": "Burning Hands" },
+      { "id": "detect-magic", "name": "Detect Magic" },
+      { "id": "shield", "name": "Shield" }
+    ]
+  }
 }

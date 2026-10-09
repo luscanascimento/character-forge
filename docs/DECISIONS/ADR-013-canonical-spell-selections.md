@@ -30,5 +30,5 @@ The browser exposes Spells as a dedicated builder step and retrieves every catal
 - Persisted class-list selections have a single canonical validation path shared with the rest of character evaluation.
 - Provider pagination cannot silently truncate available spell options in the builder.
 - Level and class changes are non-destructive and explainable.
-- Wizard cantrips and prepared spells remain unavailable until the spellbook model is implemented.
-- Replacement timing from ADR-012 is available as policy data but is not yet modeled as a character lifecycle event.
+- ADR-014 extends the selection model with Wizard spellbook ownership and preparation.
+- ADR-016 models replacement timing as an explicit transition between two canonically valid character states.

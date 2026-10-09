@@ -15,6 +15,17 @@ public static class CharacterEndpoints
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
             .RequireRateLimiting("catalog");
 
+        endpoints.MapPost("/api/characters/validate-spell-replacement", async (
+                SpellReplacementEvaluationRequest request,
+                SpellReplacementEvaluationService service,
+                CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.EvaluateAsync(request, cancellationToken)))
+            .WithName("ValidateSpellReplacement")
+            .WithSummary("Validates a canonical character transition against class spell replacement limits.")
+            .Produces<SpellReplacementEvaluation>()
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
+            .RequireRateLimiting("catalog");
+
         return endpoints;
     }
 }

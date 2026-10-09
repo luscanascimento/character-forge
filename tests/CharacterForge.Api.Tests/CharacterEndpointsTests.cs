@@ -214,6 +214,82 @@ public sealed class CharacterEndpointsTests : IDisposable
     }
 
     [Fact]
+    public async Task ValidateSpellReplacement_AcceptsOneReplacementWhenAClassLevelIsGained()
+    {
+        var request = new SpellReplacementEvaluationRequest(
+            BardCharacter(
+                1,
+                [("dancing-lights", "Dancing Lights"), ("light", "Light")],
+                [
+                    ("charm-person", "Charm Person"),
+                    ("cure-wounds", "Cure Wounds"),
+                    ("detect-magic", "Detect Magic"),
+                    ("heroism", "Heroism")
+                ]),
+            BardCharacter(
+                2,
+                [("light", "Light"), ("mage-hand", "Mage Hand")],
+                [
+                    ("cure-wounds", "Cure Wounds"),
+                    ("detect-magic", "Detect Magic"),
+                    ("heroism", "Heroism"),
+                    ("command", "Command")
+                ]),
+            SpellReplacementRules.ClassLevelGained);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/characters/validate-spell-replacement",
+            request,
+            CancellationToken.None);
+        var evaluation = await response.Content.ReadFromJsonAsync<SpellReplacementEvaluation>(
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(evaluation?.Derived);
+        Assert.True(evaluation.Validation.IsValid);
+    }
+
+    [Fact]
+    public async Task ValidateSpellReplacement_RejectsMoreThanTheClassLevelLimit()
+    {
+        var request = new SpellReplacementEvaluationRequest(
+            BardCharacter(
+                1,
+                [("dancing-lights", "Dancing Lights"), ("light", "Light")],
+                [
+                    ("charm-person", "Charm Person"),
+                    ("cure-wounds", "Cure Wounds"),
+                    ("detect-magic", "Detect Magic"),
+                    ("heroism", "Heroism")
+                ]),
+            BardCharacter(
+                2,
+                [("mage-hand", "Mage Hand"), ("prestidigitation", "Prestidigitation")],
+                [
+                    ("detect-magic", "Detect Magic"),
+                    ("heroism", "Heroism"),
+                    ("command", "Command"),
+                    ("dissonant-whispers", "Dissonant Whispers")
+                ]),
+            SpellReplacementRules.ClassLevelGained);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/characters/validate-spell-replacement",
+            request,
+            CancellationToken.None);
+        var evaluation = await response.Content.ReadFromJsonAsync<SpellReplacementEvaluation>(
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(evaluation);
+        Assert.Null(evaluation.Derived);
+        Assert.Contains(evaluation.Validation.Violations, violation =>
+            violation.Code == "character.spellReplacement.cantrips.limit");
+        Assert.Contains(evaluation.Validation.Violations, violation =>
+            violation.Code == "character.spellReplacement.preparedSpells.limit");
+    }
+
+    [Fact]
     public async Task Validate_RetainsButInvalidatesSubclassAfterLevelDecrease()
     {
         var character = CharacterValidatorTests.CreateValidCharacter(level: 5) with
@@ -267,6 +343,43 @@ public sealed class CharacterEndpointsTests : IDisposable
         _factory.Dispose();
     }
 
+    private static Character BardCharacter(
+        int level,
+        IReadOnlyList<(string Id, string Name)> cantrips,
+        IReadOnlyList<(string Id, string Name)> preparedSpells) =>
+        CharacterValidatorTests.CreateValidCharacter() with
+        {
+            ClassProgressions = [new ClassProgression(new ContentReference("bard", "Bard"), level)],
+            ProficiencyChoices =
+            [
+                new ProficiencyChoiceSelection(
+                    "classes/bard/proficiencies/0",
+                    [
+                        new ContentReference("skill-arcana", "Skill: Arcana"),
+                        new ContentReference("skill-history", "Skill: History"),
+                        new ContentReference("skill-performance", "Skill: Performance")
+                    ]),
+                new ProficiencyChoiceSelection(
+                    "species/elf/traits/keen-senses/proficiencies/0",
+                    [new ContentReference("skill-perception", "Skill: Perception")])
+            ],
+            FeatureChoices = level >= 2
+                ?
+                [
+                    new FeatureChoiceSelection(
+                        "bard-expertise-2",
+                        "expertise-skills",
+                        [
+                            new ContentReference("skill-arcana", "Skill: Arcana"),
+                            new ContentReference("skill-history", "Skill: History")
+                        ])
+                ]
+                : [],
+            Spells = new SpellSelections(
+                cantrips.Select(spell => new ContentReference(spell.Id, spell.Name)).ToArray(),
+                preparedSpells.Select(spell => new ContentReference(spell.Id, spell.Name)).ToArray())
+        };
+
     private sealed class CharacterContentSource : ISrdContentSource
     {
         public Task<IReadOnlyList<CatalogItemSummary>> GetItemsAsync(
@@ -280,9 +393,13 @@ public sealed class CharacterEndpointsTests : IDisposable
                     [
                     new("dancing-lights", "Dancing Lights", "spells", 0),
                     new("light", "Light", "spells", 0),
+                    new("mage-hand", "Mage Hand", "spells", 0),
+                    new("prestidigitation", "Prestidigitation", "spells", 0),
                     new("charm-person", "Charm Person", "spells", 1),
+                    new("command", "Command", "spells", 1),
                     new("cure-wounds", "Cure Wounds", "spells", 1),
                     new("detect-magic", "Detect Magic", "spells", 1),
+                    new("dissonant-whispers", "Dissonant Whispers", "spells", 1),
                     new("heroism", "Heroism", "spells", 1),
                     new("shatter", "Shatter", "spells", 2)
                     ]
