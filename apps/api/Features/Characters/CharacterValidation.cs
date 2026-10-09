@@ -30,8 +30,35 @@ public static partial class CharacterValidator
         ValidateClassProgressions(character.ClassProgressions, violations);
         ValidateFeatureChoices(character.FeatureChoices, violations);
         ValidateSpellSelections(character.Spells, violations);
+        ValidateEquipment(character.Equipment, violations);
 
         return new ValidationResult(violations);
+    }
+
+    private static void ValidateEquipment(
+        EquipmentSelections? equipment,
+        ICollection<RuleViolation> violations)
+    {
+        for (var index = 0; index < (equipment?.Items?.Count ?? 0); index++)
+        {
+            var selection = equipment!.Items![index];
+            var source = $"equipment.items[{index}]";
+            ValidateReference(
+                selection.Item,
+                "equipment.reference",
+                $"{source}.item",
+                "Equipment",
+                violations);
+            if (selection.Quantity is < 1 or > 999)
+            {
+                AddViolation(
+                    violations,
+                    "character.equipment.quantity.outOfRange",
+                    "Equipment quantity must be between 1 and 999.",
+                    $"{source}.quantity",
+                    "1..999");
+            }
+        }
     }
 
     private static void ValidateSpellSelections(

@@ -57,6 +57,17 @@ export const characterDraftSchema = z.object({
       preparedSpells: z.array(contentReferenceSchema),
     })
     .default({ cantrips: [], spellbook: [], preparedSpells: [] }),
+  equipment: z
+    .object({
+      items: z.array(
+        z.object({
+          item: contentReferenceSchema,
+          quantity: z.number().int().min(1).max(999),
+          equipped: z.boolean().default(false),
+        }),
+      ),
+    })
+    .default({ items: [] }),
 })
 
 const documentIdentitySchema = z.object({
@@ -179,6 +190,7 @@ export function createStoredCharacterDraft({
       proficiencyChoices: [],
       featureChoices: [],
       spells: { cantrips: [], spellbook: [], preparedSpells: [] },
+      equipment: { items: [] },
     },
   })
 }

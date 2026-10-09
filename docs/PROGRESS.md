@@ -144,14 +144,18 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 - Added `POST /api/characters/evaluate-feat`, which validates the complete character before evaluating a canonical feat's minimum level, alternative ability thresholds, and named-feature prerequisite.
 - Mapped the provider's bounded named prerequisites to stable active progression feature ids and fail closed on unknown names instead of inferring feature ownership from display text.
 - Kept prerequisite eligibility distinct from effect support: the typed response and frontend adapter cannot authorize general feat persistence while its state-changing effects remain unmodeled.
+- Added backward-compatible equipment ownership to schema-version-1 drafts with canonical item references, quantities, equipped state, and empty defaults for existing local documents.
+- Added canonical equipment resolution for stale, renamed, repeated, and missing catalog items plus explicit equipped body-armor and Shield cardinality.
+- Derived Armor Class from trusted light/medium/heavy armor Dexterity rules and one Shield bonus, while requiring armor training through resolved stable proficiency ids.
+- Recorded the ownership/equipped-state boundary in ADR-018 and live-smoke-tested a valid level-1 Fighter in Chain Mail through complete provider-backed character evaluation.
 
 ## Work in progress
 
-Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, and canonical feat-prerequisite evaluation. Character ownership, equipped state, armor calculations, typed feat effects, and Weapon Mastery selections remain intentionally separate increments.
+Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, and server-owned inventory/armor evaluation. Builder equipment interaction, typed feat effects, attacks, and Weapon Mastery selections remain separate increments.
 
 ## Next step
 
-Add backward-compatible character equipment ownership and equipped state, then validate canonical references and derive armor/Shield AC from trusted catalog facts and proficiencies.
+Add the builder Equipment step for owned-item quantities and equipped armor/Shield state, preserving stale selections for explicit correction.
 
 ## Pending decisions
 
@@ -174,8 +178,8 @@ Add backward-compatible character equipment ownership and equipped state, then v
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 165 passing
-- Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, complete character validation, and a valid Bard level-gain spell replacement with Expertise
+- Backend unit/integration tests: 171 passing
+- Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, complete character validation including equipped Chain Mail AC, and a valid Bard level-gain spell replacement with Expertise
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 

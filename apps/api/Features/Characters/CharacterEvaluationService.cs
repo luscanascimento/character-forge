@@ -37,14 +37,22 @@ public sealed class CharacterEvaluationService(
             progression.Class.Id!,
             cancellationToken);
         var featureRulesTask = featureRules.GetAsync(progression.Class.Id!, cancellationToken);
+        var equipmentTask = GetEquipmentRulesAsync(character.Equipment, cancellationToken);
 
-        await Task.WhenAll(classTask, speciesTask, backgroundTask, classProgressionTask, featureRulesTask);
+        await Task.WhenAll(
+            classTask,
+            speciesTask,
+            backgroundTask,
+            classProgressionTask,
+            featureRulesTask,
+            equipmentTask);
 
         var selectedClass = await classTask;
         var species = await speciesTask;
         var background = await backgroundTask;
         var classProgression = await classProgressionTask;
         var featureRuleDocument = await featureRulesTask;
+        var equipmentRules = await equipmentTask;
         var missingContent = MissingContentViolations(selectedClass, species, background);
         if (missingContent.Count > 0)
         {
@@ -112,7 +120,49 @@ public sealed class CharacterEvaluationService(
                             "proficientSkills",
                             StringComparison.Ordinal))).ToArray())).ToArray(),
                 MapSpellcasting(classProgression.Spellcasting),
-                spellSelectionRule));
+                spellSelectionRule,
+                equipmentRules));
+    }
+
+    private async Task<IReadOnlyList<EquipmentItemRule>> GetEquipmentRulesAsync(
+        EquipmentSelections? selections,
+        CancellationToken cancellationToken)
+    {
+        var selectedIds = (selections?.Items ?? [])
+            .Select(selection => selection.Item?.Id)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Cast<string>()
+            .ToArray();
+        var details = await Task.WhenAll(selectedIds.Select(async id => (
+            Id: id,
+            Detail: await catalog.GetItemAsync(CatalogCategory.Equipment, id, cancellationToken))));
+        var rules = new List<EquipmentItemRule>();
+        foreach (var result in details)
+        {
+            if (result.Detail is null)
+            {
+                continue;
+            }
+
+            var facts = result.Detail.Equipment
+                ?? throw new SrdProviderException(
+                    $"Equipment '{result.Id}' did not provide canonical equipment facts.");
+            var categoryIds = facts.Categories
+                .Select(category => category.Id)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            rules.Add(new EquipmentItemRule(
+                new ContentReference(result.Detail.Id, result.Detail.Name),
+                categoryIds,
+                facts.Armor is null
+                    ? null
+                    : new ArmorEquipmentRule(
+                        facts.Armor.BaseArmorClass,
+                        facts.Armor.AddsDexterity,
+                        facts.Armor.MaximumDexterityBonus)));
+        }
+
+        return rules;
     }
 
     private async Task<SpellSelectionRule?> GetSpellSelectionRuleAsync(

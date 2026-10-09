@@ -363,6 +363,33 @@ public sealed class CharacterEndpointsTests : IDisposable
         Assert.Equal("grappler", evaluation.Feat.Feat.Id);
     }
 
+    [Fact]
+    public async Task Validate_ResolvesEquippedArmorAndReturnsCanonicalArmorClass()
+    {
+        var character = CharacterValidatorTests.CreateValidCharacter() with
+        {
+            Spells = CharacterValidatorTests.WizardSpells(level: 1),
+            Equipment = new EquipmentSelections([
+                new EquipmentItemSelection(
+                    new ContentReference("leather-armor", "Leather Armor"),
+                    1,
+                    Equipped: true)
+            ])
+        };
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/characters/validate",
+            character,
+            CancellationToken.None);
+        var evaluation = await response.Content.ReadFromJsonAsync<CharacterEvaluation>(
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(evaluation?.Derived);
+        Assert.True(evaluation.Validation.IsValid);
+        Assert.Equal(13, evaluation.Derived.ArmorClass);
+    }
+
     public void Dispose()
     {
         _client.Dispose();
@@ -486,12 +513,38 @@ public sealed class CharacterEndpointsTests : IDisposable
                             ]))));
             }
 
+            if (category == CatalogCategory.Equipment)
+            {
+                return Task.FromResult<CatalogItemDetail?>(new CatalogItemDetail(
+                    id,
+                    id == "leather-armor" ? "Leather Armor" : id,
+                    CatalogCategory.Equipment.ToSlug(),
+                    [],
+                    [],
+                    [],
+                    Equipment: new CatalogEquipmentFacts(
+                        [
+                            new CatalogReference("armor", "Armor"),
+                            new CatalogReference("light-armor", "Light Armor")
+                        ],
+                        Cost: null,
+                        Weight: 10,
+                        Weapon: null,
+                        new CatalogArmorFacts(
+                            BaseArmorClass: 11,
+                            AddsDexterity: true,
+                            MaximumDexterityBonus: null,
+                            StrengthMinimum: 0,
+                            ImposesStealthDisadvantage: false))));
+            }
+
             var facts = category switch
             {
                 CatalogCategory.Classes => new CatalogCharacterCreationFacts(
                     id == "bard" ? 8 : 6,
                     [
                         new CatalogProficiencyReference("simple-weapons", "Simple Weapons", false),
+                        new CatalogProficiencyReference("light-armor", "Light Armor", false),
                         new CatalogProficiencyReference("saving-throw-int", "Saving Throw: INT", false)
                     ],
                     [

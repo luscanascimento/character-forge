@@ -29,6 +29,7 @@ describe('createStoredCharacterDraft', () => {
         proficiencyChoices: [],
         featureChoices: [],
         spells: { cantrips: [], spellbook: [], preparedSpells: [] },
+        equipment: { items: [] },
       },
     })
   })
@@ -87,6 +88,7 @@ describe('storedCharacterV1Schema', () => {
     const {
       featureChoices: _featureChoices,
       spells: _spells,
+      equipment: _equipment,
       ...legacyCharacter
     } = createStoredCharacterDraft().character
     const legacyDocument = {
@@ -105,5 +107,6 @@ describe('storedCharacterV1Schema', () => {
     expect(parsed.character.classProgressions[0]?.subclass).toBeNull()
     expect(parsed.character.featureChoices).toEqual([])
     expect(parsed.character.spells).toEqual({ cantrips: [], spellbook: [], preparedSpells: [] })
+    expect(parsed.character.equipment).toEqual({ items: [] })
   })
 })

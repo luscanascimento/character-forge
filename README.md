@@ -2,7 +2,7 @@
 
 Character Forge is a mobile-first, rule-aware character builder for the modern fifth-edition rules available in **SRD 5.2.1**. It aims to feel like an adventurer's workshop rather than a themed business form, while keeping the codebase straightforward and production-minded.
 
-The project currently contains the completed discovery, foundation, SRD catalog, character-domain, Character Builder MVP, class-progression, and spellcasting phases. It includes a responsive dark-fantasy landing experience, a searchable compendium, local IndexedDB character management, a seven-step auto-saving builder, canonical validation/calculation, trusted class progression through level 20, Wizard spellbook ownership, spell-granting Fighting Styles, and event-aware spell replacement validation. Phase 7 feats and equipment is in progress, beginning with a source-backed rule and provider-contract audit.
+The project currently contains the completed discovery, foundation, SRD catalog, character-domain, Character Builder MVP, class-progression, and spellcasting phases. It includes a responsive dark-fantasy landing experience, a searchable compendium, local IndexedDB character management, a seven-step auto-saving builder, canonical validation/calculation, trusted class progression through level 20, Wizard spellbook ownership, spell-granting Fighting Styles, and event-aware spell replacement validation. Phase 7 feats and equipment is in progress with normalized equipment facts, canonical feat-prerequisite evaluation, inventory ownership, and equipped armor/Shield AC rules.
 
 ## Stack
 
@@ -83,7 +83,7 @@ Draft characters can be submitted to `POST /api/characters/validate` for canonic
 
 ## Current limitations
 
-- Armor/equipment AC, rolled/manual HP, remaining narrative-only class feature choices, import/export, and print layouts are future work.
+- The builder does not yet expose equipment editing; weapon attacks, Strength-minimum speed effects, Stealth disadvantage, rolled/manual HP, remaining narrative-only class feature choices, import/export, and print layouts are future work.
 - Spell list filtering currently supports name, level, school, and class. Ritual/concentration filters require a richer local index because the upstream 2024 list contract does not expose those fields; that index remains deferred until a future catalog-indexing phase is justified.
 - The API exposes no immutable content snapshot identifier in its normal resource responses; Character Forge must retain its own provider-observation metadata when caching catalog content.
 

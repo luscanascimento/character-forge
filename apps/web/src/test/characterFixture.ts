@@ -38,6 +38,7 @@ export function createStoredCharacter(
       ],
       featureChoices: [],
       spells: { cantrips: [], spellbook: [], preparedSpells: [] },
+      equipment: { items: [] },
     },
     ...overrides,
   }

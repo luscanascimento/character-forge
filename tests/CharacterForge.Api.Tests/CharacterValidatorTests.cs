@@ -138,6 +138,26 @@ public sealed class CharacterValidatorTests
             violation.Source == "spells.preparedSpells[0]");
     }
 
+    [Fact]
+    public void Validate_RejectsMalformedEquipmentReferencesAndQuantities()
+    {
+        var character = CreateValidCharacter() with
+        {
+            Equipment = new EquipmentSelections([
+                new EquipmentItemSelection(new ContentReference("Bad Id", ""), 0)
+            ])
+        };
+
+        var result = CharacterValidator.Validate(character);
+
+        Assert.Contains(result.Violations, violation =>
+            violation.Code == "character.equipment.reference.id.invalid");
+        Assert.Contains(result.Violations, violation =>
+            violation.Code == "character.equipment.reference.name.required");
+        Assert.Contains(result.Violations, violation =>
+            violation.Code == "character.equipment.quantity.outOfRange");
+    }
+
     internal static Character CreateValidCharacter(int level = 1) => new(
         Guid.Parse("f33771b4-ae75-47b6-bad0-df2a80896a67"),
         "Arannis",

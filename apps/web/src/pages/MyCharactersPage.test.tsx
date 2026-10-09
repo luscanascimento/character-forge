@@ -99,6 +99,7 @@ describe('MyCharactersPage', () => {
         proficiencyChoices: [],
         featureChoices: [],
         spells: { cantrips: [], spellbook: [], preparedSpells: [] },
+        equipment: { items: [] },
       },
     })
     const storage = repository()

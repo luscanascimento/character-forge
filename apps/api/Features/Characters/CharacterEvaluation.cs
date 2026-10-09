@@ -63,6 +63,16 @@ public sealed record SpellSelectionRule(
     IReadOnlyList<SpellOptionRule> ClassSpells,
     int MinimumSpellbookSpells = 0);
 
+public sealed record EquipmentItemRule(
+    ContentReference Item,
+    IReadOnlySet<string> CategoryIds,
+    ArmorEquipmentRule? Armor);
+
+public sealed record ArmorEquipmentRule(
+    int BaseArmorClass,
+    bool AddsDexterity,
+    int? MaximumDexterityBonus);
+
 public sealed record CharacterRulesContext(
     int HitDie,
     IReadOnlyList<ProficiencyGrant> ProficiencyGrants,
@@ -70,7 +80,8 @@ public sealed record CharacterRulesContext(
     IReadOnlyList<SubclassRule> Subclasses,
     IReadOnlyList<FeatureChoiceRequirementRule>? FeatureChoices = null,
     SpellcastingProgressionRule? Spellcasting = null,
-    SpellSelectionRule? SpellSelections = null);
+    SpellSelectionRule? SpellSelections = null,
+    IReadOnlyList<EquipmentItemRule>? Equipment = null);
 
 public sealed record CharacterEvaluation(
     ValidationResult Validation,
@@ -105,10 +116,16 @@ public static class CharacterEvaluator
         var spellSelectionValidation = SpellSelectionRules.Validate(
             character.Spells,
             context.SpellSelections);
+        var equipmentResolution = EquipmentRules.Resolve(
+            character.Equipment,
+            context.Equipment ?? [],
+            character.Abilities!.Dexterity,
+            grantedProficiencies);
         var ruleViolations = progressionValidation.Violations
             .Concat(proficiencyResolution.Validation.Violations)
             .Concat(featureChoiceValidation.Violations)
             .Concat(spellSelectionValidation.Violations)
+            .Concat(equipmentResolution.Validation.Violations)
             .ToArray();
         if (ruleViolations.Length > 0)
         {
@@ -128,7 +145,7 @@ public static class CharacterEvaluator
                     AbilityRules.GetModifier(abilities.Wisdom),
                     AbilityRules.GetModifier(abilities.Charisma)),
                 ProficiencyRules.GetBonus(classProgression.Level),
-                ArmorClassRules.GetUnarmored(abilities.Dexterity),
+                equipmentResolution.ArmorClass,
                 HitPointRules.GetFixedMaximum(
                     context.HitDie,
                     abilities.Constitution,

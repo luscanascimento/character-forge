@@ -11,7 +11,8 @@ public sealed record Character(
     IReadOnlyList<ClassProgression>? ClassProgressions,
     IReadOnlyList<ProficiencyChoiceSelection>? ProficiencyChoices,
     IReadOnlyList<FeatureChoiceSelection>? FeatureChoices = null,
-    SpellSelections? Spells = null);
+    SpellSelections? Spells = null,
+    EquipmentSelections? Equipment = null);
 
 public sealed record AbilityScores(
     int Strength,
@@ -41,3 +42,10 @@ public sealed record SpellSelections(
     IReadOnlyList<ContentReference>? Cantrips,
     IReadOnlyList<ContentReference>? PreparedSpells,
     IReadOnlyList<ContentReference>? Spellbook = null);
+
+public sealed record EquipmentSelections(IReadOnlyList<EquipmentItemSelection>? Items);
+
+public sealed record EquipmentItemSelection(
+    ContentReference? Item,
+    int Quantity,
+    bool Equipped = false);
