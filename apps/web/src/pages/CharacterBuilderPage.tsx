@@ -96,11 +96,12 @@ const builderSteps = [
   ['Class', 'Set class, level, and subclass'],
   ['Proficiencies', 'Complete required choices'],
   ['Spells', 'Choose cantrips and prepared spells'],
+  ['Equipment', 'Manage owned and equipped items'],
   ['Review', 'Validate the finished character'],
 ] as const
 
 type BuilderStep =
-  'name' | 'abilities' | 'origins' | 'class' | 'proficiencies' | 'spells' | 'review'
+  'name' | 'abilities' | 'origins' | 'class' | 'proficiencies' | 'spells' | 'equipment' | 'review'
 type AbilityScores = NonNullable<StoredCharacterV1['character']['abilities']>
 type AbilityKey = keyof AbilityScores
 type AbilityInputs = Record<AbilityKey, string>
@@ -111,6 +112,8 @@ type ClassErrors = { class?: string; subclass?: string; progression?: string }
 type FeatureChoiceInputs = Record<string, { branchId: string; selectionIds: string[] }>
 type SpellInputs = { cantripIds: string[]; spellbookIds: string[]; preparedSpellIds: string[] }
 type SpellErrors = Partial<Record<'cantrips' | 'spellbook' | 'preparedSpells' | '_form', string>>
+type EquipmentInputs = Record<string, { name: string; quantity: string; equipped: boolean }>
+type EquipmentErrors = Record<string, string>
 type SavedProficiencyChoices = StoredCharacterV1['character']['proficiencyChoices']
 type EditableBuilderStep = Exclude<BuilderStep, 'review'>
 type SaveIntent = {
@@ -258,6 +261,11 @@ function BuilderWorkspace({
     spellInputsFrom(document.character.spells),
   )
   const [spellErrors, setSpellErrors] = useState<SpellErrors>({})
+  const [equipmentInputs, setEquipmentInputs] = useState<EquipmentInputs>(() =>
+    equipmentInputsFrom(document.character.equipment),
+  )
+  const [equipmentErrors, setEquipmentErrors] = useState<EquipmentErrors>({})
+  const [equipmentSearch, setEquipmentSearch] = useState('')
   const nameComplete = Boolean(document.character.name.trim())
   const abilitiesComplete = document.character.abilities !== null
   const originsComplete =
@@ -306,6 +314,12 @@ function BuilderWorkspace({
       Boolean(selectedClass) &&
       (preparedSpellSource === 'classSpellList' || preparedSpellSource === 'spellbook') &&
       (selectedStep === 'spells' || (reviewResumePending && selectedStep === 'proficiencies')),
+    retry: false,
+  })
+  const equipmentOptionsQuery = useQuery({
+    queryKey: ['builder-equipment-options'],
+    queryFn: ({ signal }) => getAllEquipmentOptions(catalogLoader, signal),
+    enabled: selectedStep === 'equipment',
     retry: false,
   })
   const classFeatureDocument = featureChoicesQuery.data
@@ -533,6 +547,12 @@ function BuilderWorkspace({
         ? { ...document.character, spells: result.spells }
         : null
     }
+    if (step === 'equipment') {
+      const result = validateEquipmentInputs(equipmentOptionsQuery.data, equipmentInputs)
+      return result.success && !sameValue(result.equipment, document.character.equipment)
+        ? { ...document.character, equipment: result.equipment }
+        : null
+    }
     return null
   }
 
@@ -615,11 +635,18 @@ function BuilderWorkspace({
             : current,
         )
       }
+      if (intent.step === 'equipment') {
+        setEquipmentInputs((current) =>
+          sameValue(current, equipmentInputsFrom(intent.character.equipment))
+            ? equipmentInputsFrom(saved.character.equipment)
+            : current,
+        )
+      }
       cacheSavedDocument(saved)
       if (intent.advance) {
         openStep(
           intent.step === 'proficiencies' && spellComplete
-            ? 'review'
+            ? 'equipment'
             : nextBuilderStep(intent.step),
         )
       }
@@ -797,6 +824,19 @@ function BuilderWorkspace({
     persistOrAdvance('spells', { ...document.character, spells: result.spells })
   }
 
+  function saveEquipment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const result = validateEquipmentInputs(equipmentOptionsQuery.data, equipmentInputs)
+    if (!result.success) {
+      setEquipmentErrors(result.errors)
+      return
+    }
+
+    setEquipmentErrors({})
+    setReviewResumePending(false)
+    persistOrAdvance('equipment', { ...document.character, equipment: result.equipment })
+  }
+
   return (
     <div className="builder-layout">
       <aside className="builder-progress">
@@ -822,8 +862,10 @@ function BuilderWorkspace({
                           : index === 5
                             ? 'spells'
                             : index === 6
-                              ? 'review'
-                              : null
+                              ? 'equipment'
+                              : index === 7
+                                ? 'review'
+                                : null
               const available =
                 step === 'name' ||
                 (step === 'abilities' && nameComplete) ||
@@ -835,6 +877,7 @@ function BuilderWorkspace({
                   originsComplete &&
                   classComplete) ||
                 (step === 'spells' && proficiencyComplete) ||
+                (step === 'equipment' && proficiencyComplete && spellComplete) ||
                 (step === 'review' && proficiencyComplete && spellComplete)
               const active = step === activeStep
               const complete =
@@ -851,8 +894,10 @@ function BuilderWorkspace({
                           : index === 5
                             ? spellComplete
                             : index === 6
-                              ? Boolean(validationQuery.data?.validation.isValid)
-                              : false
+                              ? true
+                              : index === 7
+                                ? Boolean(validationQuery.data?.validation.isValid)
+                                : false
               return (
                 <li
                   className={[
@@ -1292,10 +1337,65 @@ function BuilderWorkspace({
               onSubmit={saveSpells}
             />
           </>
-        ) : (
+        ) : activeStep === 'equipment' ? (
           <>
             <BuilderStepHeading
               step={7}
+              title="Outfit your character"
+              description="Record owned equipment and mark items currently equipped. Armor Class remains server-calculated from canonical item facts and training."
+            />
+            <EquipmentStep
+              options={equipmentOptionsQuery.data}
+              inputs={equipmentInputs}
+              errors={equipmentErrors}
+              search={equipmentSearch}
+              pending={equipmentOptionsQuery.isPending}
+              failed={equipmentOptionsQuery.isError}
+              saved={
+                saveMutation.isSuccess &&
+                saveMutation.variables.step === 'equipment' &&
+                autosaveCharacter === null
+              }
+              saving={saveMutation.isPending}
+              saveError={saveMutation.variables?.step === 'equipment' ? saveMutation.error : null}
+              onSearch={setEquipmentSearch}
+              onAdd={(item) => {
+                setEquipmentInputs((current) => ({
+                  ...current,
+                  [item.id]: { name: item.name, quantity: '1', equipped: false },
+                }))
+                setEquipmentErrors((current) => omitKey(omitKey(current, item.id), '_form'))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onQuantity={(id, quantity) => {
+                setEquipmentInputs((current) => ({
+                  ...current,
+                  [id]: { ...current[id]!, quantity },
+                }))
+                setEquipmentErrors((current) => omitKey(current, id))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onEquipped={(id, equipped) => {
+                setEquipmentInputs((current) => ({
+                  ...current,
+                  [id]: { ...current[id]!, equipped },
+                }))
+                setEquipmentErrors((current) => omitKey(current, id))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onRemove={(id) => {
+                setEquipmentInputs((current) => omitKey(current, id))
+                setEquipmentErrors((current) => omitKey(omitKey(current, id), '_form'))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onRetry={() => void equipmentOptionsQuery.refetch()}
+              onSubmit={saveEquipment}
+            />
+          </>
+        ) : (
+          <>
+            <BuilderStepHeading
+              step={8}
               title="Review your character"
               description="Character Forge validates this local draft against the active rules before presenting trusted derived values."
             />
@@ -1537,6 +1637,181 @@ function SpellsStep({
       )}
       {!hasSelections && lockedReason && (
         <p className="builder-field-help">There are no retained spell selections to resolve.</p>
+      )}
+      <LocalStorageNotice />
+      <SaveError error={saveError} />
+      <BuilderActions saved={saved} pending={saving} label="Continue to equipment" />
+    </form>
+  )
+}
+
+function EquipmentStep({
+  options,
+  inputs,
+  errors,
+  search,
+  pending,
+  failed,
+  saved,
+  saving,
+  saveError,
+  onSearch,
+  onAdd,
+  onQuantity,
+  onEquipped,
+  onRemove,
+  onRetry,
+  onSubmit,
+}: {
+  options?: CatalogPage['items']
+  inputs: EquipmentInputs
+  errors: EquipmentErrors
+  search: string
+  pending: boolean
+  failed: boolean
+  saved: boolean
+  saving: boolean
+  saveError: Error | null
+  onSearch: (search: string) => void
+  onAdd: (item: CatalogPage['items'][number]) => void
+  onQuantity: (id: string, quantity: string) => void
+  onEquipped: (id: string, equipped: boolean) => void
+  onRemove: (id: string) => void
+  onRetry: () => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) {
+  if (pending && !options) {
+    return (
+      <div className="origin-state" role="status">
+        <span aria-hidden="true">◆</span>
+        <strong>Opening the equipment vault…</strong>
+        <p>Your saved inventory remains local while the canonical catalog loads.</p>
+      </div>
+    )
+  }
+
+  if (failed || !options) {
+    return (
+      <div className="origin-state origin-state--error" role="alert">
+        <AlertTriangle aria-hidden="true" size={30} />
+        <strong>The equipment vault is unavailable</strong>
+        <p>Your saved inventory is unchanged. Try the catalog again before editing it.</p>
+        <button className="button button--secondary" type="button" onClick={onRetry}>
+          <RefreshCw aria-hidden="true" size={17} />
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  const normalizedSearch = search.trim().toLocaleLowerCase()
+  const available = options.filter(
+    (item) =>
+      !inputs[item.id] &&
+      (normalizedSearch.length === 0 || item.name.toLocaleLowerCase().includes(normalizedSearch)),
+  )
+  const optionsById = new Map(options.map((item) => [item.id, item]))
+
+  return (
+    <form className="builder-form builder-form--wide equipment-form" onSubmit={onSubmit} noValidate>
+      <section className="equipment-owned" aria-labelledby="owned-equipment-heading">
+        <div>
+          <h3 id="owned-equipment-heading">Owned equipment</h3>
+          <span>{Object.keys(inputs).length} distinct items</span>
+        </div>
+        {Object.keys(inputs).length === 0 ? (
+          <p className="equipment-empty">No equipment recorded. An empty inventory is valid.</p>
+        ) : (
+          <ul>
+            {Object.entries(inputs).map(([id, input]) => {
+              const catalogItem = optionsById.get(id)
+              const stale = catalogItem === undefined
+              return (
+                <li
+                  className={
+                    stale
+                      ? 'equipment-owned__item equipment-owned__item--stale'
+                      : 'equipment-owned__item'
+                  }
+                  key={id}
+                >
+                  <div>
+                    <strong>{catalogItem?.name ?? input.name}</strong>
+                    <span>{stale ? 'Unavailable in the active catalog' : id}</span>
+                  </div>
+                  <label>
+                    <span>Quantity</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      max="999"
+                      step="1"
+                      value={input.quantity}
+                      onChange={(event) => onQuantity(id, event.target.value)}
+                      aria-label={`Quantity for ${input.name}`}
+                      aria-invalid={errors[id] ? true : undefined}
+                    />
+                  </label>
+                  <label className="equipment-equipped">
+                    <input
+                      type="checkbox"
+                      checked={input.equipped}
+                      onChange={(event) => onEquipped(id, event.target.checked)}
+                      aria-label={`Equip ${input.name}`}
+                    />
+                    <span>Equipped</span>
+                  </label>
+                  <button type="button" onClick={() => onRemove(id)}>
+                    Remove
+                  </button>
+                  {errors[id] && (
+                    <small className="builder-field-error" role="alert">
+                      {errors[id]}
+                    </small>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="equipment-catalog" aria-labelledby="equipment-catalog-heading">
+        <div>
+          <h3 id="equipment-catalog-heading">Equipment catalog</h3>
+          <span>Add only items this character owns.</span>
+        </div>
+        <label htmlFor="equipment-search">Search equipment</label>
+        <div className="builder-input">
+          <span aria-hidden="true">⌕</span>
+          <input
+            id="equipment-search"
+            type="search"
+            value={search}
+            onChange={(event) => onSearch(event.target.value)}
+            placeholder="Armor, weapon, pack…"
+          />
+        </div>
+        <ul>
+          {available.map((item) => (
+            <li key={item.id}>
+              <span>{item.name}</span>
+              <button type="button" onClick={() => onAdd(item)} aria-label={`Add ${item.name}`}>
+                Add
+              </button>
+            </li>
+          ))}
+        </ul>
+        {available.length === 0 && (
+          <p className="equipment-empty">No unowned equipment matches this search.</p>
+        )}
+      </section>
+
+      {errors._form && (
+        <span className="builder-field-error" role="alert">
+          {errors._form}
+        </span>
       )}
       <LocalStorageNotice />
       <SaveError error={saveError} />
@@ -1802,6 +2077,27 @@ function ReviewStep({
               </div>
             )}
           </dl>
+        </section>
+      )}
+
+      {document.character.equipment.items.length > 0 && (
+        <section className="review-section" aria-labelledby="review-equipment-heading">
+          <div className="review-section__heading">
+            <h4 id="review-equipment-heading">Equipment</h4>
+            <button type="button" onClick={() => onEdit('equipment')}>
+              Edit equipment
+            </button>
+          </div>
+          <ul className="review-proficiencies">
+            {document.character.equipment.items.map((selection) => (
+              <li key={selection.item.id}>
+                <strong>
+                  {selection.item.name} × {selection.quantity}
+                </strong>
+                <span>{selection.equipped ? 'Equipped' : 'Owned'}</span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
@@ -2758,6 +3054,7 @@ function stepForViolation(source: string): Exclude<BuilderStep, 'review'> | null
   }
   if (source.startsWith('proficiencyChoices')) return 'proficiencies'
   if (source.startsWith('spells')) return 'spells'
+  if (source.startsWith('equipment')) return 'equipment'
   return null
 }
 
@@ -2770,6 +3067,7 @@ function builderStepLabel(step: Exclude<BuilderStep, 'review'>): string {
       class: 3,
       proficiencies: 4,
       spells: 5,
+      equipment: 6,
     }[step]
   ][0]
 }
@@ -2781,7 +3079,8 @@ function nextBuilderStep(step: EditableBuilderStep): BuilderStep {
     origins: 'class',
     class: 'proficiencies',
     proficiencies: 'spells',
-    spells: 'review',
+    spells: 'equipment',
+    equipment: 'review',
   }[step] as BuilderStep
 }
 
@@ -3043,6 +3342,62 @@ function spellInputsFrom(spells: CharacterDraft['spells']): SpellInputs {
   }
 }
 
+function equipmentInputsFrom(equipment: CharacterDraft['equipment']): EquipmentInputs {
+  return Object.fromEntries(
+    equipment.items.map((selection) => [
+      selection.item.id,
+      {
+        name: selection.item.name,
+        quantity: String(selection.quantity),
+        equipped: selection.equipped,
+      },
+    ]),
+  )
+}
+
+function validateEquipmentInputs(
+  options: CatalogPage['items'] | undefined,
+  inputs: EquipmentInputs,
+):
+  | { success: true; equipment: CharacterDraft['equipment'] }
+  | { success: false; errors: EquipmentErrors } {
+  if (Object.keys(inputs).length === 0) {
+    return { success: true, equipment: { items: [] } }
+  }
+  if (!options) {
+    return {
+      success: false,
+      errors: { _form: 'Wait for the canonical equipment catalog before saving.' },
+    }
+  }
+
+  const optionsById = new Map(options.map((item) => [item.id, item]))
+  const errors: EquipmentErrors = {}
+  const items: CharacterDraft['equipment']['items'] = []
+  for (const [id, input] of Object.entries(inputs)) {
+    const option = optionsById.get(id)
+    const quantity = Number(input.quantity)
+    if (!option) {
+      errors[id] = 'Remove this unavailable item or retry after the catalog is restored.'
+      continue
+    }
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 999) {
+      errors[id] = 'Quantity must be a whole number between 1 and 999.'
+      continue
+    }
+
+    items.push({
+      item: { id: option.id, name: option.name },
+      quantity,
+      equipped: input.equipped,
+    })
+  }
+
+  return Object.keys(errors).length > 0
+    ? { success: false, errors }
+    : { success: true, equipment: { items } }
+}
+
 function validateSpellInputs(
   preparedSpellSource: 'classSpellList' | 'spellbook' | undefined,
   levelRule: SpellcastingLevel | undefined,
@@ -3167,6 +3522,21 @@ async function getAllClassSpellOptions(
         { page: index + 2, pageSize: 48, characterClass: classId, sort: 'level' },
         signal,
       ),
+    ),
+  )
+  return [first, ...remaining].flatMap((page) => page.items)
+}
+
+async function getAllEquipmentOptions(
+  loader: CatalogLoader,
+  signal?: AbortSignal,
+): Promise<CatalogPage['items']> {
+  const first = await loader('equipment', { page: 1, pageSize: 48 }, signal)
+  if (first.totalPages <= 1) return first.items
+
+  const remaining = await Promise.all(
+    Array.from({ length: first.totalPages - 1 }, (_, index) =>
+      loader('equipment', { page: index + 2, pageSize: 48 }, signal),
     ),
   )
   return [first, ...remaining].flatMap((page) => page.items)

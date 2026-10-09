@@ -70,9 +70,14 @@ const catalogItems = {
     { id: 'acolyte', name: 'Acolyte', category: 'backgrounds' as const },
     { id: 'sage', name: 'Sage', category: 'backgrounds' as const },
   ],
+  equipment: [
+    { id: 'chain-mail', name: 'Chain Mail', category: 'equipment' as const },
+    { id: 'longsword', name: 'Longsword', category: 'equipment' as const },
+    { id: 'shield', name: 'Shield', category: 'equipment' as const },
+  ],
 }
 
-function catalogPage(category: 'classes' | 'species' | 'backgrounds'): CatalogPage {
+function catalogPage(category: 'classes' | 'species' | 'backgrounds' | 'equipment'): CatalogPage {
   return {
     items: catalogItems[category],
     page: 1,
@@ -90,7 +95,12 @@ function catalogPage(category: 'classes' | 'species' | 'backgrounds'): CatalogPa
 
 function defaultCatalogLoader(): CatalogLoader {
   return vi.fn((category: CatalogCategory) => {
-    if (category !== 'classes' && category !== 'species' && category !== 'backgrounds') {
+    if (
+      category !== 'classes' &&
+      category !== 'species' &&
+      category !== 'backgrounds' &&
+      category !== 'equipment'
+    ) {
       return Promise.reject(new Error(`Unexpected category: ${category}`))
     }
     return Promise.resolve(catalogPage(category))
@@ -600,7 +610,7 @@ describe('CharacterBuilderPage', () => {
     expect(await screen.findByRole('radio', { name: 'Elf' })).not.toBeChecked()
 
     const steps = within(screen.getByRole('navigation', { name: 'Character creation steps' }))
-    expect(steps.getAllByRole('listitem')).toHaveLength(7)
+    expect(steps.getAllByRole('listitem')).toHaveLength(8)
     expect(steps.getByRole('button', { name: 'Name' })).not.toHaveAttribute('aria-current')
     expect(steps.getByRole('button', { name: 'Origins' })).toHaveAttribute('aria-current', 'step')
     expect(loader).toHaveBeenCalledWith('species', { page: 1, pageSize: 48 }, expect.anything())
@@ -1084,6 +1094,10 @@ describe('CharacterBuilderPage', () => {
       '2026-10-01T15:00:00.000Z',
     )
     expect(
+      await screen.findByRole('heading', { name: 'Outfit your character' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Review character' }))
+    expect(
       await screen.findByRole('heading', { name: 'Review your character' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Skill: Performance, Skill: Persuasion')).toBeInTheDocument()
@@ -1375,6 +1389,10 @@ describe('CharacterBuilderPage', () => {
       '2026-09-29T12:00:00.000Z',
     )
     expect(
+      await screen.findByRole('heading', { name: 'Outfit your character' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Review character' }))
+    expect(
       await screen.findByRole('heading', { name: 'Review your character' }),
     ).toBeInTheDocument()
   })
@@ -1493,6 +1511,90 @@ describe('CharacterBuilderPage', () => {
     expect(steps.getByRole('button', { name: 'Review' })).toHaveAttribute('aria-current', 'step')
   })
 
+  it('persists canonical equipment quantities and equipped state before review', async () => {
+    const user = userEvent.setup()
+    const storage = repository()
+    renderPage(storage, undefined, undefined, undefined, undefined, 60_000)
+
+    await user.click(await screen.findByRole('button', { name: 'Equipment' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Outfit your character' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Add Chain Mail' }))
+    await user.clear(screen.getByRole('spinbutton', { name: 'Quantity for Chain Mail' }))
+    await user.type(screen.getByRole('spinbutton', { name: 'Quantity for Chain Mail' }), '2')
+    await user.click(screen.getByRole('checkbox', { name: 'Equip Chain Mail' }))
+    await user.click(screen.getByRole('button', { name: 'Review character' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          equipment: {
+            items: [
+              {
+                item: { id: 'chain-mail', name: 'Chain Mail' },
+                quantity: 2,
+                equipped: true,
+              },
+            ],
+          },
+        }),
+      }),
+      '2026-09-29T12:00:00.000Z',
+    )
+    expect(
+      await screen.findByRole('heading', { name: 'Review your character' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Chain Mail × 2')).toBeInTheDocument()
+    expect(screen.getByText('Equipped')).toBeInTheDocument()
+  })
+
+  it('retains unavailable equipment until the user explicitly removes it', async () => {
+    const user = userEvent.setup()
+    const source = createStoredCharacter()
+    const character = {
+      ...source,
+      character: {
+        ...source.character,
+        equipment: {
+          items: [
+            {
+              item: { id: 'legacy-armor', name: 'Legacy Armor' },
+              quantity: 1,
+              equipped: true,
+            },
+          ],
+        },
+      },
+    }
+    const storage = repository({ get: vi.fn().mockResolvedValue(character) })
+    renderPage(storage, undefined, undefined, undefined, undefined, 60_000)
+
+    await user.click(await screen.findByRole('button', { name: 'Equipment' }))
+    expect(await screen.findByText('Unavailable in the active catalog')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Review character' }))
+
+    expect(
+      screen.getByText('Remove this unavailable item or retry after the catalog is restored.'),
+    ).toBeInTheDocument()
+    expect(storage.save).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+    await user.click(screen.getByRole('button', { name: 'Review character' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({ equipment: { items: [] } }),
+      }),
+      '2026-09-29T12:00:00.000Z',
+    )
+    expect(
+      await screen.findByRole('heading', { name: 'Review your character' }),
+    ).toBeInTheDocument()
+  })
+
   it('routes structured validation feedback back to its editable builder step', async () => {
     const user = userEvent.setup()
     const validationLoader = vi.fn().mockResolvedValue({
@@ -1528,7 +1630,12 @@ describe('CharacterBuilderPage', () => {
     const storage = repository({ get: vi.fn().mockResolvedValue(bardSpellcaster()) })
     const catalogLoader = vi.fn<CatalogLoader>((category) => {
       if (category === 'spells') return Promise.resolve(spellCatalogPage())
-      if (category === 'classes' || category === 'species' || category === 'backgrounds') {
+      if (
+        category === 'classes' ||
+        category === 'species' ||
+        category === 'backgrounds' ||
+        category === 'equipment'
+      ) {
         return Promise.resolve(catalogPage(category))
       }
       return Promise.reject(new Error(`Unexpected category: ${category}`))
@@ -1554,7 +1661,7 @@ describe('CharacterBuilderPage', () => {
     await user.click(screen.getByRole('checkbox', { name: /Detect Magic/ }))
     await user.click(screen.getByRole('checkbox', { name: /Heroism/ }))
     expect(screen.queryByRole('checkbox', { name: /Shatter/ })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Review character' }))
+    await user.click(screen.getByRole('button', { name: 'Continue to equipment' }))
 
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(storage.save).toHaveBeenCalledWith(
@@ -1583,6 +1690,10 @@ describe('CharacterBuilderPage', () => {
       expect.anything(),
     )
     expect(
+      await screen.findByRole('heading', { name: 'Outfit your character' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Review character' }))
+    expect(
       await screen.findByRole('heading', { name: 'Review your character' }),
     ).toBeInTheDocument()
   })
@@ -1592,7 +1703,12 @@ describe('CharacterBuilderPage', () => {
     const storage = repository()
     const catalogLoader = vi.fn<CatalogLoader>((category) => {
       if (category === 'spells') return Promise.resolve(wizardSpellCatalogPage())
-      if (category === 'classes' || category === 'species' || category === 'backgrounds') {
+      if (
+        category === 'classes' ||
+        category === 'species' ||
+        category === 'backgrounds' ||
+        category === 'equipment'
+      ) {
         return Promise.resolve(catalogPage(category))
       }
       return Promise.reject(new Error(`Unexpected category: ${category}`))
@@ -1636,7 +1752,7 @@ describe('CharacterBuilderPage', () => {
         }),
       )
     }
-    await user.click(screen.getByRole('button', { name: 'Review character' }))
+    await user.click(screen.getByRole('button', { name: 'Continue to equipment' }))
 
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(storage.save).toHaveBeenCalledWith(
@@ -1658,6 +1774,13 @@ describe('CharacterBuilderPage', () => {
       }),
       '2026-09-29T12:00:00.000Z',
     )
+    expect(
+      await screen.findByRole('heading', { name: 'Outfit your character' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Review character' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Review your character' }),
+    ).toBeInTheDocument()
   })
 
   it('retries canonical validation without changing the local draft', async () => {

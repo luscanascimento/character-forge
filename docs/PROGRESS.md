@@ -148,14 +148,16 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 - Added canonical equipment resolution for stale, renamed, repeated, and missing catalog items plus explicit equipped body-armor and Shield cardinality.
 - Derived Armor Class from trusted light/medium/heavy armor Dexterity rules and one Shield bonus, while requiring armor training through resolved stable proficiency ids.
 - Recorded the ownership/equipped-state boundary in ADR-018 and live-smoke-tested a valid level-1 Fighter in Chain Mail through complete provider-backed character evaluation.
+- Added an eighth, optional Equipment builder step with complete-catalog loading, search, owned quantities, equipped toggles, auto-save, and Review presentation.
+- Preserved unavailable saved items visibly until explicit removal and covered canonical persistence, equipped state, and non-destructive stale-item correction in the frontend suite.
 
 ## Work in progress
 
-Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, and server-owned inventory/armor evaluation. Builder equipment interaction, typed feat effects, attacks, and Weapon Mastery selections remain separate increments.
+Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, server-owned inventory/armor evaluation, and builder equipment interaction. Typed feat effects, attacks, and Weapon Mastery selections remain separate increments.
 
 ## Next step
 
-Add the builder Equipment step for owned-item quantities and equipped armor/Shield state, preserving stale selections for explicit correction.
+Add typed feat effects beginning with Ability Score Improvement before exposing its progression choices.
 
 ## Pending decisions
 
@@ -164,7 +166,7 @@ Add the builder Equipment step for owned-item quantities and equipped armor/Shie
 
 ## Known issues and limitations
 
-- Armored/equipment AC, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
+- Strength-minimum speed effects, Stealth disadvantage, weapon attacks, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -174,7 +176,7 @@ Add the builder Equipment step for owned-item quantities and equipped armor/Shie
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 92 passing across 13 files (`vitest run`)
+- Frontend unit tests: 94 passing across 13 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors

@@ -140,6 +140,8 @@ Valid builder edit → debounced auto-save or explicit Continue → versioned ch
 Completed local draft → canonical domain/rule validation API → trusted review values
 ```
 
+The eight-step builder includes an optional Equipment step backed by the complete paginated equipment catalog. It persists only canonical item references, owned quantities, and explicit equipped state. Saved items that disappear from the active catalog stay visible and block persistence until the user explicitly removes them or the catalog is restored; the browser never guesses replacements or copies armor rule facts.
+
 Business rules have one canonical server implementation. Presentation-only calculations may be mirrored later only if explicitly proven safe and contract-tested against the canonical result.
 
 ## Rule Engine

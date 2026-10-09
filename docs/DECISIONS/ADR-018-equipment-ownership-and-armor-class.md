@@ -31,4 +31,5 @@ Armor Class uses the equipped body armor's base plus its permitted Dexterity mod
 - Equipped state is explicit and non-destructive; unequipping never deletes ownership.
 - Catalog changes produce structured stale-reference violations instead of silently rewriting a draft.
 - Armor Class now reflects canonical armor and Shield facts for supported, trained configurations.
-- Weapon attacks, carrying capacity, Strength-minimum speed effects, Stealth disadvantage presentation, and the builder equipment UI remain separate Phase 7 increments.
+- The builder exposes owned quantities and equipped state while retaining unavailable saved items for explicit correction.
+- Weapon attacks, carrying capacity, Strength-minimum speed effects, and Stealth disadvantage presentation remain separate Phase 7 increments.
