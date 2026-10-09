@@ -123,4 +123,54 @@ describe('character validation API', () => {
     })
     expect(body.character).not.toHaveProperty('schemaVersion')
   })
+
+  it('sends and validates a typed Ability Score Improvement effect', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          validation: { isValid: true, violations: [] },
+          feat: {
+            feat: { id: 'ability-score-improvement', name: 'Ability Score Improvement' },
+            type: 'general',
+            isRepeatable: true,
+            meetsPrerequisites: true,
+            effectsSupported: true,
+            canSelect: true,
+            resultingAbilities: {
+              strength: 8,
+              dexterity: 14,
+              constitution: 13,
+              intelligence: 13,
+              wisdom: 11,
+              charisma: 16,
+            },
+            effectManifestVersion: 'SRD-5.2.1-FEAT-1',
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    const character = createStoredCharacter()
+    const effect = {
+      increases: [
+        { abilityId: 'int' as const, increase: 1 },
+        { abilityId: 'wis' as const, increase: 1 },
+      ],
+    }
+
+    const result = await evaluateFeatEligibility(character, 'ability-score-improvement', effect)
+
+    expect(result.feat).toMatchObject({
+      effectsSupported: true,
+      canSelect: true,
+      resultingAbilities: { intelligence: 13, wisdom: 11 },
+      effectManifestVersion: 'SRD-5.2.1-FEAT-1',
+    })
+    const request = fetchMock.mock.calls[0]
+    const body = JSON.parse((request?.[1]?.body as string) ?? '{}') as Record<string, unknown>
+    expect(body).toMatchObject({
+      featId: 'ability-score-improvement',
+      abilityScoreImprovement: effect,
+    })
+  })
 })

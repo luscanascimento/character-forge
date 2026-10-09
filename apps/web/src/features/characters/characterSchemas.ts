@@ -152,8 +152,19 @@ export const featEligibilityEvaluationSchema = z.object({
       meetsPrerequisites: z.boolean(),
       effectsSupported: z.boolean(),
       canSelect: z.boolean(),
+      resultingAbilities: abilityScoresSchema.nullable().optional(),
+      effectManifestVersion: z.string().min(1).nullable().optional(),
     })
     .nullable(),
+})
+
+export const abilityScoreImprovementEffectSchema = z.object({
+  increases: z.array(
+    z.object({
+      abilityId: z.enum(['str', 'dex', 'con', 'int', 'wis', 'cha']),
+      increase: z.number().int().min(1).max(2),
+    }),
+  ),
 })
 
 export type CharacterDraft = z.infer<typeof characterDraftSchema>
@@ -162,6 +173,7 @@ export type CharacterRequest = z.infer<typeof characterRequestSchema>
 export type CharacterEvaluation = z.infer<typeof characterEvaluationSchema>
 export type SpellReplacementEvaluation = z.infer<typeof spellReplacementEvaluationSchema>
 export type FeatEligibilityEvaluation = z.infer<typeof featEligibilityEvaluationSchema>
+export type AbilityScoreImprovementEffect = z.infer<typeof abilityScoreImprovementEffectSchema>
 
 type NewStoredCharacterOptions = {
   id?: string

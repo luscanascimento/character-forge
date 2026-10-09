@@ -32,7 +32,7 @@ public static class CharacterEndpoints
                 CancellationToken cancellationToken) =>
                 TypedResults.Ok(await service.EvaluateAsync(request, cancellationToken)))
             .WithName("EvaluateFeatEligibility")
-            .WithSummary("Evaluates canonical feat prerequisites without persisting unsupported feat effects.")
+            .WithSummary("Evaluates canonical feat prerequisites and supported typed feat effects.")
             .Produces<FeatEligibilityEvaluation>()
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
             .RequireRateLimiting("catalog");

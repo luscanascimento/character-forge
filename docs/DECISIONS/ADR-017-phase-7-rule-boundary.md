@@ -33,4 +33,4 @@ Catalog descriptions remain presentation-only. No rule may be derived from prose
 
 ## Implementation note
 
-The first implementation increments normalize equipment detail and starting-package choice trees, then add `POST /api/characters/evaluate-feat`. Feat evaluation resolves canonical character state and progression before checking provider-owned minimum-level, ability-score, and named-feature prerequisites. It reports prerequisite eligibility separately from effect support; all general feat effects remain unsupported and cannot yet be persisted through this endpoint.
+The first implementation increments normalize equipment detail and starting-package choice trees, then add `POST /api/characters/evaluate-feat`. Feat evaluation resolves canonical character state and progression before checking provider-owned minimum-level, ability-score, and named-feature prerequisites. ADR-019 adds the first typed effect through manifest `SRD-5.2.1-FEAT-1`: Ability Score Improvement proposals are validated and previewed without yet authorizing draft persistence or progression choices. Other general feat effects remain unsupported.

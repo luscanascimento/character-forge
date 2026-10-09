@@ -364,6 +364,63 @@ public sealed class CharacterEndpointsTests : IDisposable
     }
 
     [Fact]
+    public async Task EvaluateFeat_ValidatesAndReturnsTypedAbilityScoreImprovementEffects()
+    {
+        var request = new FeatEligibilityRequest(
+            CharacterValidatorTests.CreateValidCharacter(level: 4) with
+            {
+                Spells = CharacterValidatorTests.WizardSpells(level: 4)
+            },
+            "ability-score-improvement",
+            new AbilityScoreImprovementEffect([new("int", 1), new("wis", 1)]));
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/characters/evaluate-feat",
+            request,
+            CancellationToken.None);
+        var evaluation = await response.Content.ReadFromJsonAsync<FeatEligibilityEvaluation>(
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(evaluation?.Feat);
+        Assert.True(evaluation.Validation.IsValid);
+        Assert.True(evaluation.Feat.MeetsPrerequisites);
+        Assert.True(evaluation.Feat.EffectsSupported);
+        Assert.True(evaluation.Feat.CanSelect);
+        Assert.Equal(13, evaluation.Feat.ResultingAbilities?.Intelligence);
+        Assert.Equal(11, evaluation.Feat.ResultingAbilities?.Wisdom);
+        Assert.Equal(FeatEffectManifest.Version, evaluation.Feat.EffectManifestVersion);
+    }
+
+    [Fact]
+    public async Task EvaluateFeat_RequiresAChoiceForTheSupportedAbilityScoreImprovementEffect()
+    {
+        var request = new FeatEligibilityRequest(
+            CharacterValidatorTests.CreateValidCharacter(level: 4) with
+            {
+                Spells = CharacterValidatorTests.WizardSpells(level: 4)
+            },
+            "ability-score-improvement");
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/characters/evaluate-feat",
+            request,
+            CancellationToken.None);
+        var evaluation = await response.Content.ReadFromJsonAsync<FeatEligibilityEvaluation>(
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(evaluation?.Feat);
+        Assert.False(evaluation.Validation.IsValid);
+        Assert.True(evaluation.Feat.MeetsPrerequisites);
+        Assert.True(evaluation.Feat.EffectsSupported);
+        Assert.False(evaluation.Feat.CanSelect);
+        Assert.Null(evaluation.Feat.ResultingAbilities);
+        Assert.Contains(evaluation.Validation.Violations, violation =>
+            violation.Code == "character.feat.effect.required");
+    }
+
+    [Fact]
     public async Task Validate_ResolvesEquippedArmorAndReturnsCanonicalArmorClass()
     {
         var character = CharacterValidatorTests.CreateValidCharacter() with
@@ -489,9 +546,12 @@ public sealed class CharacterEndpointsTests : IDisposable
 
             if (category == CatalogCategory.Feats)
             {
+                var abilityScoreImprovement = id == "ability-score-improvement";
                 return Task.FromResult<CatalogItemDetail?>(new CatalogItemDetail(
                     id,
-                    id == "grappler" ? "Grappler" : id,
+                    abilityScoreImprovement
+                        ? "Ability Score Improvement"
+                        : id == "grappler" ? "Grappler" : id,
                     CatalogCategory.Feats.ToSlug(),
                     [],
                     [],
@@ -500,17 +560,19 @@ public sealed class CharacterEndpointsTests : IDisposable
                         "general",
                         MinimumLevel: 4,
                         RequiredFeature: null,
-                        IsRepeatable: false,
-                        new CatalogAbilityScorePrerequisiteChoice(
-                            1,
-                            [
-                                new CatalogAbilityScorePrerequisite(
-                                    new CatalogReference("str", "STR"),
-                                    13),
-                                new CatalogAbilityScorePrerequisite(
-                                    new CatalogReference("dex", "DEX"),
-                                    13)
-                            ]))));
+                        IsRepeatable: abilityScoreImprovement,
+                        abilityScoreImprovement
+                            ? null
+                            : new CatalogAbilityScorePrerequisiteChoice(
+                                1,
+                                [
+                                    new CatalogAbilityScorePrerequisite(
+                                        new CatalogReference("str", "STR"),
+                                        13),
+                                    new CatalogAbilityScorePrerequisite(
+                                        new CatalogReference("dex", "DEX"),
+                                        13)
+                                ]))));
             }
 
             if (category == CatalogCategory.Equipment)

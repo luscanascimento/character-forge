@@ -150,14 +150,17 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 - Recorded the ownership/equipped-state boundary in ADR-018 and live-smoke-tested a valid level-1 Fighter in Chain Mail through complete provider-backed character evaluation.
 - Added an eighth, optional Equipment builder step with complete-catalog loading, search, owned quantities, equipped toggles, auto-save, and Review presentation.
 - Preserved unavailable saved items visibly until explicit removal and covered canonical persistence, equipped state, and non-destructive stale-item correction in the frontend suite.
+- Added versioned feat-effect manifest `SRD-5.2.1-FEAT-1` with exact provider-agreement checks and SRD provenance for Ability Score Improvement.
+- Extended feat evaluation with typed one-ability +2 or two-ability +1 proposals, canonical ability ids, the feat-specific maximum of 20, resulting scores, and structured effect errors.
+- Kept prerequisite eligibility, effect support, effect validity, and selectability distinct, and added the schema-validated frontend request/response contract without prematurely persisting feat choices.
 
 ## Work in progress
 
-Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, server-owned inventory/armor evaluation, and builder equipment interaction. Typed feat effects, attacks, and Weapon Mastery selections remain separate increments.
+Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, the first typed feat effect, server-owned inventory/armor evaluation, and builder equipment interaction. Stored feat choices, remaining feat effects, attacks, and Weapon Mastery selections remain separate increments.
 
 ## Next step
 
-Add typed feat effects beginning with Ability Score Improvement before exposing its progression choices.
+Persist canonical feat selections against active Ability Score Improvement progression occurrences, defining the base-versus-effective ability boundary before exposing builder controls.
 
 ## Pending decisions
 
@@ -166,7 +169,7 @@ Add typed feat effects beginning with Ability Score Improvement before exposing 
 
 ## Known issues and limitations
 
-- Strength-minimum speed effects, Stealth disadvantage, weapon attacks, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
+- Stored feat choices, effects beyond Ability Score Improvement, Strength-minimum speed effects, Stealth disadvantage, weapon attacks, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -176,12 +179,12 @@ Add typed feat effects beginning with Ability Score Improvement before exposing 
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 94 passing across 13 files (`vitest run`)
+- Frontend unit tests: 95 passing across 13 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 171 passing
-- Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, complete character validation including equipped Chain Mail AC, and a valid Bard level-gain spell replacement with Expertise
+- Backend unit/integration tests: 178 passing
+- Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, species/trait choices, backgrounds, feats including the Ability Score Improvement manifest facts, filtered spells, equipment list/detail, complete character validation including equipped Chain Mail AC, and a valid Bard level-gain spell replacement with Expertise
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 

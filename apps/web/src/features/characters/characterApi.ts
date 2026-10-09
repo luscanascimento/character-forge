@@ -3,6 +3,7 @@ import {
   featEligibilityEvaluationSchema,
   spellReplacementEvaluationSchema,
   toCharacterRequest,
+  type AbilityScoreImprovementEffect,
   type CharacterEvaluation,
   type FeatEligibilityEvaluation,
   type SpellReplacementEvaluation,
@@ -74,6 +75,7 @@ export async function validateSpellReplacement(
 export async function evaluateFeatEligibility(
   document: StoredCharacterV1,
   featId: string,
+  abilityScoreImprovement?: AbilityScoreImprovementEffect,
   signal?: AbortSignal,
 ): Promise<FeatEligibilityEvaluation> {
   const response = await fetch(`${apiBaseUrl}/api/characters/evaluate-feat`, {
@@ -85,6 +87,7 @@ export async function evaluateFeatEligibility(
     body: JSON.stringify({
       character: toCharacterRequest(document),
       featId,
+      abilityScoreImprovement,
     }),
     signal,
   })

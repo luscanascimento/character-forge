@@ -4,7 +4,10 @@ using CharacterForge.Api.Infrastructure.Srd;
 
 namespace CharacterForge.Api.Features.Characters;
 
-public sealed record FeatEligibilityRequest(Character Character, string? FeatId);
+public sealed record FeatEligibilityRequest(
+    Character Character,
+    string? FeatId,
+    AbilityScoreImprovementEffect? AbilityScoreImprovement = null);
 
 public sealed record FeatEligibilityResult(
     ContentReference Feat,
@@ -12,7 +15,9 @@ public sealed record FeatEligibilityResult(
     bool IsRepeatable,
     bool MeetsPrerequisites,
     bool EffectsSupported,
-    bool CanSelect);
+    bool CanSelect,
+    AbilityScores? ResultingAbilities = null,
+    string? EffectManifestVersion = null);
 
 public sealed record FeatEligibilityEvaluation(
     ValidationResult Validation,
@@ -69,10 +74,10 @@ public sealed class FeatEligibilityEvaluationService(
         }
 
         var activeFeatures = ActiveFeatures(progression, selectedProgression);
-        ValidationResult validation;
+        ValidationResult prerequisiteValidation;
         try
         {
-            validation = FeatEligibilityRules.Evaluate(
+            prerequisiteValidation = FeatEligibilityRules.Evaluate(
                 feat.Feat,
                 selectedProgression.Level,
                 request.Character.Abilities!,
@@ -85,17 +90,53 @@ public sealed class FeatEligibilityEvaluationService(
                 exception);
         }
 
-        // Phase 7 does not authorize general feat persistence until each effect is typed.
-        const bool effectsSupported = false;
+        var effectsSupported = FeatEffectManifest.Supports(feat.Id);
+        var effectValidation = new ValidationResult([]);
+        AbilityScores? resultingAbilities = null;
+        if (effectsSupported)
+        {
+            try
+            {
+                FeatEffectManifest.Verify(feat);
+            }
+            catch (FeatEffectContentException exception)
+            {
+                throw new SrdProviderException(
+                    "The selected feat did not match the supported typed effect manifest.",
+                    exception);
+            }
+
+            var resolution = FeatEffectRules.ResolveAbilityScoreImprovement(
+                request.Character.Abilities!,
+                request.AbilityScoreImprovement);
+            effectValidation = resolution.Validation;
+            resultingAbilities = resolution.ResultingAbilities;
+        }
+        else if (request.AbilityScoreImprovement is not null)
+        {
+            effectValidation = new ValidationResult([
+                new RuleViolation(
+                    "character.feat.effect.unsupported",
+                    "This feat does not use the Ability Score Improvement effect.",
+                    "abilityScoreImprovement",
+                    "error",
+                    "Submit effects only for a feat with a matching typed implementation.")
+            ]);
+        }
+
+        var validation = new ValidationResult(
+            prerequisiteValidation.Violations.Concat(effectValidation.Violations).ToArray());
         return new FeatEligibilityEvaluation(
             validation,
             new FeatEligibilityResult(
                 new ContentReference(feat.Id, feat.Name),
                 feat.Feat.Type,
                 feat.Feat.IsRepeatable,
-                validation.IsValid,
+                prerequisiteValidation.IsValid,
                 effectsSupported,
-                CanSelect: validation.IsValid && effectsSupported));
+                CanSelect: prerequisiteValidation.IsValid && effectsSupported && effectValidation.IsValid,
+                resultingAbilities,
+                effectsSupported ? FeatEffectManifest.Version : null));
     }
 
     private static IReadOnlyList<CatalogReference> ActiveFeatures(
