@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createStoredCharacter } from '../../test/characterFixture'
 import {
   CharacterValidationRequestError,
+  evaluateFeatEligibility,
   validateCharacter,
   validateSpellReplacement,
 } from './characterApi'
@@ -83,5 +84,42 @@ describe('character validation API', () => {
     })
     expect(body.previous).not.toHaveProperty('schemaVersion')
     expect(body.current).not.toHaveProperty('updatedAt')
+  })
+
+  it('sends a canonical character and feat id for eligibility evaluation', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          validation: { isValid: true, violations: [] },
+          feat: {
+            feat: { id: 'grappler', name: 'Grappler' },
+            type: 'general',
+            isRepeatable: false,
+            meetsPrerequisites: true,
+            effectsSupported: false,
+            canSelect: false,
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    const character = createStoredCharacter()
+
+    const result = await evaluateFeatEligibility(character, 'grappler')
+
+    expect(result.feat).toMatchObject({
+      feat: { id: 'grappler' },
+      meetsPrerequisites: true,
+      effectsSupported: false,
+      canSelect: false,
+    })
+    const request = fetchMock.mock.calls[0]
+    expect(request?.[0]).toBe('/api/characters/evaluate-feat')
+    const body = JSON.parse((request?.[1]?.body as string) ?? '{}') as Record<string, unknown>
+    expect(body).toMatchObject({
+      featId: 'grappler',
+      character: { id: character.id, rulesVersion: 'SRD-5.2.1' },
+    })
+    expect(body.character).not.toHaveProperty('schemaVersion')
   })
 })

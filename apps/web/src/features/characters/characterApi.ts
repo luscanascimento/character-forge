@@ -1,8 +1,10 @@
 import {
   characterEvaluationSchema,
+  featEligibilityEvaluationSchema,
   spellReplacementEvaluationSchema,
   toCharacterRequest,
   type CharacterEvaluation,
+  type FeatEligibilityEvaluation,
   type SpellReplacementEvaluation,
   type StoredCharacterV1,
 } from './characterSchemas'
@@ -67,4 +69,29 @@ export async function validateSpellReplacement(
   }
 
   return spellReplacementEvaluationSchema.parse(await response.json())
+}
+
+export async function evaluateFeatEligibility(
+  document: StoredCharacterV1,
+  featId: string,
+  signal?: AbortSignal,
+): Promise<FeatEligibilityEvaluation> {
+  const response = await fetch(`${apiBaseUrl}/api/characters/evaluate-feat`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      character: toCharacterRequest(document),
+      featId,
+    }),
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new CharacterValidationRequestError(response.status)
+  }
+
+  return featEligibilityEvaluationSchema.parse(await response.json())
 }

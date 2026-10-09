@@ -30,3 +30,7 @@ Catalog descriptions remain presentation-only. No rule may be derived from prose
 - Ability Score Improvement cannot be exposed merely because its feat catalog record exists.
 - The builder can explain unsupported or invalid choices without accepting partially modeled effects.
 - Phase 7 can ship in independently tested increments while preserving the canonical server boundary.
+
+## Implementation note
+
+The first implementation increments normalize equipment detail and starting-package choice trees, then add `POST /api/characters/evaluate-feat`. Feat evaluation resolves canonical character state and progression before checking provider-owned minimum-level, ability-score, and named-feature prerequisites. It reports prerequisite eligibility separately from effect support; all general feat effects remain unsupported and cannot yet be persisted through this endpoint.

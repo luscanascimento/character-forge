@@ -337,6 +337,32 @@ public sealed class CharacterEndpointsTests : IDisposable
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
 
+    [Fact]
+    public async Task EvaluateFeat_SeparatesMetPrerequisitesFromUnsupportedEffects()
+    {
+        var request = new FeatEligibilityRequest(
+            CharacterValidatorTests.CreateValidCharacter(level: 4) with
+            {
+                Spells = CharacterValidatorTests.WizardSpells(level: 4)
+            },
+            "grappler");
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/characters/evaluate-feat",
+            request,
+            CancellationToken.None);
+        var evaluation = await response.Content.ReadFromJsonAsync<FeatEligibilityEvaluation>(
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(evaluation?.Feat);
+        Assert.True(evaluation.Validation.IsValid);
+        Assert.True(evaluation.Feat.MeetsPrerequisites);
+        Assert.False(evaluation.Feat.EffectsSupported);
+        Assert.False(evaluation.Feat.CanSelect);
+        Assert.Equal("grappler", evaluation.Feat.Feat.Id);
+    }
+
     public void Dispose()
     {
         _client.Dispose();
@@ -432,6 +458,32 @@ public sealed class CharacterEndpointsTests : IDisposable
             if (id == "missing")
             {
                 return Task.FromResult<CatalogItemDetail?>(null);
+            }
+
+            if (category == CatalogCategory.Feats)
+            {
+                return Task.FromResult<CatalogItemDetail?>(new CatalogItemDetail(
+                    id,
+                    id == "grappler" ? "Grappler" : id,
+                    CatalogCategory.Feats.ToSlug(),
+                    [],
+                    [],
+                    [],
+                    Feat: new CatalogFeatFacts(
+                        "general",
+                        MinimumLevel: 4,
+                        RequiredFeature: null,
+                        IsRepeatable: false,
+                        new CatalogAbilityScorePrerequisiteChoice(
+                            1,
+                            [
+                                new CatalogAbilityScorePrerequisite(
+                                    new CatalogReference("str", "STR"),
+                                    13),
+                                new CatalogAbilityScorePrerequisite(
+                                    new CatalogReference("dex", "DEX"),
+                                    13)
+                            ]))));
             }
 
             var facts = category switch

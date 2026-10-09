@@ -26,6 +26,17 @@ public static class CharacterEndpoints
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
             .RequireRateLimiting("catalog");
 
+        endpoints.MapPost("/api/characters/evaluate-feat", async (
+                FeatEligibilityRequest request,
+                FeatEligibilityEvaluationService service,
+                CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.EvaluateAsync(request, cancellationToken)))
+            .WithName("EvaluateFeatEligibility")
+            .WithSummary("Evaluates canonical feat prerequisites without persisting unsupported feat effects.")
+            .Produces<FeatEligibilityEvaluation>()
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
+            .RequireRateLimiting("catalog");
+
         return endpoints;
     }
 }

@@ -72,7 +72,7 @@ The selected rules contract is `ruleset: "2024"` and `rulesVersion: "SRD-5.2.1"`
 
 Only legally redistributable SRD material is in scope. Do not add content from non-SRD sourcebooks or scrape D&D Beyond. The catalog exposes classes, species, backgrounds, feats, spells, and equipment through `/api/catalog/{category}` and `/api/catalog/{category}/{id}`. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) and the [API research checkpoint](docs/SRD-API-RESEARCH.md).
 
-Draft characters can be submitted to `POST /api/characters/validate` for canonical rule validation and derived ability/proficiency, combat, progression, and spellcasting values. Later spell changes can be submitted to `POST /api/characters/validate-spell-replacement` with previous/current canonical states and an explicit class-level or Long Rest trigger. Neither endpoint persists character data, and calculations are returned only for valid 2024 / SRD 5.2.1 documents within the rules currently implemented.
+Draft characters can be submitted to `POST /api/characters/validate` for canonical rule validation and derived ability/proficiency, combat, progression, and spellcasting values. Later spell changes can be submitted to `POST /api/characters/validate-spell-replacement` with previous/current canonical states and an explicit class-level or Long Rest trigger. `POST /api/characters/evaluate-feat` evaluates canonical prerequisites while explicitly reporting that general feat effects are not yet supported. None of these endpoints persists character data, and calculations are returned only for valid 2024 / SRD 5.2.1 documents within the rules currently implemented.
 
 ## Architecture and roadmap
 

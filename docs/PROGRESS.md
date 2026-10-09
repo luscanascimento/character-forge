@@ -141,14 +141,17 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 - Added provider-neutral equipment facts for categories, cost/weight, weapon damage/range/properties/mastery, and armor AC/Dexterity/Strength/Stealth behavior.
 - Normalized class and background starting equipment into bounded recursive bundle, item, category, currency, and nested-choice contracts with stable ids and fail-closed unknown-shape handling.
 - Extended the frontend catalog schema for the normalized equipment contracts and added focused provider/client coverage for packages, category choices, weapons, armor, and malformed data.
+- Added `POST /api/characters/evaluate-feat`, which validates the complete character before evaluating a canonical feat's minimum level, alternative ability thresholds, and named-feature prerequisite.
+- Mapped the provider's bounded named prerequisites to stable active progression feature ids and fail closed on unknown names instead of inferring feature ownership from display text.
+- Kept prerequisite eligibility distinct from effect support: the typed response and frontend adapter cannot authorize general feat persistence while its state-changing effects remain unmodeled.
 
 ## Work in progress
 
-Phase 7 now has its source-backed boundary and normalized equipment catalog foundation. Character ownership, equipped state, armor calculations, typed feat effects, and Weapon Mastery selections remain intentionally separate increments.
+Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, and canonical feat-prerequisite evaluation. Character ownership, equipped state, armor calculations, typed feat effects, and Weapon Mastery selections remain intentionally separate increments.
 
 ## Next step
 
-Add canonical feat eligibility evaluation from provider-owned type, level, named-feature, repeatability, and ability-score prerequisite facts while keeping feats with unmodeled effects unavailable for persistence.
+Add backward-compatible character equipment ownership and equipped state, then validate canonical references and derive armor/Shield AC from trusted catalog facts and proficiencies.
 
 ## Pending decisions
 
@@ -167,11 +170,11 @@ Add canonical feat eligibility evaluation from provider-owned type, level, named
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 91 passing across 13 files (`vitest run`)
+- Frontend unit tests: 92 passing across 13 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 160 passing
+- Backend unit/integration tests: 165 passing
 - Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, species/trait choices, backgrounds, feats, filtered spells, equipment list/detail, complete character validation, and a valid Bard level-gain spell replacement with Expertise
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
