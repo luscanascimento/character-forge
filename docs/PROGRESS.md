@@ -153,14 +153,21 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 - Added versioned feat-effect manifest `SRD-5.2.1-FEAT-1` with exact provider-agreement checks and SRD provenance for Ability Score Improvement.
 - Extended feat evaluation with typed one-ability +2 or two-ability +1 proposals, canonical ability ids, the feat-specific maximum of 20, resulting scores, and structured effect errors.
 - Kept prerequisite eligibility, effect support, effect validity, and selectability distinct, and added the schema-validated frontend request/response contract without prematurely persisting feat choices.
+- Added backward-compatible feat selections tied to exact Ability Score Improvement progression occurrences, including non-destructive invalidation after class or level changes.
+- Defined base versus effective abilities: stored scores remain immutable inputs while active feat effects apply in acquisition order before modifiers, HP, spellcasting, and Armor Class are derived.
+- Added level-aware Ability Score Improvement controls to the Class step, cumulative maximum enforcement, effective-score Review output, and focused domain/schema/builder coverage.
+- Normalized the provider's per-level Weapon Mastery counter and added versioned manifest `SRD-5.2.1-WM-1` with exact Barbarian/Fighter agreement plus sourced Paladin/Ranger/Rogue capacities.
+- Added backward-compatible Weapon Mastery selections with exact cardinality, distinctness, inventory ownership, canonical weapon identity, provider-owned mastery property, and stable proficiency/category eligibility.
+- Exposed Weapon Mastery capacity through class progression, integrated owned trained weapon choices into Equipment, retained invalid selections for explicit correction, and returned canonical weapon/mastery pairs in Review.
+- Recorded the capacity/ownership/training boundary in ADR-020 and covered provider normalization, manifest agreement, canonical resolution, frontend schemas, persistence, and builder interaction.
 
 ## Work in progress
 
-Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, the first typed feat effect, server-owned inventory/armor evaluation, and builder equipment interaction. Stored feat choices, remaining feat effects, attacks, and Weapon Mastery selections remain separate increments.
+Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, stored Ability Score Improvement choices with effective abilities, server-owned inventory/armor evaluation, and canonical Weapon Mastery selection. Remaining feat effects and weapon attacks remain separate increments.
 
 ## Next step
 
-Persist canonical feat selections against active Ability Score Improvement progression occurrences, defining the base-versus-effective ability boundary before exposing builder controls.
+Add canonical weapon attacks after wielded configuration, attack-ability selection, and proficiency application are explicit.
 
 ## Pending decisions
 
@@ -169,7 +176,7 @@ Persist canonical feat selections against active Ability Score Improvement progr
 
 ## Known issues and limitations
 
-- Stored feat choices, effects beyond Ability Score Improvement, Strength-minimum speed effects, Stealth disadvantage, weapon attacks, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
+- Feat effects beyond Ability Score Improvement, Weapon Mastery replacement transitions, Strength-minimum speed effects, Stealth disadvantage, weapon attacks, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -179,15 +186,15 @@ Persist canonical feat selections against active Ability Score Improvement progr
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 95 passing across 13 files (`vitest run`)
+- Frontend unit tests: 98 passing across 13 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 178 passing
-- Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, species/trait choices, backgrounds, feats including the Ability Score Improvement manifest facts, filtered spells, equipment list/detail, complete character validation including equipped Chain Mail AC, and a valid Bard level-gain spell replacement with Expertise
+- Backend unit/integration tests: 193 passing
+- Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, all five Weapon Mastery progressions/capacities, species/trait choices, backgrounds, feats including the Ability Score Improvement manifest facts, filtered spells, equipment list/detail, complete character validation including equipped Chain Mail AC, and a valid Bard level-gain spell replacement with Expertise
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 
 ## Last checkpoint
 
-2026-10-09 (America/Sao_Paulo)
+2026-10-13 (America/Sao_Paulo)

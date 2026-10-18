@@ -30,6 +30,8 @@ describe('createStoredCharacterDraft', () => {
         featureChoices: [],
         spells: { cantrips: [], spellbook: [], preparedSpells: [] },
         equipment: { items: [] },
+        feats: [],
+        weaponMasteries: [],
       },
     })
   })
@@ -89,6 +91,8 @@ describe('storedCharacterV1Schema', () => {
       featureChoices: _featureChoices,
       spells: _spells,
       equipment: _equipment,
+      feats: _feats,
+      weaponMasteries: _weaponMasteries,
       ...legacyCharacter
     } = createStoredCharacterDraft().character
     const legacyDocument = {
@@ -108,5 +112,7 @@ describe('storedCharacterV1Schema', () => {
     expect(parsed.character.featureChoices).toEqual([])
     expect(parsed.character.spells).toEqual({ cantrips: [], spellbook: [], preparedSpells: [] })
     expect(parsed.character.equipment).toEqual({ items: [] })
+    expect(parsed.character.feats).toEqual([])
+    expect(parsed.character.weaponMasteries).toEqual([])
   })
 })

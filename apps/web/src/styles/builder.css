@@ -741,13 +741,15 @@
   font-size: 0.68rem;
 }
 
-.feature-choices {
+.feature-choices,
+.feat-choices {
   display: grid;
   gap: 0.85rem;
   margin-bottom: 1.75rem;
 }
 
-.feature-choices > div:first-child h3 {
+.feature-choices > div:first-child h3,
+.feat-choices > div:first-child h3 {
   margin: 0;
   color: var(--color-parchment);
   font-family: var(--font-display);
@@ -755,9 +757,85 @@
   font-weight: 500;
 }
 
-.feature-choices > div:first-child > span {
+.feature-choices > div:first-child > span,
+.feat-choices > div:first-child > span {
   color: var(--color-text-muted);
   font-size: 0.72rem;
+}
+
+.feat-choice {
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin: 0;
+  background: rgb(18 16 14 / 38%);
+}
+
+.feat-choice--error {
+  border-color: var(--color-danger);
+}
+
+.feat-choice > legend {
+  padding-inline: 0.25rem;
+  color: var(--color-parchment-bright);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.feat-choice > p {
+  margin: -0.1rem 0 0.8rem;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.feat-choice > small,
+.feat-choices > small {
+  color: var(--color-danger);
+  font-size: 0.74rem;
+}
+
+.feat-choice__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.feat-choice__modes label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  color: var(--color-parchment);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.feat-choice__abilities {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.feat-choice__abilities label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--color-bronze);
+  font-family: var(--font-label);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.feat-choice__abilities select {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid var(--color-border-bright);
+  border-radius: var(--radius-sm);
+  color: var(--color-parchment-bright);
+  background: var(--color-coal);
+  font: inherit;
+  font-family: var(--font-body);
+  text-transform: none;
 }
 
 .feature-choice {
@@ -1129,6 +1207,7 @@
 }
 
 .equipment-owned,
+.equipment-mastery,
 .equipment-catalog {
   padding: 1rem;
   border: 1px solid var(--color-border);
@@ -1137,6 +1216,7 @@
 }
 
 .equipment-owned > div:first-child,
+.equipment-mastery > div:first-child,
 .equipment-catalog > div:first-child {
   display: flex;
   gap: 0.75rem;
@@ -1146,6 +1226,7 @@
 }
 
 .equipment-owned h3,
+.equipment-mastery h3,
 .equipment-catalog h3 {
   margin: 0;
   color: var(--color-parchment);
@@ -1155,10 +1236,22 @@
 }
 
 .equipment-owned > div:first-child span,
+.equipment-mastery > div:first-child span,
 .equipment-catalog > div:first-child span,
 .equipment-empty {
   color: var(--color-text-muted);
   font-size: 0.72rem;
+}
+
+.equipment-mastery > p,
+.equipment-mastery > small {
+  margin: 0.25rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.equipment-mastery > .subclass-retained {
+  margin-top: 0.75rem;
 }
 
 .equipment-owned ul,
@@ -1420,6 +1513,12 @@
   align-self: end;
   color: var(--color-text-muted);
   font-size: 0.75rem;
+}
+
+.review-abilities small {
+  grid-column: 1 / -1;
+  color: var(--color-bronze);
+  font-size: 0.62rem;
 }
 
 .review-derived {

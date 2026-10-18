@@ -12,7 +12,9 @@ public sealed record Character(
     IReadOnlyList<ProficiencyChoiceSelection>? ProficiencyChoices,
     IReadOnlyList<FeatureChoiceSelection>? FeatureChoices = null,
     SpellSelections? Spells = null,
-    EquipmentSelections? Equipment = null);
+    EquipmentSelections? Equipment = null,
+    IReadOnlyList<FeatSelection>? Feats = null,
+    IReadOnlyList<WeaponMasterySelection>? WeaponMasteries = null);
 
 public sealed record AbilityScores(
     int Strength,
@@ -49,3 +51,10 @@ public sealed record EquipmentItemSelection(
     ContentReference? Item,
     int Quantity,
     bool Equipped = false);
+
+public sealed record FeatSelection(
+    string? OccurrenceId,
+    ContentReference? Feat,
+    AbilityScoreImprovementEffect? AbilityScoreImprovement = null);
+
+public sealed record WeaponMasterySelection(ContentReference? Weapon);

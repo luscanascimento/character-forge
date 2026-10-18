@@ -68,6 +68,29 @@ export const characterDraftSchema = z.object({
       ),
     })
     .default({ items: [] }),
+  feats: z
+    .array(
+      z.object({
+        occurrenceId: z.string().min(1).max(240),
+        feat: contentReferenceSchema,
+        abilityScoreImprovement: z.object({
+          increases: z.array(
+            z.object({
+              abilityId: z.enum(['str', 'dex', 'con', 'int', 'wis', 'cha']),
+              increase: z.number().int().min(1).max(2),
+            }),
+          ),
+        }),
+      }),
+    )
+    .default([]),
+  weaponMasteries: z
+    .array(
+      z.object({
+        weapon: contentReferenceSchema,
+      }),
+    )
+    .default([]),
 })
 
 const documentIdentitySchema = z.object({
@@ -105,6 +128,8 @@ export const characterEvaluationSchema = z.object({
   }),
   derived: z
     .object({
+      baseAbilities: abilityScoresSchema,
+      effectiveAbilities: abilityScoresSchema,
       abilityModifiers: abilityScoresSchema,
       proficiencyBonus: z.number().int(),
       armorClass: z.number().int(),
@@ -133,6 +158,15 @@ export const characterEvaluationSchema = z.object({
         })
         .nullable()
         .optional(),
+      weaponMasteries: z
+        .array(
+          z.object({
+            weapon: contentReferenceSchema,
+            mastery: contentReferenceSchema,
+          }),
+        )
+        .nullish()
+        .transform((masteries) => masteries ?? []),
     })
     .nullable(),
 })
@@ -203,6 +237,8 @@ export function createStoredCharacterDraft({
       featureChoices: [],
       spells: { cantrips: [], spellbook: [], preparedSpells: [] },
       equipment: { items: [] },
+      feats: [],
+      weaponMasteries: [],
     },
   })
 }

@@ -21,6 +21,25 @@ describe('class progression schema', () => {
 
     expect(() => classProgressionSchema.parse(response)).toThrow()
   })
+
+  it('preserves a versioned Weapon Mastery capacity progression', () => {
+    const response = progressionResponse()
+    const progression = classProgressionSchema.parse({
+      ...response,
+      weaponMastery: {
+        manifestVersion: 'SRD-5.2.1-WM-1',
+        availableAtLevel: 1,
+        levels: Array.from({ length: 20 }, (_, index) => ({
+          classLevel: index + 1,
+          capacity: index < 3 ? 3 : index < 9 ? 4 : index < 15 ? 5 : 6,
+        })),
+        specificProficiencyWeapons: { rapiers: 'rapier' },
+      },
+    })
+
+    expect(progression.weaponMastery?.levels[15]).toEqual({ classLevel: 16, capacity: 6 })
+    expect(progression.weaponMastery?.specificProficiencyWeapons.rapiers).toBe('rapier')
+  })
 })
 
 function progressionResponse() {

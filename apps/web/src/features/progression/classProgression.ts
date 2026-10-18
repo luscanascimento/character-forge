@@ -9,6 +9,7 @@ const levelSchema = z.object({
   level: z.number().int().min(1).max(20),
   proficiencyBonus: z.number().int(),
   features: z.array(referenceSchema),
+  weaponMasteryCapacity: z.number().int().positive().nullable().optional(),
 })
 
 const subclassLevelSchema = z.object({
@@ -121,6 +122,33 @@ export const classProgressionSchema = z.object({
     fetchedAt: z.string(),
   }),
   spellcasting: spellcastingSchema.nullable().optional(),
+  weaponMastery: z
+    .object({
+      manifestVersion: z.string().min(1),
+      availableAtLevel: z.number().int().min(1).max(20),
+      levels: z
+        .array(
+          z.object({
+            classLevel: z.number().int().min(1).max(20),
+            capacity: z.number().int().positive(),
+          }),
+        )
+        .length(20)
+        .superRefine((levels, context) => {
+          levels.forEach((level, index) => {
+            if (level.classLevel !== index + 1) {
+              context.addIssue({
+                code: 'custom',
+                path: [index, 'classLevel'],
+                message: 'Weapon Mastery class levels must be complete and ordered.',
+              })
+            }
+          })
+        }),
+      specificProficiencyWeapons: z.record(z.string().min(1), z.string().min(1)),
+    })
+    .nullable()
+    .optional(),
 })
 
 export type ClassProgressionDocument = z.infer<typeof classProgressionSchema>

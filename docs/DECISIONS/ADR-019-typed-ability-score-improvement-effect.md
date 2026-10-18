@@ -23,3 +23,7 @@ Prerequisite eligibility, effect support, effect validity, and final selectabili
 - Provider drift fails closed before the typed effect can be selected.
 - The frontend has a schema-validated request and response contract ready for a future progression choice UI.
 - Canonical feat ownership, repeated acquisition, and the base-versus-effective ability boundary remain required before feat choices enter stored drafts.
+
+## Follow-up implementation
+
+The next Phase 7 increment completed that dependency: stored choices now reference exact class-progression occurrences, active effects apply in acquisition order, and derived calculations use effective abilities while the persisted ability block remains the base. This preserves the decision above that effect semantics and acquisition ownership are separate rule layers.

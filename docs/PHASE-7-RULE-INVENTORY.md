@@ -50,7 +50,9 @@ Phase 7 will proceed in dependency order:
 5. Add Weapon Mastery capacities and weapon eligibility only after owned weapons and structured weapon proficiencies are available.
 6. Add canonical weapon attacks after wielded configuration, ability selection, and proficiency are explicit.
 
-Step 4's first effect slice is implemented through `SRD-5.2.1-FEAT-1`: Ability Score Improvement proposals are typed, provider-verified, bounded to one +2 or two distinct +1 increases, and capped at 20. Progression-occurrence ownership and stored feat selections remain the next dependency before builder exposure.
+Step 4's first effect slice is implemented through `SRD-5.2.1-FEAT-1`: Ability Score Improvement choices are typed, provider-verified, tied to exact active progression occurrences, bounded to one +2 or two distinct +1 increases, and capped cumulatively at 20. Base scores remain persisted inputs while active effects produce effective scores for canonical derivation.
+
+Step 5 is implemented through `SRD-5.2.1-WM-1`: provider capacities for Barbarian and Fighter must agree exactly, missing Paladin/Ranger/Rogue capacities are manifest-owned, and selections require distinct owned weapons covered by canonical weapon proficiency ids or normalized equipment categories. Long Rest replacement transitions remain deferred.
 
 The initial equipment model will preserve non-destructive invalidation: catalog changes, class changes, or lost proficiencies retain saved references but produce structured violations until the user explicitly replaces or removes them. Initial creation may use either the class/background packages or manually chosen owned equipment; it must never infer one route from the other.
 

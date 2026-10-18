@@ -94,6 +94,27 @@ public sealed class SrdApiClientTests
     }
 
     [Fact]
+    public async Task GetClassProgression_NormalizesWeaponMasteryCapacity()
+    {
+        var client = CreateClient(request => request.RequestUri!.PathAndQuery switch
+        {
+            "/api/2024/classes/fighter" => Json("""
+                { "index": "fighter", "name": "Fighter", "hit_die": 10 }
+                """),
+            "/api/2024/classes/fighter/levels" => Json(
+                ClassLevelsJson("fighter").Replace(
+                    "\"features\": []",
+                    "\"features\": [], \"class_specific\": { \"weapon_mastery\": 3 }")),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        });
+
+        var progression = await client.GetClassProgressionAsync("fighter", CancellationToken.None);
+
+        Assert.NotNull(progression);
+        Assert.Equal(3, progression.Levels[1].WeaponMasteryCapacity);
+    }
+
+    [Fact]
     public async Task GetClassProgression_RejectsAnIncompleteSpellcastingTable()
     {
         var client = CreateClient(request => request.RequestUri!.PathAndQuery switch

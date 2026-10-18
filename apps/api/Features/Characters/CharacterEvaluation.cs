@@ -9,13 +9,16 @@ public sealed record AbilityModifiers(
     int Charisma);
 
 public sealed record CharacterDerivedValues(
+    AbilityScores BaseAbilities,
+    AbilityScores EffectiveAbilities,
     AbilityModifiers AbilityModifiers,
     int ProficiencyBonus,
     int ArmorClass,
     int? HitPointMaximum,
     int HitDie,
     IReadOnlyList<GrantedProficiency> GrantedProficiencies,
-    SpellcastingDerivedValues? Spellcasting = null);
+    SpellcastingDerivedValues? Spellcasting = null,
+    IReadOnlyList<ResolvedWeaponMastery>? WeaponMasteries = null);
 
 public sealed record SpellcastingDerivedValues(
     ContentReference Ability,
@@ -66,12 +69,24 @@ public sealed record SpellSelectionRule(
 public sealed record EquipmentItemRule(
     ContentReference Item,
     IReadOnlySet<string> CategoryIds,
-    ArmorEquipmentRule? Armor);
+    ArmorEquipmentRule? Armor,
+    WeaponEquipmentRule? Weapon = null);
 
 public sealed record ArmorEquipmentRule(
     int BaseArmorClass,
     bool AddsDexterity,
     int? MaximumDexterityBonus);
+
+public sealed record WeaponEquipmentRule(ContentReference Mastery);
+
+public sealed record WeaponMasteryRule(
+    int Capacity,
+    string ManifestVersion,
+    IReadOnlyDictionary<string, string> SpecificProficiencyWeapons);
+
+public sealed record ResolvedWeaponMastery(
+    ContentReference Weapon,
+    ContentReference Mastery);
 
 public sealed record CharacterRulesContext(
     int HitDie,
@@ -81,7 +96,10 @@ public sealed record CharacterRulesContext(
     IReadOnlyList<FeatureChoiceRequirementRule>? FeatureChoices = null,
     SpellcastingProgressionRule? Spellcasting = null,
     SpellSelectionRule? SpellSelections = null,
-    IReadOnlyList<EquipmentItemRule>? Equipment = null);
+    IReadOnlyList<EquipmentItemRule>? Equipment = null,
+    IReadOnlyList<FeatChoiceOccurrenceRule>? FeatChoices = null,
+    bool RequireActiveFeatChoices = true,
+    WeaponMasteryRule? WeaponMastery = null);
 
 public sealed record CharacterEvaluation(
     ValidationResult Validation,
@@ -116,27 +134,45 @@ public static class CharacterEvaluator
         var spellSelectionValidation = SpellSelectionRules.Validate(
             character.Spells,
             context.SpellSelections);
+        var featResolution = FeatSelectionRules.Resolve(
+            character.Feats,
+            context.FeatChoices ?? [],
+            classProgression.Level,
+            character.Abilities!,
+            context.RequireActiveFeatChoices);
+        var effectiveAbilities = featResolution.EffectiveAbilities;
         var equipmentResolution = EquipmentRules.Resolve(
             character.Equipment,
             context.Equipment ?? [],
-            character.Abilities!.Dexterity,
+            effectiveAbilities.Dexterity,
+            grantedProficiencies);
+        var weaponMasteryResolution = WeaponMasteryRules.Resolve(
+            character.WeaponMasteries,
+            context.WeaponMastery,
+            character.Equipment,
+            context.Equipment ?? [],
             grantedProficiencies);
         var ruleViolations = progressionValidation.Violations
             .Concat(proficiencyResolution.Validation.Violations)
             .Concat(featureChoiceValidation.Violations)
             .Concat(spellSelectionValidation.Violations)
+            .Concat(featResolution.Validation.Violations)
             .Concat(equipmentResolution.Validation.Violations)
+            .Concat(weaponMasteryResolution.Validation.Violations)
             .ToArray();
         if (ruleViolations.Length > 0)
         {
             return new CharacterEvaluation(new ValidationResult(ruleViolations), null);
         }
 
-        var abilities = character.Abilities!;
+        var baseAbilities = character.Abilities!;
+        var abilities = effectiveAbilities;
 
         return new CharacterEvaluation(
             validation,
             new CharacterDerivedValues(
+                baseAbilities,
+                abilities,
                 new AbilityModifiers(
                     AbilityRules.GetModifier(abilities.Strength),
                     AbilityRules.GetModifier(abilities.Dexterity),
@@ -155,7 +191,8 @@ public static class CharacterEvaluator
                 SpellcastingRules.Resolve(
                     context.Spellcasting,
                     classProgression.Level,
-                    abilities)));
+                    abilities),
+                weaponMasteryResolution.Masteries));
     }
 
     private static IReadOnlyList<FeatureChoiceRequirementRule> ResolveFeatureChoiceOptions(

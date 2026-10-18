@@ -9,12 +9,14 @@ public sealed record ClassProgressionDocument(
     IReadOnlyList<ClassLevelProgression> Levels,
     IReadOnlyList<SubclassProgression> Subclasses,
     CatalogSource? Source = null,
-    ClassSpellcastingProgression? Spellcasting = null);
+    ClassSpellcastingProgression? Spellcasting = null,
+    ClassWeaponMasteryProgression? WeaponMastery = null);
 
 public sealed record ClassLevelProgression(
     int Level,
     int ProficiencyBonus,
-    IReadOnlyList<CatalogReference> Features);
+    IReadOnlyList<CatalogReference> Features,
+    int? WeaponMasteryCapacity = null);
 
 public sealed record SubclassProgression(
     CatalogReference Subclass,
@@ -40,3 +42,13 @@ public sealed record ClassSpellcastingLevel(
 public sealed record SpellSlotCapacity(
     int SpellLevel,
     int Count);
+
+public sealed record ClassWeaponMasteryProgression(
+    string ManifestVersion,
+    int AvailableAtLevel,
+    IReadOnlyList<ClassWeaponMasteryLevel> Levels,
+    IReadOnlyDictionary<string, string> SpecificProficiencyWeapons);
+
+public sealed record ClassWeaponMasteryLevel(
+    int ClassLevel,
+    int Capacity);

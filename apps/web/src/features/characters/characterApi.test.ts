@@ -37,6 +37,8 @@ describe('character validation API', () => {
     expect(body).not.toHaveProperty('createdAt')
     expect(body).not.toHaveProperty('character')
     expect(body).toHaveProperty('equipment', { items: [] })
+    expect(body).toHaveProperty('feats', [])
+    expect(body).toHaveProperty('weaponMasteries', [])
   })
 
   it('returns a typed request error for unavailable validation', async () => {

@@ -35,7 +35,10 @@ public sealed class FeatEligibilityEvaluationService(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.Character);
 
-        var characterEvaluation = await characters.EvaluateAsync(request.Character, cancellationToken);
+        var characterEvaluation = await characters.EvaluateAsync(
+            request.Character,
+            cancellationToken,
+            allowIncompleteFeatChoices: true);
         if (!characterEvaluation.Validation.IsValid)
         {
             return new FeatEligibilityEvaluation(characterEvaluation.Validation, null);
@@ -107,7 +110,7 @@ public sealed class FeatEligibilityEvaluationService(
             }
 
             var resolution = FeatEffectRules.ResolveAbilityScoreImprovement(
-                request.Character.Abilities!,
+                characterEvaluation.Derived!.EffectiveAbilities,
                 request.AbilityScoreImprovement);
             effectValidation = resolution.Validation;
             resultingAbilities = resolution.ResultingAbilities;

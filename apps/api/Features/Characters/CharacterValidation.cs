@@ -31,8 +31,52 @@ public static partial class CharacterValidator
         ValidateFeatureChoices(character.FeatureChoices, violations);
         ValidateSpellSelections(character.Spells, violations);
         ValidateEquipment(character.Equipment, violations);
+        ValidateFeats(character.Feats, violations);
+        ValidateWeaponMasteries(character.WeaponMasteries, violations);
 
         return new ValidationResult(violations);
+    }
+
+    private static void ValidateWeaponMasteries(
+        IReadOnlyList<WeaponMasterySelection>? masteries,
+        ICollection<RuleViolation> violations)
+    {
+        for (var index = 0; index < (masteries?.Count ?? 0); index++)
+        {
+            ValidateReference(
+                masteries![index].Weapon,
+                "weaponMastery.weapon.reference",
+                $"weaponMasteries[{index}].weapon",
+                "Mastered weapon",
+                violations);
+        }
+    }
+
+    private static void ValidateFeats(
+        IReadOnlyList<FeatSelection>? feats,
+        ICollection<RuleViolation> violations)
+    {
+        for (var index = 0; index < (feats?.Count ?? 0); index++)
+        {
+            var selection = feats![index];
+            var source = $"feats[{index}]";
+            if (string.IsNullOrWhiteSpace(selection.OccurrenceId))
+            {
+                AddViolation(
+                    violations,
+                    "character.feat.occurrence.required",
+                    "Feat occurrence id is required.",
+                    $"{source}.occurrenceId",
+                    "Keep the occurrence id supplied by the active class progression.");
+            }
+
+            ValidateReference(
+                selection.Feat,
+                "feat.reference",
+                $"{source}.feat",
+                "Feat",
+                violations);
+        }
     }
 
     private static void ValidateEquipment(

@@ -58,10 +58,18 @@ internal static class SrdProgressionMapper
                 $"The SRD provider returned an invalid proficiency bonus at class level {level.Level}.");
         }
 
+        var weaponMasteryCapacity = level.ClassSpecific?.WeaponMastery;
+        if (weaponMasteryCapacity is <= 0 or > 20)
+        {
+            throw new SrdProviderException(
+                $"The SRD provider returned an invalid Weapon Mastery capacity at class level {level.Level}.");
+        }
+
         return new ClassLevelProgression(
             level.Level,
             level.ProficiencyBonus,
-            References(level.Features));
+            References(level.Features),
+            weaponMasteryCapacity);
     }
 
     private static SubclassProgression MapSubclass(

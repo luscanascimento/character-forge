@@ -59,7 +59,11 @@ internal sealed record SrdClassLevel(
     int Level,
     [property: JsonPropertyName("prof_bonus")] int ProficiencyBonus,
     IReadOnlyList<SrdReference>? Features,
-    SrdClassLevelSpellcasting? Spellcasting);
+    SrdClassLevelSpellcasting? Spellcasting,
+    [property: JsonPropertyName("class_specific")] SrdClassLevelSpecific? ClassSpecific = null);
+
+internal sealed record SrdClassLevelSpecific(
+    [property: JsonPropertyName("weapon_mastery")] int? WeaponMastery);
 
 internal sealed record SrdClassLevelSpellcasting(
     [property: JsonPropertyName("cantrips_known")] int? CantripsKnown,

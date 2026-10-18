@@ -91,9 +91,11 @@ public sealed class FeatureRuleEndpointsTests : IDisposable
                     .Select(level => new ClassLevelProgression(
                         level,
                         2 + ((level - 1) / 4),
-                        level == 2
-                            ? [new CatalogReference("paladin-fighting-style", "Fighting Style")]
-                            : []))
+                        level == 1
+                            ? [new CatalogReference("paladin-weapon-mastery", "Weapon Mastery")]
+                            : level == 2
+                                ? [new CatalogReference("paladin-fighting-style", "Fighting Style")]
+                                : []))
                     .ToArray(),
                 [],
                 Spellcasting: new ClassSpellcastingProgression(

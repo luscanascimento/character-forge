@@ -71,7 +71,9 @@ const catalogItems = {
     { id: 'sage', name: 'Sage', category: 'backgrounds' as const },
   ],
   equipment: [
+    { id: 'battleaxe', name: 'Battleaxe', category: 'equipment' as const },
     { id: 'chain-mail', name: 'Chain Mail', category: 'equipment' as const },
+    { id: 'dagger', name: 'Dagger', category: 'equipment' as const },
     { id: 'longsword', name: 'Longsword', category: 'equipment' as const },
     { id: 'shield', name: 'Shield', category: 'equipment' as const },
   ],
@@ -211,6 +213,22 @@ function validEvaluation(): CharacterEvaluation {
   return {
     validation: { violations: [], isValid: true },
     derived: {
+      baseAbilities: {
+        strength: 8,
+        dexterity: 14,
+        constitution: 13,
+        intelligence: 12,
+        wisdom: 10,
+        charisma: 16,
+      },
+      effectiveAbilities: {
+        strength: 8,
+        dexterity: 14,
+        constitution: 13,
+        intelligence: 12,
+        wisdom: 10,
+        charisma: 16,
+      },
       abilityModifiers: {
         strength: -1,
         dexterity: 2,
@@ -253,6 +271,7 @@ function validEvaluation(): CharacterEvaluation {
           ],
         },
       ],
+      weaponMasteries: [],
     },
   }
 }
@@ -1205,6 +1224,99 @@ describe('CharacterBuilderPage', () => {
     )
   })
 
+  it('auto-saves Ability Score Improvement against its exact progression occurrence', async () => {
+    const user = userEvent.setup()
+    const source = createStoredCharacter()
+    const leveledWizard = {
+      ...source,
+      character: {
+        ...source.character,
+        classProgressions: [
+          {
+            class: { id: 'wizard', name: 'Wizard' },
+            level: 4,
+            subclass: { id: 'evoker', name: 'Evoker' },
+          },
+        ],
+      },
+    }
+    const progression = classProgression('wizard')
+    progression.levels = progression.levels.map((level) =>
+      level.level === 4
+        ? {
+            ...level,
+            features: [
+              ...level.features,
+              { id: 'ability-score-improvement', name: 'Ability Score Improvement' },
+            ],
+          }
+        : level,
+    )
+    const itemLoader = vi.fn<CatalogItemLoader>((category, id) => {
+      if (category === 'feats' && id === 'ability-score-improvement') {
+        return Promise.resolve({
+          id,
+          name: 'Ability Score Improvement',
+          category,
+          description: [],
+          attributes: [],
+          sections: [],
+          textSections: [],
+          feat: {
+            type: 'general',
+            minimumLevel: 4,
+            requiredFeature: null,
+            isRepeatable: true,
+            abilityScorePrerequisite: null,
+          },
+          source: {
+            provider: 'D&D 5e SRD API',
+            ruleset: '2024',
+            rulesVersion: 'SRD-5.2.1',
+            fetchedAt: '2026-10-13T12:00:00Z',
+          },
+        })
+      }
+      if (category === 'classes' || category === 'species' || category === 'backgrounds') {
+        return Promise.resolve(catalogItem(category, id))
+      }
+      return Promise.reject(new Error(`Unexpected category: ${category}`))
+    })
+    const storage = repository({ get: vi.fn().mockResolvedValue(leveledWizard) })
+
+    renderPage(
+      storage,
+      undefined,
+      undefined,
+      itemLoader,
+      undefined,
+      10,
+      vi.fn().mockResolvedValue(progression),
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Class' }))
+    await user.click(await screen.findByRole('radio', { name: 'One ability +2' }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Ability' }), 'int')
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          feats: [
+            {
+              occurrenceId: 'wizard-ability-score-improvement-4',
+              feat: { id: 'ability-score-improvement', name: 'Ability Score Improvement' },
+              abilityScoreImprovement: {
+                increases: [{ abilityId: 'int', increase: 2 }],
+              },
+            },
+          ],
+        }),
+      }),
+      source.updatedAt,
+    )
+  })
+
   it('retains a subclass when level drops and offers explicit removal', async () => {
     const user = userEvent.setup()
     const leveledCharacter = createStoredCharacter()
@@ -1548,6 +1660,132 @@ describe('CharacterBuilderPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Chain Mail × 2')).toBeInTheDocument()
     expect(screen.getByText('Equipped')).toBeInTheDocument()
+  })
+
+  it('persists exact Weapon Mastery choices from owned proficient weapons', async () => {
+    const user = userEvent.setup()
+    const source = createStoredCharacter()
+    const fighter = {
+      ...source,
+      character: {
+        ...source.character,
+        classProgressions: [
+          { class: { id: 'fighter', name: 'Fighter' }, level: 1, subclass: null },
+        ],
+        proficiencyChoices: [
+          {
+            choiceId: 'classes/fighter/proficiencies/0',
+            selections: [
+              { id: 'skill-athletics', name: 'Skill: Athletics' },
+              { id: 'skill-survival', name: 'Skill: Survival' },
+            ],
+          },
+          source.character.proficiencyChoices[1]!,
+        ],
+      },
+    }
+    const storage = repository({ get: vi.fn().mockResolvedValue(fighter) })
+    const progression = {
+      ...classProgression('fighter'),
+      weaponMastery: {
+        manifestVersion: 'SRD-5.2.1-WM-1',
+        availableAtLevel: 1,
+        levels: Array.from({ length: 20 }, (_, index) => ({
+          classLevel: index + 1,
+          capacity: index < 3 ? 3 : index < 9 ? 4 : index < 15 ? 5 : 6,
+        })),
+        specificProficiencyWeapons: {},
+      },
+    } satisfies ClassProgressionDocument
+    const itemLoader = vi.fn<CatalogItemLoader>((category, id) => {
+      if (category !== 'equipment') {
+        const item = catalogItem(category as 'classes' | 'species' | 'backgrounds', id)
+        return Promise.resolve(
+          category === 'classes' && id === 'fighter'
+            ? {
+                ...item,
+                characterCreation: {
+                  ...item.characterCreation!,
+                  grantedProficiencies: [
+                    ...(item.characterCreation?.grantedProficiencies ?? []),
+                    { id: 'martial-weapons', name: 'Martial Weapons', isSkill: false },
+                  ],
+                },
+              }
+            : item,
+        )
+      }
+
+      const definitions = {
+        battleaxe: { name: 'Battleaxe', mastery: { id: 'topple', name: 'Topple' } },
+        dagger: { name: 'Dagger', mastery: { id: 'nick', name: 'Nick' } },
+        longsword: { name: 'Longsword', mastery: { id: 'sap', name: 'Sap' } },
+      } as const
+      const definition = definitions[id as keyof typeof definitions]
+      if (!definition) return Promise.reject(new Error(`Unexpected equipment: ${id}`))
+      return Promise.resolve({
+        id,
+        name: definition.name,
+        category: 'equipment',
+        description: [],
+        attributes: [],
+        sections: [],
+        textSections: [],
+        equipment: {
+          categories: [
+            { id: 'weapons', name: 'Weapons' },
+            { id: 'martial-weapons', name: 'Martial Weapons' },
+          ],
+          cost: null,
+          weight: 3,
+          armor: null,
+          weapon: {
+            damage: { dice: '1d8', type: { id: 'slashing', name: 'Slashing' } },
+            twoHandedDamage: null,
+            range: { normal: 5, long: null },
+            properties: [],
+            mastery: definition.mastery,
+          },
+        },
+        source: {
+          provider: 'D&D 5e SRD API',
+          ruleset: '2024',
+          rulesVersion: 'SRD-5.2.1',
+          fetchedAt: '2026-10-13T12:00:00Z',
+        },
+      })
+    })
+
+    renderPage(
+      storage,
+      undefined,
+      undefined,
+      itemLoader,
+      undefined,
+      60_000,
+      vi.fn().mockResolvedValue(progression),
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Equipment' }))
+    for (const name of ['Battleaxe', 'Dagger', 'Longsword']) {
+      await user.click(screen.getByRole('button', { name: `Add ${name}` }))
+      await user.click(await screen.findByRole('checkbox', { name: `Master ${name}` }))
+    }
+    await user.click(screen.getByRole('button', { name: 'Review character' }))
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining({
+          weaponMasteries: [
+            { weapon: { id: 'battleaxe', name: 'Battleaxe' } },
+            { weapon: { id: 'dagger', name: 'Dagger' } },
+            { weapon: { id: 'longsword', name: 'Longsword' } },
+          ],
+        }),
+      }),
+      '2026-09-29T12:00:00.000Z',
+    )
   })
 
   it('retains unavailable equipment until the user explicitly removes it', async () => {

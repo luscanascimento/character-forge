@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
   ArrowRight,
@@ -104,16 +104,25 @@ type BuilderStep =
   'name' | 'abilities' | 'origins' | 'class' | 'proficiencies' | 'spells' | 'equipment' | 'review'
 type AbilityScores = NonNullable<StoredCharacterV1['character']['abilities']>
 type AbilityKey = keyof AbilityScores
+type AbilityId =
+  CharacterDraft['feats'][number]['abilityScoreImprovement']['increases'][number]['abilityId']
 type AbilityInputs = Record<AbilityKey, string>
 type AbilityErrors = Partial<Record<AbilityKey, string>>
 type ProficiencyInputs = Record<string, string[]>
 type ProficiencyErrors = Record<string, string>
 type ClassErrors = { class?: string; subclass?: string; progression?: string }
 type FeatureChoiceInputs = Record<string, { branchId: string; selectionIds: string[] }>
+type FeatMode = 'single' | 'split'
+type FeatInputs = Record<
+  string,
+  { mode: FeatMode | ''; firstAbilityId: string; secondAbilityId: string }
+>
 type SpellInputs = { cantripIds: string[]; spellbookIds: string[]; preparedSpellIds: string[] }
 type SpellErrors = Partial<Record<'cantrips' | 'spellbook' | 'preparedSpells' | '_form', string>>
 type EquipmentInputs = Record<string, { name: string; quantity: string; equipped: boolean }>
 type EquipmentErrors = Record<string, string>
+type WeaponMasteryInputs = string[]
+type WeaponMasteryLevel = NonNullable<ClassProgressionDocument['weaponMastery']>['levels'][number]
 type SavedProficiencyChoices = StoredCharacterV1['character']['proficiencyChoices']
 type EditableBuilderStep = Exclude<BuilderStep, 'review'>
 type SaveIntent = {
@@ -253,6 +262,10 @@ function BuilderWorkspace({
     featureChoiceInputsFrom(document.character.featureChoices),
   )
   const [featureChoiceErrors, setFeatureChoiceErrors] = useState<Record<string, string>>({})
+  const [featInputs, setFeatInputs] = useState<FeatInputs>(() =>
+    featInputsFrom(document.character.feats),
+  )
+  const [featErrors, setFeatErrors] = useState<Record<string, string>>({})
   const [proficiencyInputs, setProficiencyInputs] = useState<ProficiencyInputs>(() =>
     proficiencyInputsFrom(document.character.proficiencyChoices),
   )
@@ -265,6 +278,9 @@ function BuilderWorkspace({
     equipmentInputsFrom(document.character.equipment),
   )
   const [equipmentErrors, setEquipmentErrors] = useState<EquipmentErrors>({})
+  const [weaponMasteryInputs, setWeaponMasteryInputs] = useState<WeaponMasteryInputs>(() =>
+    document.character.weaponMasteries.map((selection) => selection.weapon.id),
+  )
   const [equipmentSearch, setEquipmentSearch] = useState('')
   const nameComplete = Boolean(document.character.name.trim())
   const abilitiesComplete = document.character.abilities !== null
@@ -296,6 +312,13 @@ function BuilderWorkspace({
     enabled: Boolean(classId),
     retry: false,
   })
+  const featOccurrences = abilityScoreImprovementOccurrences(classProgressionQuery.data)
+  const abilityScoreImprovementQuery = useQuery({
+    queryKey: ['catalog-item', 'feats', 'ability-score-improvement'],
+    queryFn: ({ signal }) => catalogItemLoader('feats', 'ability-score-improvement', signal),
+    enabled: featOccurrences.length > 0,
+    retry: false,
+  })
   const selectedProgression = document.character.classProgressions[0]
   const spellcasting = classProgressionQuery.data?.spellcasting
   const preparedSpellSource = spellcasting?.policy.preparedSpellSource
@@ -322,6 +345,23 @@ function BuilderWorkspace({
     enabled: selectedStep === 'equipment',
     retry: false,
   })
+  const ownedCatalogEquipmentIds = Object.keys(equipmentInputs).filter((id) =>
+    equipmentOptionsQuery.data?.some((item) => item.id === id),
+  )
+  const equipmentDetailQueries = useQueries({
+    queries: ownedCatalogEquipmentIds.map((id) => ({
+      queryKey: ['catalog-item', 'equipment', id],
+      queryFn: ({ signal }: { signal: AbortSignal }) => catalogItemLoader('equipment', id, signal),
+      enabled: selectedStep === 'equipment' && Boolean(classProgressionQuery.data?.weaponMastery),
+      retry: false,
+    })),
+  })
+  const equipmentDetails = equipmentDetailQueries
+    .map((query) => query.data)
+    .filter((item): item is CatalogItem => item !== undefined)
+  const weaponMasteryRule = classProgressionQuery.data?.weaponMastery?.levels.find(
+    (level) => level.classLevel === document.character.classProgressions[0]?.level,
+  )
   const classFeatureDocument = featureChoicesQuery.data
     ? featureDocumentByOptionSource(featureChoicesQuery.data, false)
     : undefined
@@ -337,6 +377,13 @@ function BuilderWorkspace({
       classFeatureDocument,
       document.character.classProgressions[0],
       featureChoiceInputsForClass(featureChoiceInputsFrom(document.character.featureChoices)),
+    ).success &&
+    validateFeatInputs(
+      classProgressionQuery.data,
+      document.character.classProgressions[0],
+      abilityScoreImprovementQuery.data,
+      featInputsFrom(document.character.feats),
+      document.character.abilities,
     ).success
   const classResumeNeedsAttention =
     reviewResumePending &&
@@ -375,6 +422,18 @@ function BuilderWorkspace({
   ].filter((item): item is CatalogItem => item !== undefined)
   const proficiencyRules = proficiencyRulesFrom(creationItems)
   const fixedProficiencies = fixedProficienciesFrom(creationItems)
+  const grantedProficiencyIds = new Set([
+    ...fixedProficiencies.map((proficiency) => proficiency.id),
+    ...document.character.proficiencyChoices.flatMap((choice) =>
+      choice.selections.map((selection) => selection.id),
+    ),
+  ])
+  const resolvedProficiencyIds = new Set([
+    ...grantedProficiencyIds,
+    ...Object.entries(classProgressionQuery.data?.weaponMastery?.specificProficiencyWeapons ?? {})
+      .filter(([proficiencyId]) => grantedProficiencyIds.has(proficiencyId))
+      .map(([, weaponId]) => weaponId),
+  ])
   const proficiencyDetailsReady =
     creationItems.length === 3 && creationItems.every((item) => item.characterCreation)
   const savedProficiencyInputs = proficiencyInputsFrom(document.character.proficiencyChoices)
@@ -489,6 +548,16 @@ function BuilderWorkspace({
         document.character.featureChoices,
       )
       if (!featureResult.success) return null
+      const featResult = validateFeatInputs(
+        classProgressionQuery.data,
+        result.progression,
+        abilityScoreImprovementQuery.data,
+        featInputs,
+        document.character.abilities,
+        true,
+        document.character.feats,
+      )
+      if (!featResult.success) return null
       const nextClass = {
         classProgressions: [result.progression],
         featureChoices: mergeFeatureChoices(
@@ -497,9 +566,11 @@ function BuilderWorkspace({
             isExpertiseRequirementId(choice.requirementId),
           ),
         ),
+        feats: featResult.feats,
       }
       return sameValue(nextClass.classProgressions, document.character.classProgressions) &&
-        sameValue(nextClass.featureChoices, document.character.featureChoices)
+        sameValue(nextClass.featureChoices, document.character.featureChoices) &&
+        sameValue(nextClass.feats, document.character.feats)
         ? null
         : { ...document.character, ...nextClass }
     }
@@ -548,10 +619,23 @@ function BuilderWorkspace({
         : null
     }
     if (step === 'equipment') {
-      const result = validateEquipmentInputs(equipmentOptionsQuery.data, equipmentInputs)
-      return result.success && !sameValue(result.equipment, document.character.equipment)
-        ? { ...document.character, equipment: result.equipment }
-        : null
+      const result = validateEquipmentInputs(
+        equipmentOptionsQuery.data,
+        equipmentInputs,
+        weaponMasteryRule,
+        equipmentDetails,
+        weaponMasteryInputs,
+        resolvedProficiencyIds,
+      )
+      if (!result.success) return null
+      return sameValue(result.equipment, document.character.equipment) &&
+        sameValue(result.weaponMasteries, document.character.weaponMasteries)
+        ? null
+        : {
+            ...document.character,
+            equipment: result.equipment,
+            weaponMasteries: result.weaponMasteries,
+          }
     }
     return null
   }
@@ -615,6 +699,11 @@ function BuilderWorkspace({
             ? featureChoiceInputsFrom(saved.character.featureChoices)
             : current,
         )
+        setFeatInputs((current) =>
+          sameValue(current, featInputsFrom(intent.character.feats))
+            ? featInputsFrom(saved.character.feats)
+            : current,
+        )
       }
       if (intent.step === 'proficiencies') {
         setProficiencyInputs((current) =>
@@ -639,6 +728,14 @@ function BuilderWorkspace({
         setEquipmentInputs((current) =>
           sameValue(current, equipmentInputsFrom(intent.character.equipment))
             ? equipmentInputsFrom(saved.character.equipment)
+            : current,
+        )
+        setWeaponMasteryInputs((current) =>
+          sameValue(
+            current,
+            intent.character.weaponMasteries.map((selection) => selection.weapon.id),
+          )
+            ? saved.character.weaponMasteries.map((selection) => selection.weapon.id)
             : current,
         )
       }
@@ -746,9 +843,23 @@ function BuilderWorkspace({
       setFeatureChoiceErrors(featureResult.errors)
       return
     }
+    const featResult = validateFeatInputs(
+      classProgressionQuery.data,
+      result.progression,
+      abilityScoreImprovementQuery.data,
+      featInputs,
+      document.character.abilities,
+      true,
+      document.character.feats,
+    )
+    if (!featResult.success) {
+      setFeatErrors(featResult.errors)
+      return
+    }
 
     setClassErrors({})
     setFeatureChoiceErrors({})
+    setFeatErrors({})
     persistOrAdvance('class', {
       ...document.character,
       classProgressions: [result.progression],
@@ -758,6 +869,7 @@ function BuilderWorkspace({
           isExpertiseRequirementId(choice.requirementId),
         ),
       ),
+      feats: featResult.feats,
     })
   }
 
@@ -826,7 +938,14 @@ function BuilderWorkspace({
 
   function saveEquipment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const result = validateEquipmentInputs(equipmentOptionsQuery.data, equipmentInputs)
+    const result = validateEquipmentInputs(
+      equipmentOptionsQuery.data,
+      equipmentInputs,
+      weaponMasteryRule,
+      equipmentDetails,
+      weaponMasteryInputs,
+      resolvedProficiencyIds,
+    )
     if (!result.success) {
       setEquipmentErrors(result.errors)
       return
@@ -834,7 +953,11 @@ function BuilderWorkspace({
 
     setEquipmentErrors({})
     setReviewResumePending(false)
-    persistOrAdvance('equipment', { ...document.character, equipment: result.equipment })
+    persistOrAdvance('equipment', {
+      ...document.character,
+      equipment: result.equipment,
+      weaponMasteries: result.weaponMasteries,
+    })
   }
 
   return (
@@ -1120,6 +1243,12 @@ function BuilderWorkspace({
               featureChoicesFailed={featureChoicesQuery.isError}
               featureChoiceInputs={featureChoiceInputsForClass(featureChoiceInputs)}
               featureChoiceErrors={featureChoiceErrors}
+              feat={abilityScoreImprovementQuery.data}
+              featPending={featOccurrences.length > 0 && abilityScoreImprovementQuery.isPending}
+              featFailed={abilityScoreImprovementQuery.isError}
+              featInputs={featInputs}
+              featErrors={featErrors}
+              baseAbilities={document.character.abilities}
               classId={classId}
               level={classLevel}
               subclassId={subclassId}
@@ -1167,10 +1296,45 @@ function BuilderWorkspace({
                 setFeatureChoiceErrors((current) => omitKey(current, requirementId))
                 if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
               }}
+              onFeatMode={(occurrenceId, mode) => {
+                setFeatInputs((current) => ({
+                  ...current,
+                  [occurrenceId]: {
+                    mode,
+                    firstAbilityId: current[occurrenceId]?.firstAbilityId ?? '',
+                    secondAbilityId:
+                      mode === 'split' ? (current[occurrenceId]?.secondAbilityId ?? '') : '',
+                  },
+                }))
+                setFeatErrors((current) => omitKey(current, occurrenceId))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onFeatAbility={(occurrenceId, slot, abilityId) => {
+                setFeatInputs((current) => ({
+                  ...current,
+                  [occurrenceId]: {
+                    mode: current[occurrenceId]?.mode ?? '',
+                    firstAbilityId:
+                      slot === 'first' ? abilityId : (current[occurrenceId]?.firstAbilityId ?? ''),
+                    secondAbilityId:
+                      slot === 'second'
+                        ? abilityId
+                        : (current[occurrenceId]?.secondAbilityId ?? ''),
+                  },
+                }))
+                setFeatErrors((current) => omitKey(current, occurrenceId))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onRemoveFeat={(occurrenceId) => {
+                setFeatInputs((current) => omitKey(current, occurrenceId))
+                setFeatErrors((current) => omitKey(current, occurrenceId))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
               onRetry={() => {
                 void classesQuery.refetch()
                 if (classId) void classProgressionQuery.refetch()
                 if (classId) void featureChoicesQuery.refetch()
+                if (featOccurrences.length > 0) void abilityScoreImprovementQuery.refetch()
               }}
               onSubmit={saveClass}
             />
@@ -1346,11 +1510,19 @@ function BuilderWorkspace({
             />
             <EquipmentStep
               options={equipmentOptionsQuery.data}
+              details={equipmentDetails}
               inputs={equipmentInputs}
               errors={equipmentErrors}
+              weaponMasteryRule={weaponMasteryRule}
+              weaponMasteryInputs={weaponMasteryInputs}
+              proficiencyIds={resolvedProficiencyIds}
               search={equipmentSearch}
               pending={equipmentOptionsQuery.isPending}
-              failed={equipmentOptionsQuery.isError}
+              detailsPending={equipmentDetailQueries.some((query) => query.isPending)}
+              failed={
+                equipmentOptionsQuery.isError ||
+                equipmentDetailQueries.some((query) => query.isError)
+              }
               saved={
                 saveMutation.isSuccess &&
                 saveMutation.variables.step === 'equipment' &&
@@ -1383,12 +1555,24 @@ function BuilderWorkspace({
                 setEquipmentErrors((current) => omitKey(current, id))
                 if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
               }}
+              onMastery={(id, selected) => {
+                setWeaponMasteryInputs((current) =>
+                  selected
+                    ? [...new Set([...current, id])]
+                    : current.filter((candidate) => candidate !== id),
+                )
+                setEquipmentErrors((current) => omitKey(current, '_mastery'))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
               onRemove={(id) => {
                 setEquipmentInputs((current) => omitKey(current, id))
                 setEquipmentErrors((current) => omitKey(omitKey(current, id), '_form'))
                 if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
               }}
-              onRetry={() => void equipmentOptionsQuery.refetch()}
+              onRetry={() => {
+                void equipmentOptionsQuery.refetch()
+                equipmentDetailQueries.forEach((query) => void query.refetch())
+              }}
               onSubmit={saveEquipment}
             />
           </>
@@ -1647,10 +1831,15 @@ function SpellsStep({
 
 function EquipmentStep({
   options,
+  details,
   inputs,
   errors,
+  weaponMasteryRule,
+  weaponMasteryInputs,
+  proficiencyIds,
   search,
   pending,
+  detailsPending,
   failed,
   saved,
   saving,
@@ -1659,15 +1848,21 @@ function EquipmentStep({
   onAdd,
   onQuantity,
   onEquipped,
+  onMastery,
   onRemove,
   onRetry,
   onSubmit,
 }: {
   options?: CatalogPage['items']
+  details: CatalogItem[]
   inputs: EquipmentInputs
   errors: EquipmentErrors
+  weaponMasteryRule?: WeaponMasteryLevel
+  weaponMasteryInputs: WeaponMasteryInputs
+  proficiencyIds: ReadonlySet<string>
   search: string
   pending: boolean
+  detailsPending: boolean
   failed: boolean
   saved: boolean
   saving: boolean
@@ -1676,6 +1871,7 @@ function EquipmentStep({
   onAdd: (item: CatalogPage['items'][number]) => void
   onQuantity: (id: string, quantity: string) => void
   onEquipped: (id: string, equipped: boolean) => void
+  onMastery: (id: string, selected: boolean) => void
   onRemove: (id: string) => void
   onRetry: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
@@ -1711,6 +1907,8 @@ function EquipmentStep({
       (normalizedSearch.length === 0 || item.name.toLocaleLowerCase().includes(normalizedSearch)),
   )
   const optionsById = new Map(options.map((item) => [item.id, item]))
+  const detailsById = new Map(details.map((item) => [item.id, item]))
+  const retainedMasteries = weaponMasteryInputs.filter((id) => !inputs[id])
 
   return (
     <form className="builder-form builder-form--wide equipment-form" onSubmit={onSubmit} noValidate>
@@ -1725,7 +1923,15 @@ function EquipmentStep({
           <ul>
             {Object.entries(inputs).map(([id, input]) => {
               const catalogItem = optionsById.get(id)
+              const detail = detailsById.get(id)
+              const weapon = detail?.equipment?.weapon
               const stale = catalogItem === undefined
+              const masterySelected = weaponMasteryInputs.includes(id)
+              const trained = Boolean(
+                detail?.equipment &&
+                (proficiencyIds.has(id) ||
+                  detail.equipment.categories.some((category) => proficiencyIds.has(category.id))),
+              )
               return (
                 <li
                   className={
@@ -1762,6 +1968,21 @@ function EquipmentStep({
                     />
                     <span>Equipped</span>
                   </label>
+                  {weapon && weaponMasteryRule && (
+                    <label className="equipment-equipped">
+                      <input
+                        type="checkbox"
+                        checked={masterySelected}
+                        disabled={!trained && !masterySelected}
+                        onChange={(event) => onMastery(id, event.target.checked)}
+                        aria-label={`Master ${input.name}`}
+                      />
+                      <span>
+                        Mastered · {weapon.mastery.name}
+                        {!trained ? ' · no proficiency' : ''}
+                      </span>
+                    </label>
+                  )}
                   <button type="button" onClick={() => onRemove(id)}>
                     Remove
                   </button>
@@ -1776,6 +1997,41 @@ function EquipmentStep({
           </ul>
         )}
       </section>
+
+      {(weaponMasteryRule || weaponMasteryInputs.length > 0) && (
+        <section className="equipment-mastery" aria-labelledby="weapon-mastery-heading">
+          <div>
+            <h3 id="weapon-mastery-heading">Weapon Mastery</h3>
+            <span>
+              {weaponMasteryRule
+                ? `Choose exactly ${weaponMasteryRule.capacity}. ${weaponMasteryInputs.length} selected.`
+                : 'Retained selections are unavailable for the current class.'}
+            </span>
+          </div>
+          <p>
+            Eligible choices are owned weapons covered by this character’s canonical weapon
+            proficiencies.
+          </p>
+          {detailsPending && <small role="status">Resolving owned weapon properties…</small>}
+          {(weaponMasteryRule ? retainedMasteries : weaponMasteryInputs).map((id) => (
+            <div className="subclass-retained" key={id} role="alert">
+              <AlertTriangle aria-hidden="true" size={18} />
+              <div>
+                <strong>{id} is retained as a mastery choice.</strong>
+                <span>The weapon is no longer in owned equipment.</span>
+              </div>
+              <button type="button" onClick={() => onMastery(id, false)}>
+                Remove mastery
+              </button>
+            </div>
+          ))}
+          {errors._mastery && (
+            <small className="builder-field-error" role="alert">
+              {errors._mastery}
+            </small>
+          )}
+        </section>
+      )}
 
       <section className="equipment-catalog" aria-labelledby="equipment-catalog-heading">
         <div>
@@ -1975,6 +2231,17 @@ function ReviewStep({
               <dd>{expertise.map((selection) => selection.name).join(', ')}</dd>
             </div>
           )}
+          {document.character.feats.map((selection) => (
+            <div key={selection.occurrenceId}>
+              <dt>Feat</dt>
+              <dd>
+                {selection.feat.name} ·{' '}
+                {selection.abilityScoreImprovement.increases
+                  .map((increase) => `${increase.abilityId.toUpperCase()} +${increase.increase}`)
+                  .join(', ')}
+              </dd>
+            </div>
+          ))}
         </dl>
       </section>
 
@@ -1989,8 +2256,11 @@ function ReviewStep({
           {abilityFields.map(([key, , abbreviation]) => (
             <div key={key}>
               <dt>{abbreviation}</dt>
-              <dd>{document.character.abilities?.[key]}</dd>
+              <dd>{derived.effectiveAbilities[key]}</dd>
               <span>{formatModifier(derived.abilityModifiers[key])}</span>
+              {derived.baseAbilities[key] !== derived.effectiveAbilities[key] && (
+                <small>Base {derived.baseAbilities[key]}</small>
+              )}
             </div>
           ))}
         </dl>
@@ -2080,7 +2350,7 @@ function ReviewStep({
         </section>
       )}
 
-      {document.character.equipment.items.length > 0 && (
+      {(document.character.equipment.items.length > 0 || derived.weaponMasteries.length > 0) && (
         <section className="review-section" aria-labelledby="review-equipment-heading">
           <div className="review-section__heading">
             <h4 id="review-equipment-heading">Equipment</h4>
@@ -2095,6 +2365,12 @@ function ReviewStep({
                   {selection.item.name} × {selection.quantity}
                 </strong>
                 <span>{selection.equipped ? 'Equipped' : 'Owned'}</span>
+              </li>
+            ))}
+            {derived.weaponMasteries.map((selection) => (
+              <li key={`mastery-${selection.weapon.id}`}>
+                <strong>{selection.weapon.name}</strong>
+                <span>Weapon Mastery · {selection.mastery.name}</span>
               </li>
             ))}
           </ul>
@@ -2423,6 +2699,12 @@ function ClassStep({
   featureChoicesFailed,
   featureChoiceInputs,
   featureChoiceErrors,
+  feat,
+  featPending,
+  featFailed,
+  featInputs,
+  featErrors,
+  baseAbilities,
   classId,
   level,
   subclassId,
@@ -2437,6 +2719,9 @@ function ClassStep({
   onRemoveSubclass,
   onFeatureChoice,
   onRemoveFeatureChoice,
+  onFeatMode,
+  onFeatAbility,
+  onRemoveFeat,
   onRetry,
   onSubmit,
 }: {
@@ -2451,6 +2736,12 @@ function ClassStep({
   featureChoicesFailed: boolean
   featureChoiceInputs: FeatureChoiceInputs
   featureChoiceErrors: Record<string, string>
+  feat?: CatalogItem
+  featPending: boolean
+  featFailed: boolean
+  featInputs: FeatInputs
+  featErrors: Record<string, string>
+  baseAbilities: AbilityScores | null
   classId: string
   level: string
   subclassId: string
@@ -2465,6 +2756,9 @@ function ClassStep({
   onRemoveSubclass: () => void
   onFeatureChoice: (requirementId: string, branchId: string, selectionIds: string[]) => void
   onRemoveFeatureChoice: (requirementId: string) => void
+  onFeatMode: (occurrenceId: string, mode: FeatMode) => void
+  onFeatAbility: (occurrenceId: string, slot: 'first' | 'second', abilityId: string) => void
+  onRemoveFeat: (occurrenceId: string) => void
   onRetry: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
@@ -2538,6 +2832,24 @@ function ClassStep({
           </button>
         </div>
       )}
+      {featPending && (
+        <div className="class-progression-state" role="status">
+          <span aria-hidden="true">✦</span>
+          Resolving the supported feat effect…
+        </div>
+      )}
+      {featFailed && (
+        <div className="class-progression-state class-progression-state--error" role="alert">
+          <AlertTriangle aria-hidden="true" size={18} />
+          <div>
+            <strong>The supported feat is unavailable.</strong>
+            <span>Your saved feat choices have not been changed.</span>
+          </div>
+          <button type="button" onClick={onRetry}>
+            Try again
+          </button>
+        </div>
+      )}
       {progression && (
         <>
           <ClassProgressionFields
@@ -2561,6 +2873,17 @@ function ClassStep({
               onRemove={onRemoveFeatureChoice}
             />
           )}
+          <FeatChoiceFields
+            progression={progression}
+            level={Number(level)}
+            feat={feat}
+            inputs={featInputs}
+            errors={featErrors}
+            baseAbilities={baseAbilities}
+            onMode={onFeatMode}
+            onAbility={onFeatAbility}
+            onRemove={onRemoveFeat}
+          />
         </>
       )}
       {errors.progression && (
@@ -2706,6 +3029,136 @@ function lockedBranchLabel(branchId: string): string {
     .split('-')
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
     .join(' ')
+}
+
+const featAbilityOptions: ReadonlyArray<[AbilityId, string]> = abilityFields.map(
+  ([key, label, abbreviation]) => [abilityIdFromKey(key), `${label} (${abbreviation})`],
+)
+
+function FeatChoiceFields({
+  progression,
+  level,
+  feat,
+  inputs,
+  errors,
+  baseAbilities,
+  onMode,
+  onAbility,
+  onRemove,
+}: {
+  progression: ClassProgressionDocument
+  level: number
+  feat?: CatalogItem
+  inputs: FeatInputs
+  errors: Record<string, string>
+  baseAbilities: AbilityScores | null
+  onMode: (occurrenceId: string, mode: FeatMode) => void
+  onAbility: (occurrenceId: string, slot: 'first' | 'second', abilityId: string) => void
+  onRemove: (occurrenceId: string) => void
+}) {
+  const occurrences = abilityScoreImprovementOccurrences(progression)
+  const active = occurrences.filter((occurrence) => occurrence.level <= level)
+  const activeIds = new Set(active.map((occurrence) => occurrence.id))
+  const staleIds = Object.keys(inputs).filter((id) => !activeIds.has(id))
+
+  if (occurrences.length === 0 && staleIds.length === 0) return null
+
+  return (
+    <section className="feat-choices" aria-labelledby="feat-choices-heading">
+      <div>
+        <h3 id="feat-choices-heading">Ability Score Improvement feats</h3>
+        <span>
+          Saved scores remain the base; these progression choices produce effective scores.
+        </span>
+      </div>
+
+      {staleIds.map((occurrenceId) => (
+        <div className="subclass-retained" key={occurrenceId} role="alert">
+          <AlertTriangle aria-hidden="true" size={18} />
+          <div>
+            <strong>An earlier feat choice is retained.</strong>
+            <span>It is unavailable at the current class or level.</span>
+          </div>
+          <button type="button" onClick={() => onRemove(occurrenceId)}>
+            Remove feat choice
+          </button>
+        </div>
+      ))}
+
+      {active.map((occurrence) => {
+        const input = inputs[occurrence.id]
+        return (
+          <fieldset
+            className={errors[occurrence.id] ? 'feat-choice feat-choice--error' : 'feat-choice'}
+            key={occurrence.id}
+          >
+            <legend>
+              Level {occurrence.level} · {feat?.name ?? 'Ability Score Improvement'}
+            </legend>
+            <p>Increase one ability by 2, or two different abilities by 1 (maximum 20).</p>
+            <div className="feat-choice__modes">
+              <label>
+                <input
+                  type="radio"
+                  name={`feat-mode-${occurrence.id}`}
+                  checked={input?.mode === 'single'}
+                  onChange={() => onMode(occurrence.id, 'single')}
+                />
+                One ability +2
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name={`feat-mode-${occurrence.id}`}
+                  checked={input?.mode === 'split'}
+                  onChange={() => onMode(occurrence.id, 'split')}
+                />
+                Two abilities +1
+              </label>
+            </div>
+            {input?.mode && (
+              <div className="feat-choice__abilities">
+                <label>
+                  <span>{input.mode === 'single' ? 'Ability' : 'First ability'}</span>
+                  <select
+                    value={input.firstAbilityId}
+                    onChange={(event) => onAbility(occurrence.id, 'first', event.target.value)}
+                  >
+                    <option value="">Choose an ability</option>
+                    {featAbilityOptions.map(([id, label]) => (
+                      <option key={id} value={id}>
+                        {label}
+                        {baseAbilities ? ` · base ${abilityScoreById(baseAbilities, id)}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {input.mode === 'split' && (
+                  <label>
+                    <span>Second ability</span>
+                    <select
+                      value={input.secondAbilityId}
+                      onChange={(event) => onAbility(occurrence.id, 'second', event.target.value)}
+                    >
+                      <option value="">Choose a different ability</option>
+                      {featAbilityOptions.map(([id, label]) => (
+                        <option key={id} value={id}>
+                          {label}
+                          {baseAbilities ? ` · base ${abilityScoreById(baseAbilities, id)}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+            )}
+            {errors[occurrence.id] && <small role="alert">{errors[occurrence.id]}</small>}
+          </fieldset>
+        )
+      })}
+      {errors._form && <small role="alert">{errors._form}</small>}
+    </section>
+  )
 }
 
 function ClassProgressionFields({
@@ -3055,6 +3508,8 @@ function stepForViolation(source: string): Exclude<BuilderStep, 'review'> | null
   if (source.startsWith('proficiencyChoices')) return 'proficiencies'
   if (source.startsWith('spells')) return 'spells'
   if (source.startsWith('equipment')) return 'equipment'
+  if (source.startsWith('weaponMasteries')) return 'equipment'
+  if (source.startsWith('feats')) return 'class'
   return null
 }
 
@@ -3218,6 +3673,163 @@ function mergeFeatureChoices(
   return [...choices.values()]
 }
 
+function abilityScoreImprovementOccurrences(progression?: ClassProgressionDocument): Array<{
+  id: string
+  level: number
+}> {
+  if (!progression) return []
+  return progression.levels
+    .filter((entry) => entry.features.some((feature) => feature.id === 'ability-score-improvement'))
+    .map((entry) => ({
+      id: `${progression.class.id}-ability-score-improvement-${entry.level}`,
+      level: entry.level,
+    }))
+}
+
+function featInputsFrom(feats: CharacterDraft['feats']): FeatInputs {
+  return Object.fromEntries(
+    feats.map((selection) => {
+      const increases = selection.abilityScoreImprovement.increases
+      return [
+        selection.occurrenceId,
+        {
+          mode: increases.length === 1 && increases[0]?.increase === 2 ? 'single' : 'split',
+          firstAbilityId: increases[0]?.abilityId ?? '',
+          secondAbilityId: increases[1]?.abilityId ?? '',
+        },
+      ]
+    }),
+  )
+}
+
+function validateFeatInputs(
+  rules: ClassProgressionDocument | undefined,
+  progression: CharacterDraft['classProgressions'][number] | undefined,
+  feat: CatalogItem | undefined,
+  inputs: FeatInputs,
+  baseAbilities: AbilityScores | null,
+  allowUnavailable = false,
+  savedFeats: CharacterDraft['feats'] = [],
+):
+  | { success: true; feats: CharacterDraft['feats'] }
+  | { success: false; errors: Record<string, string> } {
+  if (!rules || !progression?.class || progression.class.id !== rules.class.id) {
+    return { success: false, errors: { _form: 'Wait for matching class progression.' } }
+  }
+
+  const occurrences = abilityScoreImprovementOccurrences(rules)
+  const byId = new Map(occurrences.map((occurrence) => [occurrence.id, occurrence]))
+  const active = occurrences.filter((occurrence) => occurrence.level <= progression.level)
+  const activeIds = new Set(active.map((occurrence) => occurrence.id))
+  const errors: Record<string, string> = {}
+  const selections: CharacterDraft['feats'] = []
+  const effective = baseAbilities ? { ...baseAbilities } : null
+
+  if (active.length > 0 && (!feat || feat.id !== 'ability-score-improvement')) {
+    return {
+      success: false,
+      errors: { _form: 'Wait for the canonical Ability Score Improvement feat before saving.' },
+    }
+  }
+
+  const orderedInputs = Object.entries(inputs).sort(
+    ([left], [right]) => (byId.get(left)?.level ?? 99) - (byId.get(right)?.level ?? 99),
+  )
+  for (const [occurrenceId, input] of orderedInputs) {
+    if (!activeIds.has(occurrenceId)) {
+      const saved = savedFeats.find((selection) => selection.occurrenceId === occurrenceId)
+      if (!allowUnavailable || !saved) {
+        errors[occurrenceId] = 'Remove this feat choice or restore its granting level.'
+        continue
+      }
+      selections.push(saved)
+      continue
+    }
+
+    const abilityIds =
+      input.mode === 'single'
+        ? [input.firstAbilityId]
+        : input.mode === 'split'
+          ? [input.firstAbilityId, input.secondAbilityId]
+          : []
+    if (
+      abilityIds.some((id) => !featAbilityOptions.some(([candidate]) => candidate === id)) ||
+      (input.mode === 'split' && abilityIds[0] === abilityIds[1]) ||
+      (input.mode !== 'single' && input.mode !== 'split')
+    ) {
+      errors[occurrenceId] = 'Choose one +2 ability or two different +1 abilities.'
+      continue
+    }
+
+    const increase = input.mode === 'single' ? 2 : 1
+    if (
+      effective &&
+      abilityIds.some((abilityId) => abilityScoreById(effective, abilityId) + increase > 20)
+    ) {
+      errors[occurrenceId] = 'This feat cannot increase an effective ability score above 20.'
+      continue
+    }
+    if (effective) {
+      abilityIds.forEach((abilityId) => increaseAbilityById(effective, abilityId, increase))
+    }
+
+    selections.push({
+      occurrenceId,
+      feat: { id: feat!.id, name: feat!.name },
+      abilityScoreImprovement: {
+        increases: abilityIds.map((abilityId) => ({
+          abilityId: abilityId as AbilityId,
+          increase,
+        })),
+      },
+    })
+  }
+
+  active.forEach((occurrence) => {
+    if (!inputs[occurrence.id]) {
+      errors[occurrence.id] = 'Complete this Ability Score Improvement before continuing.'
+    }
+  })
+
+  return Object.keys(errors).length > 0
+    ? { success: false, errors }
+    : {
+        success: true,
+        feats: selections.sort(
+          (left, right) =>
+            (byId.get(left.occurrenceId)?.level ?? 99) -
+            (byId.get(right.occurrenceId)?.level ?? 99),
+        ),
+      }
+}
+
+function abilityIdFromKey(key: AbilityKey): AbilityId {
+  const ids: Record<AbilityKey, AbilityId> = {
+    strength: 'str',
+    dexterity: 'dex',
+    constitution: 'con',
+    intelligence: 'int',
+    wisdom: 'wis',
+    charisma: 'cha',
+  }
+  return ids[key]
+}
+
+function abilityKeyFromId(id: string): AbilityKey {
+  const entry = abilityFields.find(([key]) => abilityIdFromKey(key) === id)
+  if (!entry) throw new Error(`Unsupported ability id: ${id}`)
+  return entry[0]
+}
+
+function abilityScoreById(abilities: AbilityScores, id: string): number {
+  return abilities[abilityKeyFromId(id)]
+}
+
+function increaseAbilityById(abilities: AbilityScores, id: string, increase: number): void {
+  const key = abilityKeyFromId(id)
+  abilities[key] += increase
+}
+
 function featureRequirementIsActive(
   requirement: FeatureChoiceRequirement,
   level: number,
@@ -3358,20 +3970,25 @@ function equipmentInputsFrom(equipment: CharacterDraft['equipment']): EquipmentI
 function validateEquipmentInputs(
   options: CatalogPage['items'] | undefined,
   inputs: EquipmentInputs,
+  weaponMasteryRule: WeaponMasteryLevel | undefined,
+  details: CatalogItem[],
+  weaponMasteryInputs: WeaponMasteryInputs,
+  proficiencyIds: ReadonlySet<string>,
 ):
-  | { success: true; equipment: CharacterDraft['equipment'] }
+  | {
+      success: true
+      equipment: CharacterDraft['equipment']
+      weaponMasteries: CharacterDraft['weaponMasteries']
+    }
   | { success: false; errors: EquipmentErrors } {
-  if (Object.keys(inputs).length === 0) {
-    return { success: true, equipment: { items: [] } }
-  }
-  if (!options) {
+  if (Object.keys(inputs).length > 0 && !options) {
     return {
       success: false,
       errors: { _form: 'Wait for the canonical equipment catalog before saving.' },
     }
   }
 
-  const optionsById = new Map(options.map((item) => [item.id, item]))
+  const optionsById = new Map((options ?? []).map((item) => [item.id, item]))
   const errors: EquipmentErrors = {}
   const items: CharacterDraft['equipment']['items'] = []
   for (const [id, input] of Object.entries(inputs)) {
@@ -3393,9 +4010,47 @@ function validateEquipmentInputs(
     })
   }
 
+  const detailsById = new Map(details.map((item) => [item.id, item]))
+  const weaponMasteries: CharacterDraft['weaponMasteries'] = []
+  if (!weaponMasteryRule) {
+    if (weaponMasteryInputs.length > 0) {
+      errors._mastery =
+        'Remove retained Weapon Mastery choices or restore a class that grants the feature.'
+    }
+  } else {
+    if (weaponMasteryInputs.length !== weaponMasteryRule.capacity) {
+      errors._mastery = `Choose exactly ${weaponMasteryRule.capacity} eligible owned weapons.`
+    }
+
+    for (const id of weaponMasteryInputs) {
+      if (!inputs[id]) {
+        errors._mastery = 'Every mastered weapon must remain in owned equipment.'
+        continue
+      }
+      const detail = detailsById.get(id)
+      if (!detail) {
+        errors._form = 'Wait for all owned weapon details before saving.'
+        continue
+      }
+      const weapon = detail.equipment?.weapon
+      if (!weapon) {
+        errors._mastery = 'Weapon Mastery choices must be canonical weapons.'
+        continue
+      }
+      const trained =
+        proficiencyIds.has(id) ||
+        (detail.equipment?.categories ?? []).some((category) => proficiencyIds.has(category.id))
+      if (!trained) {
+        errors._mastery = 'Choose only weapons covered by this character’s proficiencies.'
+        continue
+      }
+      weaponMasteries.push({ weapon: { id: detail.id, name: detail.name } })
+    }
+  }
+
   return Object.keys(errors).length > 0
     ? { success: false, errors }
-    : { success: true, equipment: { items } }
+    : { success: true, equipment: { items }, weaponMasteries }
 }
 
 function validateSpellInputs(

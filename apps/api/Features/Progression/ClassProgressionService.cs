@@ -1,4 +1,5 @@
 using CharacterForge.Api.Features.Catalog;
+using CharacterForge.Api.Features.Characters;
 using CharacterForge.Api.Infrastructure.Srd;
 using CharacterForge.Api.Features.Spellcasting;
 using Microsoft.Extensions.Caching.Memory;
@@ -35,23 +36,27 @@ public sealed class ClassProgressionService(
             Source = CatalogSource.Create(snapshot.FetchedAt)
         };
         SpellcastingPolicyDocument? policy;
+        ClassWeaponMasteryProgression? weaponMastery;
         try
         {
             policy = SpellcastingRuleManifest.GetVerifiedPolicy(progression);
+            weaponMastery = WeaponMasteryManifest.GetVerifiedProgression(progression);
         }
-        catch (SpellcastingRuleContentException exception)
+        catch (Exception exception) when (
+            exception is SpellcastingRuleContentException or WeaponMasteryContentException)
         {
             throw new SrdProviderException(
-                "The class progression did not agree with the active spellcasting-rule manifest.",
+                "The class progression did not agree with an active rule manifest.",
                 exception);
         }
 
-        return progression.Spellcasting is null
-            ? progression
-            : progression with
-            {
-                Spellcasting = progression.Spellcasting with { Policy = policy }
-            };
+        return progression with
+        {
+            Spellcasting = progression.Spellcasting is null
+                ? null
+                : progression.Spellcasting with { Policy = policy },
+            WeaponMastery = weaponMastery
+        };
     }
 
     private sealed record ProgressionSnapshot(

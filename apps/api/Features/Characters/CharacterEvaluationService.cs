@@ -12,7 +12,8 @@ public sealed class CharacterEvaluationService(
 {
     public async Task<CharacterEvaluation> EvaluateAsync(
         Character character,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool allowIncompleteFeatChoices = false)
     {
         var validation = CharacterValidator.Validate(character);
         if (!validation.IsValid)
@@ -85,6 +86,18 @@ public sealed class CharacterEvaluationService(
             classProgression,
             progression.Level,
             cancellationToken);
+        var featChoiceRules = await GetFeatChoiceRulesAsync(classProgression, cancellationToken);
+        WeaponMasteryRule? weaponMasteryRule;
+        try
+        {
+            weaponMasteryRule = WeaponMasteryManifest.Resolve(classProgression, progression.Level);
+        }
+        catch (WeaponMasteryContentException exception)
+        {
+            throw new SrdProviderException(
+                "The selected class did not match the supported Weapon Mastery manifest.",
+                exception);
+        }
 
         var grants = new List<ProficiencyGrant>();
         var choices = new List<ProficiencyChoiceRule>();
@@ -121,7 +134,50 @@ public sealed class CharacterEvaluationService(
                             StringComparison.Ordinal))).ToArray())).ToArray(),
                 MapSpellcasting(classProgression.Spellcasting),
                 spellSelectionRule,
-                equipmentRules));
+                equipmentRules,
+                featChoiceRules,
+                RequireActiveFeatChoices: !allowIncompleteFeatChoices,
+                WeaponMastery: weaponMasteryRule));
+    }
+
+    private async Task<IReadOnlyList<FeatChoiceOccurrenceRule>> GetFeatChoiceRulesAsync(
+        ClassProgressionDocument progression,
+        CancellationToken cancellationToken)
+    {
+        var levels = progression.Levels
+            .Where(level => level.Features.Any(feature => string.Equals(
+                feature.Id,
+                FeatEffectManifest.AbilityScoreImprovementId,
+                StringComparison.OrdinalIgnoreCase)))
+            .Select(level => level.Level)
+            .ToArray();
+        if (levels.Length == 0)
+        {
+            return [];
+        }
+
+        var feat = await catalog.GetItemAsync(
+            CatalogCategory.Feats,
+            FeatEffectManifest.AbilityScoreImprovementId,
+            cancellationToken)
+            ?? throw new SrdProviderException(
+                "The Ability Score Improvement feat is missing from the active catalog.");
+        try
+        {
+            FeatEffectManifest.Verify(feat);
+        }
+        catch (FeatEffectContentException exception)
+        {
+            throw new SrdProviderException(
+                "Ability Score Improvement did not match the supported typed effect manifest.",
+                exception);
+        }
+
+        var reference = new ContentReference(feat.Id, feat.Name);
+        return levels.Select(level => new FeatChoiceOccurrenceRule(
+            $"{progression.Class.Id}-ability-score-improvement-{level}",
+            level,
+            reference)).ToArray();
     }
 
     private async Task<IReadOnlyList<EquipmentItemRule>> GetEquipmentRulesAsync(
@@ -159,7 +215,12 @@ public sealed class CharacterEvaluationService(
                     : new ArmorEquipmentRule(
                         facts.Armor.BaseArmorClass,
                         facts.Armor.AddsDexterity,
-                        facts.Armor.MaximumDexterityBonus)));
+                        facts.Armor.MaximumDexterityBonus),
+                facts.Weapon is null
+                    ? null
+                    : new WeaponEquipmentRule(new ContentReference(
+                        facts.Weapon.Mastery.Id,
+                        facts.Weapon.Mastery.Name))));
         }
 
         return rules;
