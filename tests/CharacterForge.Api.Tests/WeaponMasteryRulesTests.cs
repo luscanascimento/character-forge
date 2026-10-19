@@ -126,7 +126,13 @@ public sealed class WeaponMasteryRulesTests
         new ContentReference(id, name),
         categories.ToHashSet(StringComparer.OrdinalIgnoreCase),
         null,
-        new WeaponEquipmentRule(new ContentReference(masteryId, masteryName)));
+        new WeaponEquipmentRule(
+            new WeaponDamageRule("1d8", new ContentReference("slashing", "Slashing")),
+            null,
+            null,
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+            "melee",
+            new ContentReference(masteryId, masteryName)));
 
     private static GrantedProficiency Proficiency(string id) => new(
         new ContentReference(id, id),

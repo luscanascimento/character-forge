@@ -41,6 +41,7 @@ export function createStoredCharacter(
       equipment: { items: [] },
       feats: [],
       weaponMasteries: [],
+      weaponAttacks: [],
     },
     ...overrides,
   }

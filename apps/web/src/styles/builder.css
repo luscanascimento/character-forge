@@ -1254,6 +1254,47 @@
   margin-top: 0.75rem;
 }
 
+.equipment-attack {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin: 0;
+  background: rgb(119 148 106 / 7%);
+}
+
+.equipment-attack legend {
+  padding-inline: 0.25rem;
+  color: var(--color-parchment);
+  font-family: var(--font-label);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.equipment-attack > label:not(.equipment-equipped) {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.equipment-attack select {
+  width: 100%;
+}
+
+.equipment-attack > button {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  color: var(--color-danger);
+  background: transparent;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .equipment-owned ul,
 .equipment-catalog ul {
   display: grid;

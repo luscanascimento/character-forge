@@ -33,8 +33,34 @@ public static partial class CharacterValidator
         ValidateEquipment(character.Equipment, violations);
         ValidateFeats(character.Feats, violations);
         ValidateWeaponMasteries(character.WeaponMasteries, violations);
+        ValidateWeaponAttacks(character.WeaponAttacks, violations);
 
         return new ValidationResult(violations);
+    }
+
+    private static void ValidateWeaponAttacks(
+        IReadOnlyList<WeaponAttackSelection>? attacks,
+        ICollection<RuleViolation> violations)
+    {
+        for (var index = 0; index < (attacks?.Count ?? 0); index++)
+        {
+            var attack = attacks![index];
+            ValidateReference(
+                attack.Weapon,
+                "weaponAttack.weapon.reference",
+                $"weaponAttacks[{index}].weapon",
+                "Wielded weapon",
+                violations);
+            if (attack.AbilityId is not ("str" or "dex"))
+            {
+                AddViolation(
+                    violations,
+                    "character.weaponAttack.ability.invalid",
+                    "Weapon attack ability must be Strength or Dexterity.",
+                    $"weaponAttacks[{index}].abilityId",
+                    "Use 'str' or 'dex'.");
+            }
+        }
     }
 
     private static void ValidateWeaponMasteries(

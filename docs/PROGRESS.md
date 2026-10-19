@@ -160,14 +160,18 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 - Added backward-compatible Weapon Mastery selections with exact cardinality, distinctness, inventory ownership, canonical weapon identity, provider-owned mastery property, and stable proficiency/category eligibility.
 - Exposed Weapon Mastery capacity through class progression, integrated owned trained weapon choices into Equipment, retained invalid selections for explicit correction, and returned canonical weapon/mastery pairs in Review.
 - Recorded the capacity/ownership/training boundary in ADR-020 and covered provider normalization, manifest agreement, canonical resolution, frontend schemas, persistence, and builder interaction.
+- Added backward-compatible weapon attack configurations tied to positively owned and equipped canonical weapons.
+- Derived attack and damage modifiers from the selected eligible Strength/Dexterity ability, resolved weapon training, class proficiency bonus, trusted damage profiles, and optional two-handed use.
+- Presented canonical attacks in Review with proficiency and active Weapon Mastery context, while retaining invalidated configurations for explicit correction.
+- Recorded the attack configuration boundary in ADR-021 and covered duplicate, unwielded, ability-ineligible, proficiency, damage, mastery, schema, persistence, and UI paths.
 
 ## Work in progress
 
-Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, stored Ability Score Improvement choices with effective abilities, server-owned inventory/armor evaluation, and canonical Weapon Mastery selection. Remaining feat effects and weapon attacks remain separate increments.
+Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, stored Ability Score Improvement choices with effective abilities, server-owned inventory/armor evaluation, canonical Weapon Mastery selection, and canonical weapon attacks. Remaining feat effects, Weapon Mastery replacement transitions, and armor movement/Stealth effects remain separate increments.
 
 ## Next step
 
-Add canonical weapon attacks after wielded configuration, attack-ability selection, and proficiency application are explicit.
+Add explicit Long Rest Weapon Mastery replacement transitions without storing mutable lifecycle history in the character draft.
 
 ## Pending decisions
 
@@ -176,7 +180,7 @@ Add canonical weapon attacks after wielded configuration, attack-ability selecti
 
 ## Known issues and limitations
 
-- Feat effects beyond Ability Score Improvement, Weapon Mastery replacement transitions, Strength-minimum speed effects, Stealth disadvantage, weapon attacks, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
+- Feat effects beyond Ability Score Improvement, Weapon Mastery replacement transitions, Strength-minimum speed effects, Stealth disadvantage, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -190,11 +194,11 @@ Add canonical weapon attacks after wielded configuration, attack-ability selecti
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 193 passing
+- Backend unit/integration tests: 197 passing
 - Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, all five Weapon Mastery progressions/capacities, species/trait choices, backgrounds, feats including the Ability Score Improvement manifest facts, filtered spells, equipment list/detail, complete character validation including equipped Chain Mail AC, and a valid Bard level-gain spell replacement with Expertise
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
 
 ## Last checkpoint
 
-2026-10-13 (America/Sao_Paulo)
+2026-10-18 (America/Sao_Paulo)

@@ -102,6 +102,7 @@ describe('MyCharactersPage', () => {
         equipment: { items: [] },
         feats: [],
         weaponMasteries: [],
+        weaponAttacks: [],
       },
     })
     const storage = repository()

@@ -218,12 +218,50 @@ public sealed class CharacterEvaluationService(
                         facts.Armor.MaximumDexterityBonus),
                 facts.Weapon is null
                     ? null
-                    : new WeaponEquipmentRule(new ContentReference(
-                        facts.Weapon.Mastery.Id,
-                        facts.Weapon.Mastery.Name))));
+                    : new WeaponEquipmentRule(
+                        new WeaponDamageRule(
+                            facts.Weapon.Damage.Dice,
+                            new ContentReference(
+                                facts.Weapon.Damage.Type.Id,
+                                facts.Weapon.Damage.Type.Name)),
+                        facts.Weapon.TwoHandedDamage is null
+                            ? null
+                            : new WeaponDamageRule(
+                                facts.Weapon.TwoHandedDamage.Dice,
+                                new ContentReference(
+                                    facts.Weapon.TwoHandedDamage.Type.Id,
+                                    facts.Weapon.TwoHandedDamage.Type.Name)),
+                        facts.Weapon.Range is null
+                            ? null
+                            : new WeaponRangeRule(
+                                facts.Weapon.Range.Normal,
+                                facts.Weapon.Range.Long),
+                        facts.Weapon.Properties
+                            .Select(property => property.Id)
+                            .ToHashSet(StringComparer.OrdinalIgnoreCase),
+                        WeaponKind(categoryIds),
+                        new ContentReference(
+                            facts.Weapon.Mastery.Id,
+                            facts.Weapon.Mastery.Name))));
         }
 
         return rules;
+    }
+
+    private static string WeaponKind(IReadOnlySet<string> categoryIds)
+    {
+        if (categoryIds.Contains("simple-ranged-weapons") ||
+            categoryIds.Contains("martial-ranged-weapons"))
+        {
+            return "ranged";
+        }
+        if (categoryIds.Contains("simple-melee-weapons") ||
+            categoryIds.Contains("martial-melee-weapons"))
+        {
+            return "melee";
+        }
+
+        throw new SrdProviderException("A selected weapon did not provide a canonical melee or ranged category.");
     }
 
     private async Task<SpellSelectionRule?> GetSpellSelectionRuleAsync(

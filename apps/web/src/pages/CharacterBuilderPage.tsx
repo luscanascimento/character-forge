@@ -122,6 +122,7 @@ type SpellErrors = Partial<Record<'cantrips' | 'spellbook' | 'preparedSpells' | 
 type EquipmentInputs = Record<string, { name: string; quantity: string; equipped: boolean }>
 type EquipmentErrors = Record<string, string>
 type WeaponMasteryInputs = string[]
+type WeaponAttackInputs = Record<string, { abilityId: 'str' | 'dex'; twoHanded: boolean }>
 type WeaponMasteryLevel = NonNullable<ClassProgressionDocument['weaponMastery']>['levels'][number]
 type SavedProficiencyChoices = StoredCharacterV1['character']['proficiencyChoices']
 type EditableBuilderStep = Exclude<BuilderStep, 'review'>
@@ -281,6 +282,9 @@ function BuilderWorkspace({
   const [weaponMasteryInputs, setWeaponMasteryInputs] = useState<WeaponMasteryInputs>(() =>
     document.character.weaponMasteries.map((selection) => selection.weapon.id),
   )
+  const [weaponAttackInputs, setWeaponAttackInputs] = useState<WeaponAttackInputs>(() =>
+    weaponAttackInputsFrom(document.character.weaponAttacks),
+  )
   const [equipmentSearch, setEquipmentSearch] = useState('')
   const nameComplete = Boolean(document.character.name.trim())
   const abilitiesComplete = document.character.abilities !== null
@@ -352,7 +356,7 @@ function BuilderWorkspace({
     queries: ownedCatalogEquipmentIds.map((id) => ({
       queryKey: ['catalog-item', 'equipment', id],
       queryFn: ({ signal }: { signal: AbortSignal }) => catalogItemLoader('equipment', id, signal),
-      enabled: selectedStep === 'equipment' && Boolean(classProgressionQuery.data?.weaponMastery),
+      enabled: selectedStep === 'equipment',
       retry: false,
     })),
   })
@@ -625,16 +629,19 @@ function BuilderWorkspace({
         weaponMasteryRule,
         equipmentDetails,
         weaponMasteryInputs,
+        weaponAttackInputs,
         resolvedProficiencyIds,
       )
       if (!result.success) return null
       return sameValue(result.equipment, document.character.equipment) &&
-        sameValue(result.weaponMasteries, document.character.weaponMasteries)
+        sameValue(result.weaponMasteries, document.character.weaponMasteries) &&
+        sameValue(result.weaponAttacks, document.character.weaponAttacks)
         ? null
         : {
             ...document.character,
             equipment: result.equipment,
             weaponMasteries: result.weaponMasteries,
+            weaponAttacks: result.weaponAttacks,
           }
     }
     return null
@@ -736,6 +743,11 @@ function BuilderWorkspace({
             intent.character.weaponMasteries.map((selection) => selection.weapon.id),
           )
             ? saved.character.weaponMasteries.map((selection) => selection.weapon.id)
+            : current,
+        )
+        setWeaponAttackInputs((current) =>
+          sameValue(current, weaponAttackInputsFrom(intent.character.weaponAttacks))
+            ? weaponAttackInputsFrom(saved.character.weaponAttacks)
             : current,
         )
       }
@@ -944,6 +956,7 @@ function BuilderWorkspace({
       weaponMasteryRule,
       equipmentDetails,
       weaponMasteryInputs,
+      weaponAttackInputs,
       resolvedProficiencyIds,
     )
     if (!result.success) {
@@ -957,6 +970,7 @@ function BuilderWorkspace({
       ...document.character,
       equipment: result.equipment,
       weaponMasteries: result.weaponMasteries,
+      weaponAttacks: result.weaponAttacks,
     })
   }
 
@@ -1515,6 +1529,7 @@ function BuilderWorkspace({
               errors={equipmentErrors}
               weaponMasteryRule={weaponMasteryRule}
               weaponMasteryInputs={weaponMasteryInputs}
+              weaponAttackInputs={weaponAttackInputs}
               proficiencyIds={resolvedProficiencyIds}
               search={equipmentSearch}
               pending={equipmentOptionsQuery.isPending}
@@ -1562,6 +1577,13 @@ function BuilderWorkspace({
                     : current.filter((candidate) => candidate !== id),
                 )
                 setEquipmentErrors((current) => omitKey(current, '_mastery'))
+                if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
+              }}
+              onAttack={(id, attack) => {
+                setWeaponAttackInputs((current) =>
+                  attack === null ? omitKey(current, id) : { ...current, [id]: attack },
+                )
+                setEquipmentErrors((current) => omitKey(current, '_attacks'))
                 if (saveMutation.isError || saveMutation.isSuccess) saveMutation.reset()
               }}
               onRemove={(id) => {
@@ -1836,6 +1858,7 @@ function EquipmentStep({
   errors,
   weaponMasteryRule,
   weaponMasteryInputs,
+  weaponAttackInputs,
   proficiencyIds,
   search,
   pending,
@@ -1849,6 +1872,7 @@ function EquipmentStep({
   onQuantity,
   onEquipped,
   onMastery,
+  onAttack,
   onRemove,
   onRetry,
   onSubmit,
@@ -1859,6 +1883,7 @@ function EquipmentStep({
   errors: EquipmentErrors
   weaponMasteryRule?: WeaponMasteryLevel
   weaponMasteryInputs: WeaponMasteryInputs
+  weaponAttackInputs: WeaponAttackInputs
   proficiencyIds: ReadonlySet<string>
   search: string
   pending: boolean
@@ -1872,6 +1897,7 @@ function EquipmentStep({
   onQuantity: (id: string, quantity: string) => void
   onEquipped: (id: string, equipped: boolean) => void
   onMastery: (id: string, selected: boolean) => void
+  onAttack: (id: string, attack: { abilityId: 'str' | 'dex'; twoHanded: boolean } | null) => void
   onRemove: (id: string) => void
   onRetry: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
@@ -1909,6 +1935,7 @@ function EquipmentStep({
   const optionsById = new Map(options.map((item) => [item.id, item]))
   const detailsById = new Map(details.map((item) => [item.id, item]))
   const retainedMasteries = weaponMasteryInputs.filter((id) => !inputs[id])
+  const retainedAttacks = Object.keys(weaponAttackInputs).filter((id) => !inputs[id])
 
   return (
     <form className="builder-form builder-form--wide equipment-form" onSubmit={onSubmit} noValidate>
@@ -1927,6 +1954,11 @@ function EquipmentStep({
               const weapon = detail?.equipment?.weapon
               const stale = catalogItem === undefined
               const masterySelected = weaponMasteryInputs.includes(id)
+              const attack = weaponAttackInputs[id]
+              const finesse = weapon?.properties.some((property) => property.id === 'finesse')
+              const ranged = detail?.equipment?.categories.some((category) =>
+                category.id.includes('ranged-weapons'),
+              )
               const trained = Boolean(
                 detail?.equipment &&
                 (proficiencyIds.has(id) ||
@@ -1968,6 +2000,60 @@ function EquipmentStep({
                     />
                     <span>Equipped</span>
                   </label>
+                  {weapon &&
+                    (attack ? (
+                      <fieldset className="equipment-attack">
+                        <legend>Weapon attack</legend>
+                        <label>
+                          <span>Attack ability</span>
+                          <select
+                            value={attack.abilityId}
+                            onChange={(event) =>
+                              onAttack(id, {
+                                ...attack,
+                                abilityId: event.target.value as 'str' | 'dex',
+                              })
+                            }
+                          >
+                            {(!ranged || finesse) && <option value="str">Strength</option>}
+                            {(ranged || finesse) && <option value="dex">Dexterity</option>}
+                          </select>
+                        </label>
+                        {weapon.twoHandedDamage && (
+                          <label className="equipment-equipped">
+                            <input
+                              type="checkbox"
+                              checked={attack.twoHanded}
+                              onChange={(event) =>
+                                onAttack(id, { ...attack, twoHanded: event.target.checked })
+                              }
+                            />
+                            <span>Use two-handed damage · {weapon.twoHandedDamage.dice}</span>
+                          </label>
+                        )}
+                        {!input.equipped && (
+                          <small>Equip this weapon to activate its attack.</small>
+                        )}
+                        <button
+                          type="button"
+                          aria-label={`Remove attack for ${input.name}`}
+                          onClick={() => onAttack(id, null)}
+                        >
+                          Remove attack
+                        </button>
+                      </fieldset>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label={`Configure attack for ${input.name}`}
+                        disabled={!input.equipped}
+                        onClick={() =>
+                          onAttack(id, { abilityId: ranged ? 'dex' : 'str', twoHanded: false })
+                        }
+                      >
+                        Configure attack
+                      </button>
+                    ))}
                   {weapon && weaponMasteryRule && (
                     <label className="equipment-equipped">
                       <input
@@ -2028,6 +2114,41 @@ function EquipmentStep({
           {errors._mastery && (
             <small className="builder-field-error" role="alert">
               {errors._mastery}
+            </small>
+          )}
+        </section>
+      )}
+
+      {(Object.keys(weaponAttackInputs).length > 0 ||
+        details.some((item) => item.equipment?.weapon)) && (
+        <section className="equipment-mastery" aria-labelledby="weapon-attacks-heading">
+          <div>
+            <h3 id="weapon-attacks-heading">Weapon attacks</h3>
+            <span>{Object.keys(weaponAttackInputs).length} configured</span>
+          </div>
+          <p>
+            Attack and damage modifiers are calculated canonically from the chosen ability and
+            proficiency.
+          </p>
+          {retainedAttacks.map((id) => (
+            <div className="subclass-retained" key={id} role="alert">
+              <AlertTriangle aria-hidden="true" size={18} />
+              <div>
+                <strong>{id} is retained as an attack.</strong>
+                <span>The weapon is no longer in owned equipment.</span>
+              </div>
+              <button
+                type="button"
+                aria-label={`Remove retained attack for ${id}`}
+                onClick={() => onAttack(id, null)}
+              >
+                Remove attack
+              </button>
+            </div>
+          ))}
+          {errors._attacks && (
+            <small className="builder-field-error" role="alert">
+              {errors._attacks}
             </small>
           )}
         </section>
@@ -2371,6 +2492,19 @@ function ReviewStep({
               <li key={`mastery-${selection.weapon.id}`}>
                 <strong>{selection.weapon.name}</strong>
                 <span>Weapon Mastery · {selection.mastery.name}</span>
+              </li>
+            ))}
+            {derived.weaponAttacks.map((attack) => (
+              <li key={`attack-${attack.weapon.id}`}>
+                <strong>
+                  {attack.weapon.name} · {formatModifier(attack.attackModifier)} to hit
+                </strong>
+                <span>
+                  {attack.damage.dice} {formatModifier(attack.damageModifier)}{' '}
+                  {attack.damage.type.name}
+                  {attack.isProficient ? ' · proficient' : ' · not proficient'}
+                  {attack.mastery ? ` · ${attack.mastery.name} mastery` : ''}
+                </span>
               </li>
             ))}
           </ul>
@@ -3509,6 +3643,7 @@ function stepForViolation(source: string): Exclude<BuilderStep, 'review'> | null
   if (source.startsWith('spells')) return 'spells'
   if (source.startsWith('equipment')) return 'equipment'
   if (source.startsWith('weaponMasteries')) return 'equipment'
+  if (source.startsWith('weaponAttacks')) return 'equipment'
   if (source.startsWith('feats')) return 'class'
   return null
 }
@@ -3967,18 +4102,29 @@ function equipmentInputsFrom(equipment: CharacterDraft['equipment']): EquipmentI
   )
 }
 
+function weaponAttackInputsFrom(attacks: CharacterDraft['weaponAttacks']): WeaponAttackInputs {
+  return Object.fromEntries(
+    attacks.map((attack) => [
+      attack.weapon.id,
+      { abilityId: attack.abilityId, twoHanded: attack.twoHanded },
+    ]),
+  )
+}
+
 function validateEquipmentInputs(
   options: CatalogPage['items'] | undefined,
   inputs: EquipmentInputs,
   weaponMasteryRule: WeaponMasteryLevel | undefined,
   details: CatalogItem[],
   weaponMasteryInputs: WeaponMasteryInputs,
+  weaponAttackInputs: WeaponAttackInputs,
   proficiencyIds: ReadonlySet<string>,
 ):
   | {
       success: true
       equipment: CharacterDraft['equipment']
       weaponMasteries: CharacterDraft['weaponMasteries']
+      weaponAttacks: CharacterDraft['weaponAttacks']
     }
   | { success: false; errors: EquipmentErrors } {
   if (Object.keys(inputs).length > 0 && !options) {
@@ -4048,9 +4194,52 @@ function validateEquipmentInputs(
     }
   }
 
+  const weaponAttacks: CharacterDraft['weaponAttacks'] = []
+  for (const [id, attack] of Object.entries(weaponAttackInputs)) {
+    const input = inputs[id]
+    if (!input) {
+      errors._attacks = 'Every configured attack must remain in owned equipment.'
+      continue
+    }
+    if (!input.equipped) {
+      errors._attacks = 'Equip each configured weapon or remove its retained attack.'
+      continue
+    }
+    const detail = detailsById.get(id)
+    if (!detail) {
+      errors._form = 'Wait for all configured weapon details before saving.'
+      continue
+    }
+    const weapon = detail.equipment?.weapon
+    if (!weapon) {
+      errors._attacks = 'Weapon attacks must reference canonical weapons.'
+      continue
+    }
+    const finesse = weapon.properties.some((property) => property.id === 'finesse')
+    const ranged = detail.equipment?.categories.some((category) =>
+      category.id.includes('ranged-weapons'),
+    )
+    if (
+      (!ranged && attack.abilityId === 'dex' && !finesse) ||
+      (ranged && attack.abilityId === 'str' && !finesse)
+    ) {
+      errors._attacks = `${detail.name} cannot use the selected attack ability.`
+      continue
+    }
+    if (attack.twoHanded && !weapon.twoHandedDamage) {
+      errors._attacks = `${detail.name} does not have a two-handed damage profile.`
+      continue
+    }
+    weaponAttacks.push({
+      weapon: { id: detail.id, name: detail.name },
+      abilityId: attack.abilityId,
+      twoHanded: attack.twoHanded,
+    })
+  }
+
   return Object.keys(errors).length > 0
     ? { success: false, errors }
-    : { success: true, equipment: { items }, weaponMasteries }
+    : { success: true, equipment: { items }, weaponMasteries, weaponAttacks }
 }
 
 function validateSpellInputs(

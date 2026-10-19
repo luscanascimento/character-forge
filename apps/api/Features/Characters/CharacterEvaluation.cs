@@ -18,7 +18,8 @@ public sealed record CharacterDerivedValues(
     int HitDie,
     IReadOnlyList<GrantedProficiency> GrantedProficiencies,
     SpellcastingDerivedValues? Spellcasting = null,
-    IReadOnlyList<ResolvedWeaponMastery>? WeaponMasteries = null);
+    IReadOnlyList<ResolvedWeaponMastery>? WeaponMasteries = null,
+    IReadOnlyList<ResolvedWeaponAttack>? WeaponAttacks = null);
 
 public sealed record SpellcastingDerivedValues(
     ContentReference Ability,
@@ -77,7 +78,17 @@ public sealed record ArmorEquipmentRule(
     bool AddsDexterity,
     int? MaximumDexterityBonus);
 
-public sealed record WeaponEquipmentRule(ContentReference Mastery);
+public sealed record WeaponDamageRule(string Dice, ContentReference Type);
+
+public sealed record WeaponRangeRule(int Normal, int? Long);
+
+public sealed record WeaponEquipmentRule(
+    WeaponDamageRule Damage,
+    WeaponDamageRule? TwoHandedDamage,
+    WeaponRangeRule? Range,
+    IReadOnlySet<string> PropertyIds,
+    string Kind,
+    ContentReference Mastery);
 
 public sealed record WeaponMasteryRule(
     int Capacity,
@@ -87,6 +98,17 @@ public sealed record WeaponMasteryRule(
 public sealed record ResolvedWeaponMastery(
     ContentReference Weapon,
     ContentReference Mastery);
+
+public sealed record ResolvedWeaponAttack(
+    ContentReference Weapon,
+    string AbilityId,
+    int AttackModifier,
+    WeaponDamageRule Damage,
+    int DamageModifier,
+    bool IsProficient,
+    bool TwoHanded,
+    WeaponRangeRule? Range,
+    ContentReference? Mastery);
 
 public sealed record CharacterRulesContext(
     int HitDie,
@@ -152,6 +174,15 @@ public static class CharacterEvaluator
             character.Equipment,
             context.Equipment ?? [],
             grantedProficiencies);
+        var proficiencyBonus = ProficiencyRules.GetBonus(classProgression.Level);
+        var weaponAttackResolution = WeaponAttackRules.Resolve(
+            character.WeaponAttacks,
+            character.Equipment,
+            context.Equipment ?? [],
+            grantedProficiencies,
+            effectiveAbilities,
+            proficiencyBonus,
+            weaponMasteryResolution.Masteries);
         var ruleViolations = progressionValidation.Violations
             .Concat(proficiencyResolution.Validation.Violations)
             .Concat(featureChoiceValidation.Violations)
@@ -159,6 +190,7 @@ public static class CharacterEvaluator
             .Concat(featResolution.Validation.Violations)
             .Concat(equipmentResolution.Validation.Violations)
             .Concat(weaponMasteryResolution.Validation.Violations)
+            .Concat(weaponAttackResolution.Validation.Violations)
             .ToArray();
         if (ruleViolations.Length > 0)
         {
@@ -180,7 +212,7 @@ public static class CharacterEvaluator
                     AbilityRules.GetModifier(abilities.Intelligence),
                     AbilityRules.GetModifier(abilities.Wisdom),
                     AbilityRules.GetModifier(abilities.Charisma)),
-                ProficiencyRules.GetBonus(classProgression.Level),
+                proficiencyBonus,
                 equipmentResolution.ArmorClass,
                 HitPointRules.GetFixedMaximum(
                     context.HitDie,
@@ -192,7 +224,8 @@ public static class CharacterEvaluator
                     context.Spellcasting,
                     classProgression.Level,
                     abilities),
-                weaponMasteryResolution.Masteries));
+                weaponMasteryResolution.Masteries,
+                weaponAttackResolution.Attacks));
     }
 
     private static IReadOnlyList<FeatureChoiceRequirementRule> ResolveFeatureChoiceOptions(

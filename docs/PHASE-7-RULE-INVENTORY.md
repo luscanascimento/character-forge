@@ -54,6 +54,8 @@ Step 4's first effect slice is implemented through `SRD-5.2.1-FEAT-1`: Ability S
 
 Step 5 is implemented through `SRD-5.2.1-WM-1`: provider capacities for Barbarian and Fighter must agree exactly, missing Paladin/Ranger/Rogue capacities are manifest-owned, and selections require distinct owned weapons covered by canonical weapon proficiency ids or normalized equipment categories. Long Rest replacement transitions remain deferred.
 
+Step 6 is implemented with explicit persisted attack configurations. Every attack requires a positively owned, equipped canonical weapon; melee/ranged identity and Finesse govern the allowed Strength/Dexterity choice; proficiency contributes only when resolved stable ids cover the weapon; Versatile damage, range, damage type, and an active mastery are returned from trusted catalog and character state rather than browser calculations.
+
 The initial equipment model will preserve non-destructive invalidation: catalog changes, class changes, or lost proficiencies retain saved references but produce structured violations until the user explicitly replaces or removes them. Initial creation may use either the class/background packages or manually chosen owned equipment; it must never infer one route from the other.
 
 ## Fail-closed requirements

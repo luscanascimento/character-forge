@@ -14,7 +14,8 @@ public sealed record Character(
     SpellSelections? Spells = null,
     EquipmentSelections? Equipment = null,
     IReadOnlyList<FeatSelection>? Feats = null,
-    IReadOnlyList<WeaponMasterySelection>? WeaponMasteries = null);
+    IReadOnlyList<WeaponMasterySelection>? WeaponMasteries = null,
+    IReadOnlyList<WeaponAttackSelection>? WeaponAttacks = null);
 
 public sealed record AbilityScores(
     int Strength,
@@ -58,3 +59,8 @@ public sealed record FeatSelection(
     AbilityScoreImprovementEffect? AbilityScoreImprovement = null);
 
 public sealed record WeaponMasterySelection(ContentReference? Weapon);
+
+public sealed record WeaponAttackSelection(
+    ContentReference? Weapon,
+    string? AbilityId,
+    bool TwoHanded = false);

@@ -91,6 +91,15 @@ export const characterDraftSchema = z.object({
       }),
     )
     .default([]),
+  weaponAttacks: z
+    .array(
+      z.object({
+        weapon: contentReferenceSchema,
+        abilityId: z.enum(['str', 'dex']),
+        twoHanded: z.boolean().default(false),
+      }),
+    )
+    .default([]),
 })
 
 const documentIdentitySchema = z.object({
@@ -167,6 +176,30 @@ export const characterEvaluationSchema = z.object({
         )
         .nullish()
         .transform((masteries) => masteries ?? []),
+      weaponAttacks: z
+        .array(
+          z.object({
+            weapon: contentReferenceSchema,
+            abilityId: z.enum(['str', 'dex']),
+            attackModifier: z.number().int(),
+            damage: z.object({
+              dice: z.string().min(1),
+              type: contentReferenceSchema,
+            }),
+            damageModifier: z.number().int(),
+            isProficient: z.boolean(),
+            twoHanded: z.boolean(),
+            range: z
+              .object({
+                normal: z.number().int().positive(),
+                long: z.number().int().positive().nullable(),
+              })
+              .nullable(),
+            mastery: contentReferenceSchema.nullable(),
+          }),
+        )
+        .nullish()
+        .transform((attacks) => attacks ?? []),
     })
     .nullable(),
 })

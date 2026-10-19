@@ -202,6 +202,47 @@ function catalogItem(category: 'classes' | 'species' | 'backgrounds', id: string
 
 function defaultCatalogItemLoader(): CatalogItemLoader {
   return vi.fn((category: CatalogCategory, id: string) => {
+    if (category === 'equipment') {
+      const item = catalogItems.equipment.find((candidate) => candidate.id === id)
+      if (!item) return Promise.reject(new Error(`Unexpected equipment: ${id}`))
+      const isArmor = id === 'chain-mail'
+      const isShield = id === 'shield'
+      return Promise.resolve({
+        ...item,
+        description: [],
+        attributes: [],
+        sections: [],
+        textSections: [],
+        equipment: {
+          categories: isArmor
+            ? [{ id: 'heavy-armor', name: 'Heavy Armor' }]
+            : isShield
+              ? [{ id: 'shields', name: 'Shields' }]
+              : [{ id: 'weapons', name: 'Weapons' }],
+          cost: null,
+          weight: null,
+          armor: isArmor
+            ? {
+                baseArmorClass: 16,
+                addsDexterity: false,
+                maximumDexterityBonus: null,
+                strengthMinimum: 13,
+                imposesStealthDisadvantage: true,
+              }
+            : isShield
+              ? {
+                  baseArmorClass: 2,
+                  addsDexterity: false,
+                  maximumDexterityBonus: null,
+                  strengthMinimum: 0,
+                  imposesStealthDisadvantage: false,
+                }
+              : null,
+          weapon: null,
+        },
+        source: catalogPage('equipment').source,
+      })
+    }
     if (category !== 'classes' && category !== 'species' && category !== 'backgrounds') {
       return Promise.reject(new Error(`Unexpected category: ${category}`))
     }
@@ -272,6 +313,7 @@ function validEvaluation(): CharacterEvaluation {
         },
       ],
       weaponMasteries: [],
+      weaponAttacks: [],
     },
   }
 }
@@ -1735,6 +1777,7 @@ describe('CharacterBuilderPage', () => {
           categories: [
             { id: 'weapons', name: 'Weapons' },
             { id: 'martial-weapons', name: 'Martial Weapons' },
+            { id: 'martial-melee-weapons', name: 'Martial Melee Weapons' },
           ],
           cost: null,
           weight: 3,
@@ -1771,6 +1814,8 @@ describe('CharacterBuilderPage', () => {
       await user.click(screen.getByRole('button', { name: `Add ${name}` }))
       await user.click(await screen.findByRole('checkbox', { name: `Master ${name}` }))
     }
+    await user.click(screen.getByRole('checkbox', { name: 'Equip Battleaxe' }))
+    await user.click(screen.getByRole('button', { name: 'Configure attack for Battleaxe' }))
     await user.click(screen.getByRole('button', { name: 'Review character' }))
 
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
@@ -1781,6 +1826,13 @@ describe('CharacterBuilderPage', () => {
             { weapon: { id: 'battleaxe', name: 'Battleaxe' } },
             { weapon: { id: 'dagger', name: 'Dagger' } },
             { weapon: { id: 'longsword', name: 'Longsword' } },
+          ],
+          weaponAttacks: [
+            {
+              weapon: { id: 'battleaxe', name: 'Battleaxe' },
+              abilityId: 'str',
+              twoHanded: false,
+            },
           ],
         }),
       }),

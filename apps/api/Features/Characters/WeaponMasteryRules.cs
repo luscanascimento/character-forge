@@ -56,11 +56,6 @@ public static class WeaponMasteryRules
         var rulesById = equipmentRules.ToDictionary(
             candidate => candidate.Item.Id!,
             StringComparer.OrdinalIgnoreCase);
-        var proficiencyIds = proficiencies
-            .Select(proficiency => proficiency.Proficiency.Id)
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .Cast<string>()
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var resolved = new List<ResolvedWeaponMastery>();
 
         for (var index = 0; index < saved.Count; index++)
@@ -113,13 +108,10 @@ public static class WeaponMasteryRules
                 continue;
             }
 
-            var hasTraining = proficiencyIds.Contains(id) ||
-                itemRule.CategoryIds.Any(proficiencyIds.Contains) ||
-                proficiencyIds.Any(proficiencyId =>
-                    rule.SpecificProficiencyWeapons.TryGetValue(
-                        proficiencyId,
-                        out var weaponId) &&
-                    string.Equals(weaponId, id, StringComparison.OrdinalIgnoreCase));
+            var hasTraining = HasWeaponTraining(
+                itemRule,
+                proficiencies,
+                rule.SpecificProficiencyWeapons);
             if (!hasTraining)
             {
                 Add(
@@ -135,6 +127,24 @@ public static class WeaponMasteryRules
         }
 
         return new WeaponMasteryResolution(new ValidationResult(violations), resolved);
+    }
+
+    internal static bool HasWeaponTraining(
+        EquipmentItemRule itemRule,
+        IReadOnlyList<GrantedProficiency> proficiencies,
+        IReadOnlyDictionary<string, string> specificProficiencyWeapons)
+    {
+        var proficiencyIds = proficiencies
+            .Select(proficiency => proficiency.Proficiency.Id)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Cast<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var id = itemRule.Item.Id!;
+        return proficiencyIds.Contains(id) ||
+            itemRule.CategoryIds.Any(proficiencyIds.Contains) ||
+            proficiencyIds.Any(proficiencyId =>
+                specificProficiencyWeapons.TryGetValue(proficiencyId, out var weaponId) &&
+                string.Equals(weaponId, id, StringComparison.OrdinalIgnoreCase));
     }
 
     private static void Add(

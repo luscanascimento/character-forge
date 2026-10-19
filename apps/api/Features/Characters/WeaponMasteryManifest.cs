@@ -27,7 +27,7 @@ public static class WeaponMasteryManifest
             Entry("rogue", "rogue-weapon-mastery", Repeated(2), false, "Rogue — Level 1: Weapon Mastery", 61)
         ]);
 
-    private static readonly IReadOnlyDictionary<string, string> SpecificProficiencyWeapons =
+    internal static readonly IReadOnlyDictionary<string, string> SpecificProficiencyWeapons =
         new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["longswords"] = "longsword",
