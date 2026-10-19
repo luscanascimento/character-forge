@@ -5,6 +5,7 @@ import {
   evaluateFeatEligibility,
   validateCharacter,
   validateSpellReplacement,
+  validateWeaponMasteryReplacement,
 } from './characterApi'
 
 describe('character validation API', () => {
@@ -87,6 +88,39 @@ describe('character validation API', () => {
     })
     expect(body.previous).not.toHaveProperty('schemaVersion')
     expect(body.current).not.toHaveProperty('updatedAt')
+  })
+
+  it('sends canonical states for a Long Rest Weapon Mastery replacement', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ validation: { isValid: false, violations: [] }, derived: null }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      )
+    const previous = createStoredCharacter()
+    const current = {
+      ...previous,
+      character: {
+        ...previous.character,
+        weaponMasteries: [{ weapon: { id: 'battleaxe', name: 'Battleaxe' } }],
+      },
+    }
+
+    await validateWeaponMasteryReplacement(previous, current, 'longRest')
+
+    const request = fetchMock.mock.calls[0]
+    expect(request?.[0]).toBe('/api/characters/validate-weapon-mastery-replacement')
+    const body = JSON.parse((request?.[1]?.body as string) ?? '{}') as Record<string, unknown>
+    expect(body).toMatchObject({
+      trigger: 'longRest',
+      previous: { id: previous.id, weaponMasteries: [] },
+      current: {
+        id: current.id,
+        weaponMasteries: [{ weapon: { id: 'battleaxe' } }],
+      },
+    })
   })
 
   it('sends a canonical character and feat id for eligibility evaluation', async () => {

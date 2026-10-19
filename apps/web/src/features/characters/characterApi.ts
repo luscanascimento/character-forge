@@ -2,12 +2,14 @@ import {
   characterEvaluationSchema,
   featEligibilityEvaluationSchema,
   spellReplacementEvaluationSchema,
+  weaponMasteryReplacementEvaluationSchema,
   toCharacterRequest,
   type AbilityScoreImprovementEffect,
   type CharacterEvaluation,
   type FeatEligibilityEvaluation,
   type SpellReplacementEvaluation,
   type StoredCharacterV1,
+  type WeaponMasteryReplacementEvaluation,
 } from './characterSchemas'
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? ''
@@ -23,6 +25,7 @@ export class CharacterValidationRequestError extends Error {
 }
 
 export type SpellReplacementTrigger = 'classLevelGained' | 'longRest'
+export type WeaponMasteryReplacementTrigger = 'longRest'
 
 export async function validateCharacter(
   document: StoredCharacterV1,
@@ -70,6 +73,33 @@ export async function validateSpellReplacement(
   }
 
   return spellReplacementEvaluationSchema.parse(await response.json())
+}
+
+export async function validateWeaponMasteryReplacement(
+  previous: StoredCharacterV1,
+  current: StoredCharacterV1,
+  trigger: WeaponMasteryReplacementTrigger,
+  signal?: AbortSignal,
+): Promise<WeaponMasteryReplacementEvaluation> {
+  const response = await fetch(`${apiBaseUrl}/api/characters/validate-weapon-mastery-replacement`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      previous: toCharacterRequest(previous),
+      current: toCharacterRequest(current),
+      trigger,
+    }),
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new CharacterValidationRequestError(response.status)
+  }
+
+  return weaponMasteryReplacementEvaluationSchema.parse(await response.json())
 }
 
 export async function evaluateFeatEligibility(

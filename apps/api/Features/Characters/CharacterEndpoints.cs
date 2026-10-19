@@ -26,6 +26,17 @@ public static class CharacterEndpoints
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
             .RequireRateLimiting("catalog");
 
+        endpoints.MapPost("/api/characters/validate-weapon-mastery-replacement", async (
+                WeaponMasteryReplacementEvaluationRequest request,
+                WeaponMasteryReplacementEvaluationService service,
+                CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.EvaluateAsync(request, cancellationToken)))
+            .WithName("ValidateWeaponMasteryReplacement")
+            .WithSummary("Validates one canonical Weapon Mastery replacement after a Long Rest.")
+            .Produces<WeaponMasteryReplacementEvaluation>()
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
+            .RequireRateLimiting("catalog");
+
         endpoints.MapPost("/api/characters/evaluate-feat", async (
                 FeatEligibilityRequest request,
                 FeatEligibilityEvaluationService service,

@@ -205,6 +205,7 @@ export const characterEvaluationSchema = z.object({
 })
 
 export const spellReplacementEvaluationSchema = characterEvaluationSchema
+export const weaponMasteryReplacementEvaluationSchema = characterEvaluationSchema
 
 export const featEligibilityEvaluationSchema = z.object({
   validation: z.object({
@@ -239,6 +240,9 @@ export type StoredCharacterV1 = z.infer<typeof storedCharacterV1Schema>
 export type CharacterRequest = z.infer<typeof characterRequestSchema>
 export type CharacterEvaluation = z.infer<typeof characterEvaluationSchema>
 export type SpellReplacementEvaluation = z.infer<typeof spellReplacementEvaluationSchema>
+export type WeaponMasteryReplacementEvaluation = z.infer<
+  typeof weaponMasteryReplacementEvaluationSchema
+>
 export type FeatEligibilityEvaluation = z.infer<typeof featEligibilityEvaluationSchema>
 export type AbilityScoreImprovementEffect = z.infer<typeof abilityScoreImprovementEffectSchema>
 

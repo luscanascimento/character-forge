@@ -72,7 +72,7 @@ The selected rules contract is `ruleset: "2024"` and `rulesVersion: "SRD-5.2.1"`
 
 Only legally redistributable SRD material is in scope. Do not add content from non-SRD sourcebooks or scrape D&D Beyond. The catalog exposes classes, species, backgrounds, feats, spells, and equipment through `/api/catalog/{category}` and `/api/catalog/{category}/{id}`. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) and the [API research checkpoint](docs/SRD-API-RESEARCH.md).
 
-Draft characters can be submitted to `POST /api/characters/validate` for canonical rule validation and derived ability/proficiency, combat, progression, and spellcasting values. Later spell changes can be submitted to `POST /api/characters/validate-spell-replacement` with previous/current canonical states and an explicit class-level or Long Rest trigger. `POST /api/characters/evaluate-feat` evaluates canonical prerequisites and typed Ability Score Improvement proposals while reporting other feat effects as unsupported. None of these endpoints persists character data, and calculations are returned only for valid 2024 / SRD 5.2.1 documents within the rules currently implemented.
+Draft characters can be submitted to `POST /api/characters/validate` for canonical rule validation and derived ability/proficiency, combat, progression, and spellcasting values. Later spell changes can be submitted to `POST /api/characters/validate-spell-replacement` with previous/current canonical states and an explicit class-level or Long Rest trigger; Weapon Mastery exchanges use `POST /api/characters/validate-weapon-mastery-replacement` with two canonical states and a Long Rest trigger. `POST /api/characters/evaluate-feat` evaluates canonical prerequisites and typed Ability Score Improvement proposals while reporting other feat effects as unsupported. None of these endpoints persists character data, and calculations are returned only for valid 2024 / SRD 5.2.1 documents within the rules currently implemented.
 
 ## Architecture and roadmap
 
@@ -83,7 +83,7 @@ Draft characters can be submitted to `POST /api/characters/validate` for canonic
 
 ## Current limitations
 
-- Feat effects beyond Ability Score Improvement, Weapon Mastery replacement transitions, Strength-minimum speed effects, Stealth disadvantage, rolled/manual HP, remaining narrative-only class feature choices, import/export, and print layouts are future work.
+- Feat effects beyond Ability Score Improvement, Strength-minimum speed effects, Stealth disadvantage, rolled/manual HP, remaining narrative-only class feature choices, import/export, and print layouts are future work.
 - Spell list filtering currently supports name, level, school, and class. Ritual/concentration filters require a richer local index because the upstream 2024 list contract does not expose those fields; that index remains deferred until a future catalog-indexing phase is justified.
 - The API exposes no immutable content snapshot identifier in its normal resource responses; Character Forge must retain its own provider-observation metadata when caching catalog content.
 

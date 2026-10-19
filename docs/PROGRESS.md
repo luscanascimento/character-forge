@@ -164,14 +164,17 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 - Derived attack and damage modifiers from the selected eligible Strength/Dexterity ability, resolved weapon training, class proficiency bonus, trusted damage profiles, and optional two-handed use.
 - Presented canonical attacks in Review with proficiency and active Weapon Mastery context, while retaining invalidated configurations for explicit correction.
 - Recorded the attack configuration boundary in ADR-021 and covered duplicate, unwielded, ability-ineligible, proficiency, damage, mastery, schema, persistence, and UI paths.
+- Added a canonical Long Rest transition endpoint that permits at most one Weapon Mastery exchange between fully valid states.
+- Kept replacement event history outside the draft, required stable character/class/level identity, and exposed a schema-validated frontend adapter for future lifecycle UI.
+- Recorded the transition boundary in ADR-022 and covered valid, unchanged, over-limit, unsupported-trigger, unavailable-feature, and level-change paths.
 
 ## Work in progress
 
-Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, stored Ability Score Improvement choices with effective abilities, server-owned inventory/armor evaluation, canonical Weapon Mastery selection, and canonical weapon attacks. Remaining feat effects, Weapon Mastery replacement transitions, and armor movement/Stealth effects remain separate increments.
+Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, stored Ability Score Improvement choices with effective abilities, server-owned inventory/armor evaluation, canonical Weapon Mastery selection and Long Rest replacement transitions, and canonical weapon attacks. Remaining feat effects and armor movement/Stealth effects remain separate increments.
 
 ## Next step
 
-Add explicit Long Rest Weapon Mastery replacement transitions without storing mutable lifecycle history in the character draft.
+Apply the Strength-minimum movement penalty from equipped armor to the species' canonical walking speed.
 
 ## Pending decisions
 
@@ -180,7 +183,7 @@ Add explicit Long Rest Weapon Mastery replacement transitions without storing mu
 
 ## Known issues and limitations
 
-- Feat effects beyond Ability Score Improvement, Weapon Mastery replacement transitions, Strength-minimum speed effects, Stealth disadvantage, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
+- Feat effects beyond Ability Score Improvement, Strength-minimum speed effects, Stealth disadvantage, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -190,11 +193,11 @@ Add explicit Long Rest Weapon Mastery replacement transitions without storing mu
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 98 passing across 13 files (`vitest run`)
+- Frontend unit tests: 99 passing across 13 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 197 passing
+- Backend unit/integration tests: 204 passing
 - Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, all five Weapon Mastery progressions/capacities, species/trait choices, backgrounds, feats including the Ability Score Improvement manifest facts, filtered spells, equipment list/detail, complete character validation including equipped Chain Mail AC, and a valid Bard level-gain spell replacement with Expertise
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
