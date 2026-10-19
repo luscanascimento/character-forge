@@ -39,6 +39,7 @@ import type {
 } from '../features/characters/characterSchemas'
 import { getClassProgression } from '../features/progression/classProgressionApi'
 import type { ClassProgressionDocument } from '../features/progression/classProgression'
+import { getSubclassDirectory } from '../features/progression/subclassDirectory'
 import { getFeatureChoices } from '../features/featureRules/featureRulesApi'
 import type {
   FeatureChoiceDocument,
@@ -3329,6 +3330,20 @@ function ClassProgressionFields({
   onRemoveSubclass: () => void
 }) {
   const numericLevel = Number(level)
+  const subclassDirectory = getSubclassDirectory(progression.class.id)
+  const ruleBackedSubclassById = new Map(
+    progression.subclasses.map((subclass) => [subclass.subclass.id, subclass]),
+  )
+  const directorySubclassIds = new Set(subclassDirectory.map((subclass) => subclass.id))
+  const displayedSubclasses = [
+    ...subclassDirectory.map((subclass) => ({
+      subclass,
+      progression: ruleBackedSubclassById.get(subclass.id) ?? null,
+    })),
+    ...progression.subclasses
+      .filter((subclass) => !directorySubclassIds.has(subclass.subclass.id))
+      .map((subclass) => ({ subclass: subclass.subclass, progression: subclass })),
+  ]
   const selectedSubclass = progression.subclasses.find(
     (subclass) => subclass.subclass.id === subclassId,
   )
@@ -3368,38 +3383,55 @@ function ClassProgressionFields({
         </select>
       </label>
 
-      {progression.subclasses.length > 0 && (
+      {displayedSubclasses.length > 0 && (
         <fieldset
           className={error ? 'subclass-choices subclass-choices--error' : 'subclass-choices'}
         >
           <legend>Subclass</legend>
+          <p className="subclass-catalog-note">
+            Showing all four 2024 Player&apos;s Handbook subclasses. Only subclasses with SRD 5.2.1
+            rules are currently selectable and validated.
+          </p>
           <div className="subclass-options">
-            {progression.subclasses.map((subclass) => {
-              const locked = numericLevel < subclass.availableAtLevel
+            {displayedSubclasses.map(({ subclass, progression: subclassProgression }) => {
+              const unavailableRules = subclassProgression === null
+              const lockedByLevel =
+                subclassProgression !== null && numericLevel < subclassProgression.availableAtLevel
+              const locked = unavailableRules || lockedByLevel
               return (
                 <label
-                  className={locked ? 'subclass-option--locked' : undefined}
-                  key={subclass.subclass.id}
+                  className={
+                    unavailableRules
+                      ? 'subclass-option--locked subclass-option--reference'
+                      : locked
+                        ? 'subclass-option--locked'
+                        : undefined
+                  }
+                  key={subclass.id}
                 >
                   <input
                     type="radio"
                     name="subclass"
-                    value={subclass.subclass.id}
-                    checked={subclassId === subclass.subclass.id}
+                    value={subclass.id}
+                    checked={subclassId === subclass.id}
                     disabled={locked}
-                    onChange={() => onSubclassChange(subclass.subclass.id)}
+                    onChange={() => onSubclassChange(subclass.id)}
                   />
                   <span aria-hidden="true">
-                    {subclassId === subclass.subclass.id ? (
+                    {subclassId === subclass.id ? (
                       <Check size={15} />
                     ) : locked ? (
                       <LockKeyhole size={14} />
                     ) : null}
                   </span>
                   <span>
-                    <strong>{subclass.subclass.name}</strong>
+                    <strong>{subclass.name}</strong>
                     <small>
-                      {locked ? `Available at level ${subclass.availableAtLevel}` : 'Available now'}
+                      {unavailableRules
+                        ? 'Listed in the 2024 Player’s Handbook · rules unavailable in SRD'
+                        : lockedByLevel
+                          ? `Available at level ${subclassProgression.availableAtLevel} · SRD rules available`
+                          : 'Available now · SRD rules available'}
                     </small>
                   </span>
                 </label>

@@ -4,7 +4,11 @@
 
 This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
 
-No other Wizards of the Coast content is included or implied.
+No non-SRD rules text, descriptions, or mechanics from Wizards of the Coast are included or implied.
+
+## 2024 subclass directory
+
+The builder displays the names of the 48 subclasses listed in the 2024 Player's Handbook so users can see the product's coverage boundary. The 36 non-SRD entries are identification-only metadata: they are visibly unavailable and include no copied description, progression, or mechanics. Dungeons & Dragons and the subclass names are property of Wizards of the Coast LLC.
 
 ## D&D 5e SRD API
 

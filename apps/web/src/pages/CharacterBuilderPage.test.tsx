@@ -1241,8 +1241,15 @@ describe('CharacterBuilderPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Class' }))
     const level = await screen.findByRole('combobox', { name: 'Current class level' })
     const evoker = screen.getByRole('radio', { name: /Evoker/ })
+    expect(screen.getByRole('radio', { name: /Abjurer/ })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: /Diviner/ })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: /Illusionist/ })).toBeDisabled()
+    expect(
+      screen.getByText(/Showing all four 2024 Player's Handbook subclasses/),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText(/rules unavailable in SRD/)).toHaveLength(3)
     expect(evoker).toBeDisabled()
-    expect(screen.getByText('Available at level 3')).toBeInTheDocument()
+    expect(screen.getByText(/Available at level 3 · SRD rules available/)).toBeInTheDocument()
 
     await user.selectOptions(level, '3')
     expect(evoker).toBeEnabled()

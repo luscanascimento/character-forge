@@ -174,6 +174,8 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 - Added typed `SRD-5.2.1-FS-1` effects for Archery's ranged attack bonus and Defense's worn-body-armor AC bonus.
 - Rejected repeated non-repeatable Fighting Style feats across separate feature occurrences and kept cantrip/Expertise branches outside effect resolution.
 - Recorded the narrow effect boundary in ADR-025 and covered activation, duplication, ranged/melee attack, armored/unarmored AC, and unrelated-branch paths.
+- Added a complete 48-name 2024 Player's Handbook subclass directory to the Class step while keeping the 36 non-SRD entries visibly unavailable.
+- Kept subclass persistence and canonical feature progression restricted to the 12 provider-backed SRD 5.2.1 entries and recorded the discovery/rules boundary in ADR-026.
 
 ## Work in progress
 
@@ -195,12 +197,13 @@ Continue typed feat effects only where the required character state can be repre
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
 - The external API does not expose an immutable catalog snapshot version in normal responses.
+- The upstream SRD exposes only one subclass per class. The builder shows all four 2024 Player's Handbook subclass names per class, but the 36 non-SRD entries have no selectable mechanics or progression.
 - The hero has been converted to a 140 KB WebP; responsive variants can be considered during the Phase 9 performance audit if measurements justify them.
 
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 99 passing across 13 files (`vitest run`)
+- Frontend unit tests: 102 passing across 14 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors

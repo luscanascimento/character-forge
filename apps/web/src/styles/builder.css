@@ -573,6 +573,14 @@
   margin-bottom: 0.65rem;
 }
 
+.subclass-catalog-note {
+  max-width: 46rem;
+  margin: 0 0 0.75rem;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
 .subclass-options {
   display: grid;
   gap: 0.55rem;
@@ -642,6 +650,10 @@
 
 .subclass-option--locked > span:first-of-type {
   color: var(--color-text-muted);
+}
+
+.subclass-option--reference {
+  border-style: dashed !important;
 }
 
 .subclass-choices > small {
