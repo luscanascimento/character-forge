@@ -2417,6 +2417,13 @@ function ReviewStep({
           <span>Walking speed</span>
           <strong>{derived.walkingSpeed} ft.</strong>
         </div>
+        {derived.hasStealthDisadvantage && (
+          <div>
+            <AlertTriangle aria-hidden="true" size={20} />
+            <span>Stealth</span>
+            <strong>Disadvantage</strong>
+          </div>
+        )}
         {derived.spellcasting && (
           <>
             <div>

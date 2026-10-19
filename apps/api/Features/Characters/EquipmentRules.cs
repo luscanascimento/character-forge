@@ -3,7 +3,8 @@ namespace CharacterForge.Api.Features.Characters;
 public sealed record EquipmentResolution(
     ValidationResult Validation,
     int ArmorClass,
-    int WalkingSpeed);
+    int WalkingSpeed,
+    bool HasStealthDisadvantage);
 
 public static class EquipmentRules
 {
@@ -143,7 +144,8 @@ public static class EquipmentRules
         return new EquipmentResolution(
             new ValidationResult(violations),
             baseArmorClass + shieldBonus,
-            walkingSpeed);
+            walkingSpeed,
+            activeBodyArmor?.ImposesStealthDisadvantage == true);
     }
 
     private static int ArmorClass(ArmorEquipmentRule armor, int dexterityScore)

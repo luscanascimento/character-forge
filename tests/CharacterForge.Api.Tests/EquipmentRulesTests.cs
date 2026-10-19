@@ -132,6 +132,29 @@ public sealed class EquipmentRulesTests
         Assert.Equal(35, result.WalkingSpeed);
     }
 
+    [Fact]
+    public void Resolve_ReportsStealthDisadvantageFromTheEquippedBodyArmor()
+    {
+        var result = EquipmentRules.Resolve(
+            new EquipmentSelections([
+                new EquipmentItemSelection(new ContentReference("scale-mail", "Scale Mail"), 1, true)
+            ]),
+            [Rule(
+                "scale-mail",
+                "Scale Mail",
+                ["armor", "medium-armor"],
+                new ArmorEquipmentRule(
+                    14,
+                    true,
+                    2,
+                    ImposesStealthDisadvantage: true))],
+            dexterityScore: 14,
+            [Proficiency("medium-armor", "Medium Armor")]);
+
+        Assert.True(result.Validation.IsValid);
+        Assert.True(result.HasStealthDisadvantage);
+    }
+
     private static EquipmentItemRule Rule(
         string id,
         string name,

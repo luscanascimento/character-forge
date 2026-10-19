@@ -169,14 +169,16 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 - Recorded the transition boundary in ADR-022 and covered valid, unchanged, over-limit, unsupported-trigger, unavailable-feature, and level-change paths.
 - Normalized canonical species walking speed and derived the equipped-armor 10-foot penalty when effective Strength is below the armor minimum.
 - Exposed walking speed in Review, recorded the rule boundary in ADR-023, and covered penalty, threshold, provider mapping, schema, and presentation paths.
+- Derived Stealth disadvantage exclusively from the single equipped body armor's trusted flag and surfaced it explicitly in Review.
+- Recorded the active-armor effect boundary in ADR-024 and covered canonical rule and presentation paths without implementing roll execution.
 
 ## Work in progress
 
-Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, stored Ability Score Improvement choices with effective abilities, server-owned inventory/armor evaluation including Strength-minimum walking speed, canonical Weapon Mastery selection and Long Rest replacement transitions, and canonical weapon attacks. Remaining feat effects and the armor Stealth effect remain separate increments.
+Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, stored Ability Score Improvement choices with effective abilities, server-owned inventory/armor evaluation including Strength-minimum walking speed and Stealth disadvantage, canonical Weapon Mastery selection and Long Rest replacement transitions, and canonical weapon attacks. Remaining feat effects remain separate increments.
 
 ## Next step
 
-Expose canonical Stealth disadvantage from the single equipped body armor.
+Add the next typed feat-effect family without parsing narrative descriptions.
 
 ## Pending decisions
 
@@ -185,7 +187,7 @@ Expose canonical Stealth disadvantage from the single equipped body armor.
 
 ## Known issues and limitations
 
-- Feat effects beyond Ability Score Improvement, Stealth disadvantage, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
+- Feat effects beyond Ability Score Improvement, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -199,7 +201,7 @@ Expose canonical Stealth disadvantage from the single equipped body armor.
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 206 passing
+- Backend unit/integration tests: 207 passing
 - Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, all five Weapon Mastery progressions/capacities, species/trait choices, backgrounds, feats including the Ability Score Improvement manifest facts, filtered spells, equipment list/detail, complete character validation including equipped Chain Mail AC, and a valid Bard level-gain spell replacement with Expertise
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10

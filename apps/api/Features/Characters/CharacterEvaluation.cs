@@ -15,6 +15,7 @@ public sealed record CharacterDerivedValues(
     int ProficiencyBonus,
     int ArmorClass,
     int WalkingSpeed,
+    bool HasStealthDisadvantage,
     int? HitPointMaximum,
     int HitDie,
     IReadOnlyList<GrantedProficiency> GrantedProficiencies,
@@ -78,7 +79,8 @@ public sealed record ArmorEquipmentRule(
     int BaseArmorClass,
     bool AddsDexterity,
     int? MaximumDexterityBonus,
-    int StrengthMinimum = 0);
+    int StrengthMinimum = 0,
+    bool ImposesStealthDisadvantage = false);
 
 public sealed record WeaponDamageRule(string Dice, ContentReference Type);
 
@@ -220,6 +222,7 @@ public static class CharacterEvaluator
                 proficiencyBonus,
                 equipmentResolution.ArmorClass,
                 equipmentResolution.WalkingSpeed,
+                equipmentResolution.HasStealthDisadvantage,
                 HitPointRules.GetFixedMaximum(
                     context.HitDie,
                     abilities.Constitution,

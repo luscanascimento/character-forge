@@ -281,6 +281,7 @@ function validEvaluation(): CharacterEvaluation {
       proficiencyBonus: 2,
       armorClass: 12,
       walkingSpeed: 30,
+      hasStealthDisadvantage: false,
       hitPointMaximum: 7,
       hitDie: 6,
       spellcasting: {
@@ -1641,7 +1642,11 @@ describe('CharacterBuilderPage', () => {
   })
 
   it('resumes a complete draft at Review and presents trusted derived values', async () => {
-    const validationLoader = defaultValidationLoader()
+    const evaluation = validEvaluation()
+    const validationLoader = vi.fn().mockResolvedValue({
+      ...evaluation,
+      derived: { ...evaluation.derived!, hasStealthDisadvantage: true },
+    })
     const character = createStoredCharacter()
     renderPage(repository(), undefined, undefined, undefined, validationLoader)
 
@@ -1658,6 +1663,8 @@ describe('CharacterBuilderPage', () => {
     expect(within(derived).getByText('11')).toBeInTheDocument()
     expect(within(derived).getByText('Spell attack')).toBeInTheDocument()
     expect(within(derived).getByText('+3')).toBeInTheDocument()
+    expect(within(derived).getByText('Stealth')).toBeInTheDocument()
+    expect(within(derived).getByText('Disadvantage')).toBeInTheDocument()
     expect(within(derived).getAllByText('d6')).toHaveLength(2)
     expect(screen.getByText('Skill: Arcana')).toBeInTheDocument()
     expect(validationLoader).toHaveBeenCalledWith(character, expect.anything())

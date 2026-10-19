@@ -58,6 +58,8 @@ Step 6 is implemented with explicit persisted attack configurations. Every attac
 
 The armor effect follow-up now derives walking speed from the selected species and applies the canonical 10-foot penalty when effective Strength is below the single equipped body armor's minimum. This remains independent from Armor Class and training validation.
 
+The same equipment resolution exposes Stealth disadvantage only from the single equipped body armor's provider-owned flag. Owned but unequipped armor and Shields do not activate it.
+
 The initial equipment model will preserve non-destructive invalidation: catalog changes, class changes, or lost proficiencies retain saved references but produce structured violations until the user explicitly replaces or removes them. Initial creation may use either the class/background packages or manually chosen owned equipment; it must never infer one route from the other.
 
 ## Fail-closed requirements

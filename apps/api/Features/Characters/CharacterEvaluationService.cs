@@ -217,7 +217,8 @@ public sealed class CharacterEvaluationService(
                         facts.Armor.BaseArmorClass,
                         facts.Armor.AddsDexterity,
                         facts.Armor.MaximumDexterityBonus,
-                        facts.Armor.StrengthMinimum),
+                        facts.Armor.StrengthMinimum,
+                        facts.Armor.ImposesStealthDisadvantage),
                 facts.Weapon is null
                     ? null
                     : new WeaponEquipmentRule(

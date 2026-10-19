@@ -143,6 +143,7 @@ export const characterEvaluationSchema = z.object({
       proficiencyBonus: z.number().int(),
       armorClass: z.number().int(),
       walkingSpeed: z.number().int().nonnegative().default(30),
+      hasStealthDisadvantage: z.boolean().default(false),
       hitPointMaximum: z.number().int().nullable(),
       hitDie: z.number().int().positive(),
       grantedProficiencies: z.array(
