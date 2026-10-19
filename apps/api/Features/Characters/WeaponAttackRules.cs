@@ -15,7 +15,8 @@ public static class WeaponAttackRules
         IReadOnlyList<GrantedProficiency> proficiencies,
         AbilityScores abilities,
         int proficiencyBonus,
-        IReadOnlyList<ResolvedWeaponMastery> masteries)
+        IReadOnlyList<ResolvedWeaponMastery> masteries,
+        int rangedAttackBonus = 0)
     {
         ArgumentNullException.ThrowIfNull(equipmentRules);
         ArgumentNullException.ThrowIfNull(proficiencies);
@@ -120,7 +121,9 @@ public static class WeaponAttackRules
             resolved.Add(new ResolvedWeaponAttack(
                 itemRule.Item,
                 abilityId,
-                abilityModifier + (isProficient ? proficiencyBonus : 0),
+                abilityModifier +
+                    (isProficient ? proficiencyBonus : 0) +
+                    (weapon.Kind == "ranged" ? rangedAttackBonus : 0),
                 selection.TwoHanded ? weapon.TwoHandedDamage! : weapon.Damage,
                 abilityModifier,
                 isProficient,

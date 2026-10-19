@@ -155,6 +155,28 @@ public sealed class EquipmentRulesTests
         Assert.True(result.HasStealthDisadvantage);
     }
 
+    [Fact]
+    public void Resolve_AppliesDefenseOnlyWhileBodyArmorIsWorn()
+    {
+        var armor = EquipmentRules.Resolve(
+            new EquipmentSelections([
+                new EquipmentItemSelection(new ContentReference("leather", "Leather"), 1, true)
+            ]),
+            [Rule("leather", "Leather", ["armor", "light-armor"], new(11, true, null))],
+            dexterityScore: 14,
+            [Proficiency("light-armor", "Light Armor")],
+            wornArmorClassBonus: 1);
+        var unarmored = EquipmentRules.Resolve(
+            new EquipmentSelections([]),
+            [],
+            dexterityScore: 14,
+            [],
+            wornArmorClassBonus: 1);
+
+        Assert.Equal(14, armor.ArmorClass);
+        Assert.Equal(12, unarmored.ArmorClass);
+    }
+
     private static EquipmentItemRule Rule(
         string id,
         string name,

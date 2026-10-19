@@ -158,6 +158,7 @@ public static class CharacterEvaluator
             character.FeatureChoices,
             featureChoiceRules,
             classProgression);
+        var fightingStyleEffects = FightingStyleEffectRules.Resolve(character.FeatureChoices);
         var spellSelectionValidation = SpellSelectionRules.Validate(
             character.Spells,
             context.SpellSelections);
@@ -174,7 +175,8 @@ public static class CharacterEvaluator
             effectiveAbilities.Dexterity,
             grantedProficiencies,
             effectiveAbilities.Strength,
-            context.BaseWalkingSpeed);
+            context.BaseWalkingSpeed,
+            fightingStyleEffects.HasDefense ? 1 : 0);
         var weaponMasteryResolution = WeaponMasteryRules.Resolve(
             character.WeaponMasteries,
             context.WeaponMastery,
@@ -189,10 +191,12 @@ public static class CharacterEvaluator
             grantedProficiencies,
             effectiveAbilities,
             proficiencyBonus,
-            weaponMasteryResolution.Masteries);
+            weaponMasteryResolution.Masteries,
+            fightingStyleEffects.HasArchery ? 2 : 0);
         var ruleViolations = progressionValidation.Violations
             .Concat(proficiencyResolution.Validation.Violations)
             .Concat(featureChoiceValidation.Violations)
+            .Concat(fightingStyleEffects.Validation.Violations)
             .Concat(spellSelectionValidation.Violations)
             .Concat(featResolution.Validation.Violations)
             .Concat(equipmentResolution.Validation.Violations)

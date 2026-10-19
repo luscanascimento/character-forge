@@ -16,7 +16,8 @@ public static class EquipmentRules
         int dexterityScore,
         IReadOnlyList<GrantedProficiency> proficiencies,
         int strengthScore = 10,
-        int baseWalkingSpeed = 30)
+        int baseWalkingSpeed = 30,
+        int wornArmorClassBonus = 0)
     {
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(proficiencies);
@@ -143,7 +144,7 @@ public static class EquipmentRules
 
         return new EquipmentResolution(
             new ValidationResult(violations),
-            baseArmorClass + shieldBonus,
+            baseArmorClass + shieldBonus + (equippedBodyArmor.Count == 1 ? wornArmorClassBonus : 0),
             walkingSpeed,
             activeBodyArmor?.ImposesStealthDisadvantage == true);
     }

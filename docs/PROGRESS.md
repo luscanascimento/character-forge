@@ -171,14 +171,17 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 - Exposed walking speed in Review, recorded the rule boundary in ADR-023, and covered penalty, threshold, provider mapping, schema, and presentation paths.
 - Derived Stealth disadvantage exclusively from the single equipped body armor's trusted flag and surfaced it explicitly in Review.
 - Recorded the active-armor effect boundary in ADR-024 and covered canonical rule and presentation paths without implementing roll execution.
+- Added typed `SRD-5.2.1-FS-1` effects for Archery's ranged attack bonus and Defense's worn-body-armor AC bonus.
+- Rejected repeated non-repeatable Fighting Style feats across separate feature occurrences and kept cantrip/Expertise branches outside effect resolution.
+- Recorded the narrow effect boundary in ADR-025 and covered activation, duplication, ranged/melee attack, armored/unarmored AC, and unrelated-branch paths.
 
 ## Work in progress
 
-Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, stored Ability Score Improvement choices with effective abilities, server-owned inventory/armor evaluation including Strength-minimum walking speed and Stealth disadvantage, canonical Weapon Mastery selection and Long Rest replacement transitions, and canonical weapon attacks. Remaining feat effects remain separate increments.
+Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, stored Ability Score Improvement choices with effective abilities, typed Archery/Defense Fighting Style effects, server-owned inventory/armor evaluation including Strength-minimum walking speed and Stealth disadvantage, canonical Weapon Mastery selection and Long Rest replacement transitions, and canonical weapon attacks. Remaining feat effects stay locked until their required state is modeled.
 
 ## Next step
 
-Add the next typed feat-effect family without parsing narrative descriptions.
+Continue typed feat effects only where the required character state can be represented explicitly; otherwise begin the Phase 7 completion audit at the supported boundary.
 
 ## Pending decisions
 
@@ -187,7 +190,7 @@ Add the next typed feat-effect family without parsing narrative descriptions.
 
 ## Known issues and limitations
 
-- Feat effects beyond Ability Score Improvement, rolled/manual HP, narrative-only class feature choices, import/export, and print functionality are not implemented yet.
+- Feat effects beyond Ability Score Improvement, Archery, and Defense; rolled/manual HP; narrative-only class feature choices; import/export; and print functionality are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -201,7 +204,7 @@ Add the next typed feat-effect family without parsing narrative descriptions.
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
-- Backend unit/integration tests: 207 passing
+- Backend unit/integration tests: 212 passing
 - Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, all five Weapon Mastery progressions/capacities, species/trait choices, backgrounds, feats including the Ability Score Improvement manifest facts, filtered spells, equipment list/detail, complete character validation including equipped Chain Mail AC, and a valid Bard level-gain spell replacement with Expertise
 - Dependency audit: npm and NuGet report no known vulnerabilities
 - Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10

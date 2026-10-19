@@ -120,6 +120,42 @@ public sealed class WeaponAttackRulesTests
             violation.Code == "character.weaponAttack.weapon.notWielded");
     }
 
+    [Fact]
+    public void Resolve_AppliesArcheryOnlyToRangedWeaponAttacks()
+    {
+        var bow = Weapon(
+            "shortbow",
+            "Shortbow",
+            ["weapons", "simple-ranged-weapons"],
+            "1d6",
+            masteryId: "vex");
+        var sword = Weapon(
+            "shortsword",
+            "Shortsword",
+            ["weapons", "martial-melee-weapons"],
+            "1d6",
+            masteryId: "vex");
+
+        var result = WeaponAttackRules.Resolve(
+            [
+                new WeaponAttackSelection(bow.Item, "dex"),
+                new WeaponAttackSelection(sword.Item, "str")
+            ],
+            new EquipmentSelections([
+                new EquipmentItemSelection(bow.Item, 1, true),
+                new EquipmentItemSelection(sword.Item, 1, true)
+            ]),
+            [bow, sword],
+            [],
+            new AbilityScores(14, 14, 10, 10, 10, 10),
+            proficiencyBonus: 2,
+            [],
+            rangedAttackBonus: 2);
+
+        Assert.Equal(4, result.Attacks.Single(attack => attack.Weapon.Id == "shortbow").AttackModifier);
+        Assert.Equal(2, result.Attacks.Single(attack => attack.Weapon.Id == "shortsword").AttackModifier);
+    }
+
     private static EquipmentSelections Owned(string id, string name, bool equipped) =>
         new([new EquipmentItemSelection(new ContentReference(id, name), 1, equipped)]);
 

@@ -52,6 +52,8 @@ Phase 7 will proceed in dependency order:
 
 Step 4's first effect slice is implemented through `SRD-5.2.1-FEAT-1`: Ability Score Improvement choices are typed, provider-verified, tied to exact active progression occurrences, bounded to one +2 or two distinct +1 increases, and capped cumulatively at 20. Base scores remain persisted inputs while active effects produce effective scores for canonical derivation.
 
+The follow-up `SRD-5.2.1-FS-1` slice applies Archery to normalized ranged-weapon attack rolls and Defense to Armor Class only while body armor is worn. Other Fighting Style benefits stay locked where hands, extra attacks, or roll execution are not yet explicit.
+
 Step 5 is implemented through `SRD-5.2.1-WM-1`: provider capacities for Barbarian and Fighter must agree exactly, missing Paladin/Ranger/Rogue capacities are manifest-owned, and selections require distinct owned weapons covered by canonical weapon proficiency ids or normalized equipment categories. Long Rest replacement transitions remain deferred.
 
 Step 6 is implemented with explicit persisted attack configurations. Every attack requires a positively owned, equipped canonical weapon; melee/ranged identity and Finesse govern the allowed Strength/Dexterity choice; proficiency contributes only when resolved stable ids cover the weapon; Versatile damage, range, damage type, and an active mastery are returned from trusted catalog and character state rather than browser calculations.
