@@ -14,6 +14,7 @@ public sealed record CharacterDerivedValues(
     AbilityModifiers AbilityModifiers,
     int ProficiencyBonus,
     int ArmorClass,
+    int WalkingSpeed,
     int? HitPointMaximum,
     int HitDie,
     IReadOnlyList<GrantedProficiency> GrantedProficiencies,
@@ -76,7 +77,8 @@ public sealed record EquipmentItemRule(
 public sealed record ArmorEquipmentRule(
     int BaseArmorClass,
     bool AddsDexterity,
-    int? MaximumDexterityBonus);
+    int? MaximumDexterityBonus,
+    int StrengthMinimum = 0);
 
 public sealed record WeaponDamageRule(string Dice, ContentReference Type);
 
@@ -121,7 +123,8 @@ public sealed record CharacterRulesContext(
     IReadOnlyList<EquipmentItemRule>? Equipment = null,
     IReadOnlyList<FeatChoiceOccurrenceRule>? FeatChoices = null,
     bool RequireActiveFeatChoices = true,
-    WeaponMasteryRule? WeaponMastery = null);
+    WeaponMasteryRule? WeaponMastery = null,
+    int BaseWalkingSpeed = 30);
 
 public sealed record CharacterEvaluation(
     ValidationResult Validation,
@@ -167,7 +170,9 @@ public static class CharacterEvaluator
             character.Equipment,
             context.Equipment ?? [],
             effectiveAbilities.Dexterity,
-            grantedProficiencies);
+            grantedProficiencies,
+            effectiveAbilities.Strength,
+            context.BaseWalkingSpeed);
         var weaponMasteryResolution = WeaponMasteryRules.Resolve(
             character.WeaponMasteries,
             context.WeaponMastery,
@@ -214,6 +219,7 @@ public static class CharacterEvaluator
                     AbilityRules.GetModifier(abilities.Charisma)),
                 proficiencyBonus,
                 equipmentResolution.ArmorClass,
+                equipmentResolution.WalkingSpeed,
                 HitPointRules.GetFixedMaximum(
                     context.HitDie,
                     abilities.Constitution,

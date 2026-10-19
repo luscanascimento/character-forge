@@ -89,6 +89,7 @@ const characterCreationSchema = z.object({
     .array(equipmentChoiceSchema)
     .nullish()
     .transform((choices) => choices ?? []),
+  walkingSpeed: z.number().int().positive().max(120).nullable().optional(),
 })
 
 const abilityScorePrerequisiteChoiceSchema = z

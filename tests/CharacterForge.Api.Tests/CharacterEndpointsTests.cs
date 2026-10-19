@@ -650,7 +650,8 @@ public sealed class CharacterEndpointsTests : IDisposable
                                 new CatalogProficiencyReference("skill-perception", "Skill: Perception", true),
                                 new CatalogProficiencyReference("skill-survival", "Skill: Survival", true)
                             ])
-                    ]),
+                    ],
+                    WalkingSpeed: 30),
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, null)
             };
 

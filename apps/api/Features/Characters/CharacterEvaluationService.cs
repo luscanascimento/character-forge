@@ -137,7 +137,8 @@ public sealed class CharacterEvaluationService(
                 equipmentRules,
                 featChoiceRules,
                 RequireActiveFeatChoices: !allowIncompleteFeatChoices,
-                WeaponMastery: weaponMasteryRule));
+                WeaponMastery: weaponMasteryRule,
+                BaseWalkingSpeed: RequireWalkingSpeed(species!)));
     }
 
     private async Task<IReadOnlyList<FeatChoiceOccurrenceRule>> GetFeatChoiceRulesAsync(
@@ -215,7 +216,8 @@ public sealed class CharacterEvaluationService(
                     : new ArmorEquipmentRule(
                         facts.Armor.BaseArmorClass,
                         facts.Armor.AddsDexterity,
-                        facts.Armor.MaximumDexterityBonus),
+                        facts.Armor.MaximumDexterityBonus,
+                        facts.Armor.StrengthMinimum),
                 facts.Weapon is null
                     ? null
                     : new WeaponEquipmentRule(
@@ -262,6 +264,17 @@ public sealed class CharacterEvaluationService(
         }
 
         throw new SrdProviderException("A selected weapon did not provide a canonical melee or ranged category.");
+    }
+
+    private static int RequireWalkingSpeed(CatalogItemDetail species)
+    {
+        var speed = species.CharacterCreation?.WalkingSpeed;
+        if (speed is not > 0 or > 120)
+        {
+            throw new SrdProviderException("The selected species did not provide a supported walking speed.");
+        }
+
+        return speed.Value;
     }
 
     private async Task<SpellSelectionRule?> GetSpellSelectionRuleAsync(

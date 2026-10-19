@@ -51,7 +51,8 @@ internal static class SrdCatalogMapper
                 .Select(trait => ProficiencyChoice(
                     $"species/{item.Index}/traits/{trait.Index}/proficiencies/0",
                     trait.ProficiencyChoice!))
-                .ToArray()));
+                .ToArray(),
+            WalkingSpeed: item.Speed));
 
     public static CatalogItemDetail Map(SrdBackgroundDetail item) => new(
         item.Index,

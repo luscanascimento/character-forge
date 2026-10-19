@@ -2,7 +2,8 @@ namespace CharacterForge.Api.Features.Characters;
 
 public sealed record EquipmentResolution(
     ValidationResult Validation,
-    int ArmorClass);
+    int ArmorClass,
+    int WalkingSpeed);
 
 public static class EquipmentRules
 {
@@ -12,7 +13,9 @@ public static class EquipmentRules
         EquipmentSelections? selections,
         IReadOnlyList<EquipmentItemRule> rules,
         int dexterityScore,
-        IReadOnlyList<GrantedProficiency> proficiencies)
+        IReadOnlyList<GrantedProficiency> proficiencies,
+        int strengthScore = 10,
+        int baseWalkingSpeed = 30)
     {
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(proficiencies);
@@ -131,10 +134,16 @@ public static class EquipmentRules
         var shieldBonus = equippedShields.Count == 1
             ? equippedShields[0].Armor!.BaseArmorClass
             : 0;
+        var activeBodyArmor = equippedBodyArmor.Count == 1 ? equippedBodyArmor[0].Armor : null;
+        var walkingSpeed = activeBodyArmor is not null &&
+            strengthScore < activeBodyArmor.StrengthMinimum
+                ? Math.Max(0, baseWalkingSpeed - 10)
+                : baseWalkingSpeed;
 
         return new EquipmentResolution(
             new ValidationResult(violations),
-            baseArmorClass + shieldBonus);
+            baseArmorClass + shieldBonus,
+            walkingSpeed);
     }
 
     private static int ArmorClass(ArmorEquipmentRule armor, int dexterityScore)

@@ -583,6 +583,7 @@ public sealed class SrdApiClientTests
         var item = await client.GetItemAsync(CatalogCategory.Species, "elf", CancellationToken.None);
 
         Assert.NotNull(item?.CharacterCreation);
+        Assert.Equal(30, item.CharacterCreation.WalkingSpeed);
         var choice = Assert.Single(item.CharacterCreation.ProficiencyChoices);
         Assert.Equal("species/elf/traits/keen-senses/proficiencies/0", choice.Id);
         Assert.Equal(["skill-insight", "skill-perception"], choice.Options.Select(option => option.Id));

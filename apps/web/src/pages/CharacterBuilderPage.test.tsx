@@ -280,6 +280,7 @@ function validEvaluation(): CharacterEvaluation {
       },
       proficiencyBonus: 2,
       armorClass: 12,
+      walkingSpeed: 30,
       hitPointMaximum: 7,
       hitDie: 6,
       spellcasting: {

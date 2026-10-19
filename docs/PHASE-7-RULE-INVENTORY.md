@@ -56,6 +56,8 @@ Step 5 is implemented through `SRD-5.2.1-WM-1`: provider capacities for Barbaria
 
 Step 6 is implemented with explicit persisted attack configurations. Every attack requires a positively owned, equipped canonical weapon; melee/ranged identity and Finesse govern the allowed Strength/Dexterity choice; proficiency contributes only when resolved stable ids cover the weapon; Versatile damage, range, damage type, and an active mastery are returned from trusted catalog and character state rather than browser calculations.
 
+The armor effect follow-up now derives walking speed from the selected species and applies the canonical 10-foot penalty when effective Strength is below the single equipped body armor's minimum. This remains independent from Armor Class and training validation.
+
 The initial equipment model will preserve non-destructive invalidation: catalog changes, class changes, or lost proficiencies retain saved references but produce structured violations until the user explicitly replaces or removes them. Initial creation may use either the class/background packages or manually chosen owned equipment; it must never infer one route from the other.
 
 ## Fail-closed requirements

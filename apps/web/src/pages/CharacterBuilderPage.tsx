@@ -2410,6 +2410,13 @@ function ReviewStep({
           <span>Hit die</span>
           <strong>d{derived.hitDie}</strong>
         </div>
+        <div>
+          <span aria-hidden="true" className="review-derived__die">
+            ↟
+          </span>
+          <span>Walking speed</span>
+          <strong>{derived.walkingSpeed} ft.</strong>
+        </div>
         {derived.spellcasting && (
           <>
             <div>

@@ -91,6 +91,47 @@ public sealed class EquipmentRulesTests
             violation.Code == "character.equipment.shield.training.required");
     }
 
+    [Fact]
+    public void Resolve_ReducesWalkingSpeedBelowTheArmorStrengthMinimum()
+    {
+        var result = EquipmentRules.Resolve(
+            new EquipmentSelections([
+                new EquipmentItemSelection(new ContentReference("chain-mail", "Chain Mail"), 1, true)
+            ]),
+            [Rule(
+                "chain-mail",
+                "Chain Mail",
+                ["armor", "heavy-armor"],
+                new ArmorEquipmentRule(16, false, null, StrengthMinimum: 13))],
+            dexterityScore: 10,
+            [Proficiency("heavy-armor", "Heavy Armor")],
+            strengthScore: 12,
+            baseWalkingSpeed: 30);
+
+        Assert.True(result.Validation.IsValid);
+        Assert.Equal(20, result.WalkingSpeed);
+    }
+
+    [Fact]
+    public void Resolve_KeepsTheSpeciesSpeedWhenTheRequirementIsMet()
+    {
+        var result = EquipmentRules.Resolve(
+            new EquipmentSelections([
+                new EquipmentItemSelection(new ContentReference("chain-mail", "Chain Mail"), 1, true)
+            ]),
+            [Rule(
+                "chain-mail",
+                "Chain Mail",
+                ["armor", "heavy-armor"],
+                new ArmorEquipmentRule(16, false, null, StrengthMinimum: 13))],
+            dexterityScore: 10,
+            [Proficiency("heavy-armor", "Heavy Armor")],
+            strengthScore: 13,
+            baseWalkingSpeed: 35);
+
+        Assert.Equal(35, result.WalkingSpeed);
+    }
+
     private static EquipmentItemRule Rule(
         string id,
         string name,

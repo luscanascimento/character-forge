@@ -43,7 +43,8 @@ public sealed record CatalogCharacterCreationFacts(
     int? HitDie,
     IReadOnlyList<CatalogProficiencyReference> GrantedProficiencies,
     IReadOnlyList<CatalogProficiencyChoice> ProficiencyChoices,
-    IReadOnlyList<CatalogEquipmentChoice>? EquipmentChoices = null);
+    IReadOnlyList<CatalogEquipmentChoice>? EquipmentChoices = null,
+    int? WalkingSpeed = null);
 
 public sealed record CatalogEquipmentChoice(
     string Id,
