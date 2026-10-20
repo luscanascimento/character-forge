@@ -4,12 +4,14 @@ import {
   ArrowRight,
   BookOpen,
   Copy,
+  Download,
+  FileUp,
   Plus,
   RefreshCw,
   Shield,
   Trash2,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   CharacterStorage,
@@ -20,6 +22,12 @@ import {
   duplicateStoredCharacter,
   type StoredCharacterV1,
 } from '../features/characters/characterSchemas'
+import {
+  downloadCharacterExport,
+  materializeImportedCharacter,
+  readCharacterImportFile,
+  type CharacterExportV1,
+} from '../features/characters/characterTransfer'
 import '../styles/characters.css'
 
 type CharacterRepository = Pick<CharacterStorage, 'list' | 'save' | 'delete'>
@@ -28,6 +36,9 @@ type MyCharactersPageProps = {
   storage?: CharacterRepository
   createDraft?: () => StoredCharacterV1
   duplicateDraft?: (source: StoredCharacterV1) => StoredCharacterV1
+  exportDraft?: (source: StoredCharacterV1) => void
+  readImport?: (file: File) => Promise<CharacterExportV1>
+  materializeImport?: (source: CharacterExportV1) => StoredCharacterV1
 }
 
 const defaultStorage = new CharacterStorage()
@@ -36,10 +47,14 @@ export default function MyCharactersPage({
   storage = defaultStorage,
   createDraft = createStoredCharacterDraft,
   duplicateDraft = duplicateStoredCharacter,
+  exportDraft = downloadCharacterExport,
+  readImport = readCharacterImportFile,
+  materializeImport = materializeImportedCharacter,
 }: MyCharactersPageProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [pendingDeletion, setPendingDeletion] = useState<StoredCharacterV1 | null>(null)
+  const importInput = useRef<HTMLInputElement>(null)
   const charactersQuery = useQuery({
     queryKey: ['characters'],
     queryFn: () => storage.list(),
@@ -73,6 +88,22 @@ export default function MyCharactersPage({
       setPendingDeletion(null)
     },
   })
+  const exportMutation = useMutation({
+    mutationFn: async (document: StoredCharacterV1) => exportDraft(document),
+  })
+  const importMutation = useMutation({
+    mutationFn: async (file: File) => storage.save(materializeImport(await readImport(file))),
+    onSuccess: (document) => {
+      queryClient.setQueryData<StoredCharacterV1[]>(['characters'], (characters = []) => [
+        document,
+        ...characters,
+      ])
+      if (importInput.current) importInput.current.value = ''
+    },
+    onError: () => {
+      if (importInput.current) importInput.current.value = ''
+    },
+  })
 
   function requestDeletion(document: StoredCharacterV1) {
     deleteMutation.reset()
@@ -93,15 +124,34 @@ export default function MyCharactersPage({
           <h1>My characters</h1>
           <span>Heroes saved here stay in this browser, under your control.</span>
         </div>
-        <button
-          className="button button--primary"
-          type="button"
-          onClick={() => createMutation.mutate()}
-          disabled={createMutation.isPending}
-        >
-          <Plus aria-hidden="true" size={18} />
-          {createMutation.isPending ? 'Opening the forge…' : 'Forge a character'}
-        </button>
+        <div className="characters-hero__actions">
+          <label className="button button--secondary" aria-disabled={importMutation.isPending}>
+            <FileUp aria-hidden="true" size={18} />
+            {importMutation.isPending ? 'Importing…' : 'Import JSON'}
+            <input
+              ref={importInput}
+              className="character-import-input"
+              type="file"
+              accept=".json,application/json"
+              disabled={importMutation.isPending}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0]
+                if (!file) return
+                importMutation.reset()
+                importMutation.mutate(file)
+              }}
+            />
+          </label>
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={() => createMutation.mutate()}
+            disabled={createMutation.isPending}
+          >
+            <Plus aria-hidden="true" size={18} />
+            {createMutation.isPending ? 'Opening the forge…' : 'Forge a character'}
+          </button>
+        </div>
       </header>
 
       <section className="characters-workspace" aria-labelledby="character-roster-heading">
@@ -131,6 +181,27 @@ export default function MyCharactersPage({
             character was not changed.
           </div>
         )}
+        {exportMutation.isError && (
+          <div className="characters-inline-error" role="alert">
+            <AlertTriangle aria-hidden="true" size={18} />
+            {displayCharacterName(exportMutation.variables)} could not be exported. The saved
+            character was not changed.
+          </div>
+        )}
+        {importMutation.isError && (
+          <div className="characters-inline-error" role="alert">
+            <AlertTriangle aria-hidden="true" size={18} />
+            {importMutation.error instanceof Error
+              ? importMutation.error.message
+              : 'The selected character could not be imported.'}{' '}
+            Nothing in your roster was changed.
+          </div>
+        )}
+        {importMutation.isSuccess && (
+          <div className="characters-inline-success" role="status">
+            {displayCharacterName(importMutation.data)} was imported as a new local character.
+          </div>
+        )}
 
         {charactersQuery.isPending && <CharacterLoadingState />}
         {charactersQuery.isError && (
@@ -151,11 +222,18 @@ export default function MyCharactersPage({
                   duplicating={
                     duplicateMutation.isPending && duplicateMutation.variables.id === document.id
                   }
+                  exporting={
+                    exportMutation.isPending && exportMutation.variables.id === document.id
+                  }
                   onDuplicate={() => {
                     duplicateMutation.reset()
                     duplicateMutation.mutate(document)
                   }}
                   onDelete={() => requestDeletion(document)}
+                  onExport={() => {
+                    exportMutation.reset()
+                    exportMutation.mutate(document)
+                  }}
                 />
               </li>
             ))}
@@ -225,12 +303,16 @@ function CharacterErrorState({ error, onRetry }: { error: Error; onRetry: () => 
 function CharacterCard({
   document,
   duplicating,
+  exporting,
   onDuplicate,
+  onExport,
   onDelete,
 }: {
   document: StoredCharacterV1
   duplicating: boolean
+  exporting: boolean
   onDuplicate: () => void
+  onExport: () => void
   onDelete: () => void
 }) {
   const progression = document.character.classProgressions[0]
@@ -258,6 +340,9 @@ function CharacterCard({
         <Link to={`/forge/${document.id}`} aria-label={`Continue ${name}`}>
           Continue <ArrowRight aria-hidden="true" size={16} />
         </Link>
+        <Link to={`/characters/${document.id}/sheet`} aria-label={`View sheet for ${name}`}>
+          <Shield aria-hidden="true" size={15} /> Sheet
+        </Link>
         <button
           type="button"
           aria-label={`Duplicate ${name}`}
@@ -266,6 +351,10 @@ function CharacterCard({
         >
           <Copy aria-hidden="true" size={15} />
           {duplicating ? 'Duplicating…' : 'Duplicate'}
+        </button>
+        <button type="button" aria-label={`Export ${name}`} onClick={onExport} disabled={exporting}>
+          <Download aria-hidden="true" size={15} />
+          {exporting ? 'Exporting…' : 'Export'}
         </button>
         <button
           className="character-card__delete"

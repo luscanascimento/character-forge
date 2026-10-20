@@ -8,6 +8,7 @@ import {
   CharacterStorageUnavailableError,
 } from '../features/characters/characterStorage'
 import type { StoredCharacterV1 } from '../features/characters/characterSchemas'
+import { createCharacterExport } from '../features/characters/characterTransfer'
 import { createStoredCharacter } from '../test/characterFixture'
 import MyCharactersPage from './MyCharactersPage'
 
@@ -21,6 +22,11 @@ function renderPage(
   storage: CharacterRepository,
   createDraft?: () => StoredCharacterV1,
   duplicateDraft?: (source: StoredCharacterV1) => StoredCharacterV1,
+  transfer?: {
+    exportDraft?: (source: StoredCharacterV1) => void
+    readImport?: (file: File) => Promise<ReturnType<typeof createCharacterExport>>
+    materializeImport?: (source: ReturnType<typeof createCharacterExport>) => StoredCharacterV1
+  },
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
@@ -35,6 +41,9 @@ function renderPage(
                 storage={storage}
                 createDraft={createDraft}
                 duplicateDraft={duplicateDraft}
+                exportDraft={transfer?.exportDraft}
+                readImport={transfer?.readImport}
+                materializeImport={transfer?.materializeImport}
               />
             }
           />
@@ -83,6 +92,10 @@ describe('MyCharactersPage', () => {
     expect(screen.getByRole('link', { name: 'Continue Bryn' })).toHaveAttribute(
       'href',
       `/forge/${newer.id}`,
+    )
+    expect(screen.getByRole('link', { name: 'View sheet for Bryn' })).toHaveAttribute(
+      'href',
+      `/characters/${newer.id}/sheet`,
     )
   })
 
@@ -183,6 +196,64 @@ describe('MyCharactersPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be duplicated')
     expect(screen.getByRole('heading', { name: 'Arannis' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1)
+  })
+
+  it('exports a character without changing local storage', async () => {
+    const user = userEvent.setup()
+    const source = createStoredCharacter()
+    const storage = repository({ list: vi.fn().mockResolvedValue([source]) })
+    const exportDraft = vi.fn()
+    renderPage(storage, undefined, undefined, { exportDraft })
+
+    await user.click(await screen.findByRole('button', { name: 'Export Arannis' }))
+
+    await waitFor(() => expect(exportDraft).toHaveBeenCalledWith(source))
+    expect(storage.save).not.toHaveBeenCalled()
+    expect(storage.delete).not.toHaveBeenCalled()
+  })
+
+  it('imports a validated file under a new local identity', async () => {
+    const user = userEvent.setup()
+    const source = createStoredCharacter()
+    const imported = createStoredCharacter({
+      id: 'bd36a978-4481-4ee3-98c8-d4a9eaac94f2',
+      character: { ...source.character, name: 'Imported Arannis' },
+    })
+    const exported = createCharacterExport(source)
+    const storage = repository()
+    const readImport = vi.fn().mockResolvedValue(exported)
+    const materializeImport = vi.fn().mockReturnValue(imported)
+    renderPage(storage, undefined, undefined, { readImport, materializeImport })
+
+    await screen.findByRole('heading', { name: 'Your ledger is empty' })
+    const file = new File(['{}'], 'arannis.character-forge.json', {
+      type: 'application/json',
+    })
+    await user.upload(screen.getByLabelText('Import JSON'), file)
+
+    await waitFor(() => expect(storage.save).toHaveBeenCalledWith(imported))
+    expect(readImport).toHaveBeenCalledWith(file)
+    expect(materializeImport).toHaveBeenCalledWith(exported)
+    expect(screen.getByRole('heading', { name: 'Imported Arannis' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('imported as a new local character')
+  })
+
+  it('keeps the roster unchanged when an import is invalid', async () => {
+    const user = userEvent.setup()
+    const source = createStoredCharacter()
+    const storage = repository({ list: vi.fn().mockResolvedValue([source]) })
+    const readImport = vi.fn().mockRejectedValue(new Error('The file is malformed.'))
+    renderPage(storage, undefined, undefined, { readImport })
+
+    await screen.findByRole('heading', { name: 'Arannis' })
+    await user.upload(
+      screen.getByLabelText('Import JSON'),
+      new File(['{'], 'broken.json', { type: 'application/json' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('The file is malformed')
+    expect(storage.save).not.toHaveBeenCalled()
     expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1)
   })
 
