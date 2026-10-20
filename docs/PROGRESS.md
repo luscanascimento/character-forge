@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 7 — Feats & Equipment: in progress.**
+**Phase 9 — Polish: in progress.**
 
-Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, selection, calculations, class-specific policy, spellbook ownership, and replacement transitions without pulling equipment or character-sheet scope forward.
+Phases 0–8 are implemented. Phase 8 closed with validated JSON portability and a canonical, responsive, A4-ready character sheet that remains legible without printed backgrounds.
 
 ## Last completed work
 
@@ -176,14 +176,23 @@ Phases 0–6 are implemented. Phase 6 closed with canonical spell progression, s
 - Recorded the narrow effect boundary in ADR-025 and covered activation, duplication, ranged/melee attack, armored/unarmored AC, and unrelated-branch paths.
 - Added a complete 48-name 2024 Player's Handbook subclass directory to the Class step while keeping the 36 non-SRD entries visibly unavailable.
 - Kept subclass persistence and canonical feature progression restricted to the 12 provider-backed SRD 5.2.1 entries and recorded the discovery/rules boundary in ADR-026.
+- Audited the remaining feat and Fighting Style effects and confirmed that each depends on character or event state not yet represented explicitly.
+- Closed Phase 7 at the typed, source-backed boundary in ADR-027; prerequisite eligibility remains distinct from effect support and narrative descriptions never change canonical state.
+- Added a strict version-1 portable character envelope with fixed format/rules identity, readable JSON output, safe filenames, and a 1 MB import ceiling.
+- Routed imports through the existing stored-character migration boundary and assigned fresh local identity/timestamps so imported files can never silently replace a roster entry.
+- Added roster export/import actions with explicit success, malformed-file, oversize-file, storage-failure, and non-destructive behavior.
+- Added a dedicated character-sheet route that loads the local draft, requests canonical evaluation, blocks invalid sheets with actionable rule feedback, and covers honest loading, missing, malformed, and provider-error states.
+- Built an original responsive sheet for identity, abilities, derived statistics, proficiencies, spellcasting, attacks, equipment, masteries, and active rules, with direct edit/export/print actions.
+- Added A4 print styles with predictable section breaks and a monochrome-safe presentation that does not depend on background printing; documented portability identity and collision policy in ADR-028.
+- Closed Phase 8 after the complete frontend/backend test, lint, build, formatting, and dependency-audit gate passed.
 
 ## Work in progress
 
-Phase 7 now has its source-backed boundary, normalized equipment catalog foundation, canonical feat-prerequisite evaluation, stored Ability Score Improvement choices with effective abilities, typed Archery/Defense Fighting Style effects, server-owned inventory/armor evaluation including Strength-minimum walking speed and Stealth disadvantage, canonical Weapon Mastery selection and Long Rest replacement transitions, and canonical weapon attacks. Remaining feat effects stay locked until their required state is modeled.
+Phase 9 has started with the sheet's responsive and print foundations in place. The remaining work is a deliberate accessibility, performance, motion, and multi-viewport visual audit.
 
 ## Next step
 
-Continue typed feat effects only where the required character state can be represented explicitly; otherwise begin the Phase 7 completion audit at the supported boundary.
+Audit accessibility across the primary builder, roster, compendium, and sheet journeys, then address measured issues before broader visual/performance refinement.
 
 ## Pending decisions
 
@@ -192,7 +201,7 @@ Continue typed feat effects only where the required character state can be repre
 
 ## Known issues and limitations
 
-- Feat effects beyond Ability Score Improvement, Archery, and Defense; rolled/manual HP; narrative-only class feature choices; import/export; and print functionality are not implemented yet.
+- Feat effects beyond Ability Score Improvement, Archery, and Defense; rolled/manual HP; and narrative-only class feature choices are not implemented yet.
 - Ritual and concentration are shown on spell detail but are not list filters because the upstream list response omits those fields.
 - Some categories do not include narrative descriptions in the upstream 2024 detail response; the UI states that honestly instead of inventing or copying content.
 - Cache is process-local and has no stale-on-error persistence after an API restart.
@@ -203,7 +212,7 @@ Continue typed feat effects only where the required character state can be repre
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 102 passing across 14 files (`vitest run`)
+- Frontend unit tests: 116 passing across 16 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
@@ -214,4 +223,4 @@ Continue typed feat effects only where the required character state can be repre
 
 ## Last checkpoint
 
-2026-10-18 (America/Sao_Paulo)
+2026-10-19 (America/Sao_Paulo)

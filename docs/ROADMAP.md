@@ -54,7 +54,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** Phases 3–4.
 
-## Phase 6 — Spellcasting
+## Phase 6 — Spellcasting (complete)
 
 **Objectives:** spell progression, cantrips, known/prepared distinctions, slots, class lists, prerequisites, save DC, and attack modifier.
 
@@ -62,7 +62,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** Phase 5 plus spell data from Phase 2.
 
-## Phase 7 — Feats & Equipment
+## Phase 7 — Feats & Equipment (complete)
 
 **Objectives:** feat prerequisites, armor, weapons, equipment choices, AC, attacks, and related modifiers.
 
@@ -70,7 +70,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** Phases 3, 5, and normalized catalog data.
 
-## Phase 8 — Character Sheet
+## Phase 8 — Character Sheet (complete)
 
 **Objectives:** review, original sheet layout, A4 print CSS, validated JSON export/import.
 
@@ -78,7 +78,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** Phases 4–7.
 
-## Phase 9 — Polish
+## Phase 9 — Polish (in progress)
 
 **Objectives:** deliberate motion, original/licensed fantasy artwork, accessibility audit, performance audit, responsive refinements, and complete error/empty states.
 

@@ -188,11 +188,13 @@ Phase 4 stores character drafts in IndexedDB through a small native persistence 
 
 All reads pass through Zod and an explicit `migrateStoredCharacter` seam before application code receives them. Unknown versions and malformed records fail with typed errors instead of being guessed or silently rewritten. The module exposes only list/get/save/delete operations, sorts lists by update time, and reports unavailable or blocked IndexedDB predictably. Updates compare the caller's expected timestamp in the same read-write transaction and reject stale-tab conflicts rather than silently overwriting a newer revision. Production uses the browser API directly; tests inject an in-memory standards-compatible `IDBFactory`.
 
+Portable files use a separate versioned transfer envelope around the complete stored document. Import is capped at 1 MB, validates the format, rules identity, and stored schema, then assigns a new local UUID and timestamps before the only storage write. This makes every import additive and prevents a file from silently overwriting an existing local character. See ADR-028.
+
 No character data is stored on the server in the initial product. No account or token infrastructure will be created.
 
 ## Printing
 
-Phase 8 will create an original semantic HTML sheet and dedicated `@media print` styles. Browser printing is the initial PDF path. The sheet targets A4, predictable breaks, monochrome legibility, and color enhancement without depending on background printing. Server-side PDF generation remains out of scope until browser printing demonstrably fails requirements.
+Phase 8 provides an original semantic HTML sheet backed by canonical server evaluation and dedicated `@media print` styles. Browser printing is the PDF path. The sheet targets A4, keeps rule sections together where possible, remains legible in monochrome without printed backgrounds, and uses color as progressive enhancement. Invalid drafts retain their rule feedback and cannot present or print a canonical sheet. Server-side PDF generation remains out of scope until browser printing demonstrably fails requirements.
 
 ## Testing strategy
 
