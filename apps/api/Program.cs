@@ -88,7 +88,10 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseHsts();
-    app.UseHttpsRedirection();
+    if (builder.Configuration.GetValue("HttpsRedirection:Enabled", true))
+    {
+        app.UseHttpsRedirection();
+    }
 }
 
 app.UseCors();

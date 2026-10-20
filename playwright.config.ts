@@ -7,6 +7,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [['list'], ['html', { open: 'never' }]],
+  snapshotPathTemplate: '{testDir}/../docs/screenshots/{arg}{ext}',
   use: {
     baseURL: 'http://127.0.0.1:5173',
     reducedMotion: 'reduce',

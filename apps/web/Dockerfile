@@ -6,6 +6,8 @@ COPY apps/web/package.json apps/web/package.json
 RUN npm ci
 
 COPY apps/web/ apps/web/
+ARG VITE_API_URL=""
+ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build:web
 
 FROM nginxinc/nginx-unprivileged:1.29-alpine3.23 AS runtime

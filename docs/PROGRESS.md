@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 10 — Portfolio Quality: in progress.**
+**Phase 10 — Portfolio Quality: complete.**
 
-Phases 0–9 are implemented. Phase 9 closed with accessible route navigation, a global reduced-motion policy, measured bundle budgets, mobile navigation/layout refinements, and complete expected/unexpected failure recovery.
+Phases 0–10 are implemented. The initial roadmap is complete with reproducible CI, browser journeys and screenshots, production container artifacts, dependency/security review, architecture, and deployment guidance.
 
 ## Last completed work
 
@@ -191,14 +191,20 @@ Phases 0–9 are implemented. Phase 9 closed with accessible route navigation, a
 - Kept every primary journey reachable on mobile with a safe-area bottom navigation, compacted the builder stepper, and refined narrow sheet actions/header layout.
 - Added an unexpected-route recovery boundary and replaced the obsolete `/forge` coming-soon page with the working roster entrypoint.
 - Recorded the accessibility, motion, performance, responsive, and state audit in `PHASE-9-AUDIT.md` and closed Phase 9 after the complete quality gate passed.
+- Added parallel GitHub Actions gates for frontend, backend, Playwright journeys, vulnerability audits, bundle budgets, formatting, and production container builds with third-party actions pinned by commit SHA.
+- Added deterministic Playwright coverage for IndexedDB creation/autosave/reopen, canonical character-sheet rendering, and a 375×812 mobile visual baseline without depending on the live SRD provider.
+- Added unprivileged multi-stage API/web images, healthchecks, a same-origin Nginx proxy, SPA fallback, security headers, and a production-like Compose topology.
+- Updated Vite to its patched release, configured weekly Dependabot review across npm, NuGet, Actions, and Docker, and documented the security boundary, reporting path, controls, and residual risks.
+- Added checked-in mobile landing and desktop sheet screenshots; the review caught and fixed a lazy-CSS screen-reader utility leak before regenerating both baselines.
+- Documented container and split deployments, configuration, health/release verification, and the deployable architecture; closed Phase 10 after the complete roadmap criteria were met.
 
 ## Work in progress
 
-Phase 10 has started with production bundle budgets and route-level code splitting already in place. CI, Playwright journey/visual coverage, deployment artifacts, security documentation, diagrams, and portfolio screenshots remain.
+No roadmap phase is active. Future product expansion remains deliberately out of scope until it receives a new decision and roadmap entry.
 
 ## Next step
 
-Add CI for the complete quality gate, then introduce the smallest Playwright suite that covers creation, persistence/reopen, sheet rendering, and representative responsive screenshots.
+Select a source-code license and deployment target when the project owner is ready to publish; neither decision is safe to infer automatically.
 
 ## Pending decisions
 
@@ -221,11 +227,13 @@ Add CI for the complete quality gate, then introduce the smallest Playwright sui
 - Frontend unit tests: 119 passing across 18 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
 - Frontend bundle audit: passing (109 KiB initial JavaScript gzip, 4 KiB initial CSS gzip, 140 KiB hero artwork)
+- Browser E2E: 3 passing Playwright journeys across desktop and mobile Chromium
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
 - Backend unit/integration tests: 212 passing
 - Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, all five Weapon Mastery progressions/capacities, species/trait choices, backgrounds, feats including the Ability Score Improvement manifest facts, filtered spells, equipment list/detail, complete character validation including equipped Chain Mail AC, and a valid Bard level-gain spell replacement with Expertise
 - Dependency audit: npm and NuGet report no known vulnerabilities
+- Production artifacts: web/API publish outputs pass locally; Docker Compose image builds are enforced in CI
 - Responsive layout audit: primary flows reviewed at 320, 640–672, 768, 1024, and 1120+ px; screenshot regression remains assigned to the Phase 10 Playwright toolchain
 
 ## Last checkpoint

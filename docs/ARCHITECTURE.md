@@ -24,8 +24,7 @@ There is no authentication, server database, message broker, microservice bounda
 
 - React Router owns navigation and lazy route boundaries.
 - TanStack Query owns server state, including loading and unavailable-API states.
-- Zod validates data crossing untrusted boundaries. It validates `/api/meta`, catalog responses, and local character migrations; import validation arrives with Phase 8.
-- React Hook Form will be introduced only when builder forms justify it.
+- Zod validates data crossing untrusted boundaries, including API responses, local character migrations, and imported character files.
 - Motion provides a small number of meaningful transitions and respects `prefers-reduced-motion`.
 - CSS design tokens establish the charcoal, parchment, bronze, ember, typography, spacing, radius, and duration vocabulary. Components use semantic classes rather than utility walls.
 - Components display rule results; they must not independently determine rule legality.
@@ -201,8 +200,10 @@ Phase 8 provides an original semantic HTML sheet backed by canonical server eval
 - Backend unit tests concentrate on domain rules as they arrive.
 - Backend integration tests cover public endpoints and external-adapter behavior with controlled HTTP handlers, including provider shape differences and predictable failures.
 - Frontend tests cover high-value behavior: navigation, explanations, persistence, import/export, and failures.
-- A small Playwright suite arrives after the primary builder journey exists.
+- A small Playwright suite covers local creation/autosave/reopen, canonical sheet rendering, and a mobile visual baseline without depending on the live SRD provider.
 - Large snapshots and tests of implementation details are avoided.
+
+CI runs the frontend, backend, browser, dependency-audit, bundle-budget, formatting, and container-build gates independently. See the [deployment guide](DEPLOYMENT.md) for the production topology and configuration boundary.
 
 ## Security and privacy
 

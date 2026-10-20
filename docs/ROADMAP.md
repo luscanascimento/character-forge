@@ -86,7 +86,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** all product phases.
 
-## Phase 10 — Portfolio Quality (in progress)
+## Phase 10 — Portfolio Quality (complete)
 
 **Objectives:** high-value unit/integration/E2E coverage, CI, clean Dockerfiles where useful, security/dependency review, diagrams, screenshots, and deployment documentation.
 

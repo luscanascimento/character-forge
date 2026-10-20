@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- Microsoft.TestPlatform 18.10 ships valid satellite folders that SDK 10.0.401 misreports. -->
+    <NoWarn>$(NoWarn);NETSDK1188</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

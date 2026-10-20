@@ -2,7 +2,11 @@
 
 Character Forge is a mobile-first, rule-aware character builder for the modern fifth-edition rules available in **SRD 5.2.1**. It aims to feel like an adventurer's workshop rather than a themed business form, while keeping the codebase straightforward and production-minded.
 
-The project currently contains the completed discovery, foundation, SRD catalog, character-domain, Character Builder MVP, class-progression, spellcasting, feats/equipment, character-sheet, and polish phases. It includes a responsive dark-fantasy landing experience, a searchable compendium, local IndexedDB character management, a versioned JSON backup format, an eight-step auto-saving builder with equipment management, canonical validation/calculation, trusted class progression through level 20, a complete 2024 subclass-name directory with honest SRD availability, Wizard spellbook ownership, spell-granting Fighting Styles, event-aware replacement validation, an original A4-ready character sheet, accessible SPA navigation, reduced-motion support, and measured bundle budgets.
+The roadmap phases are complete. Character Forge includes a responsive dark-fantasy landing experience, a searchable compendium, local IndexedDB character management, a versioned JSON backup format, an eight-step auto-saving builder with equipment management, canonical validation/calculation, trusted class progression through level 20, a complete 2024 subclass-name directory with honest SRD availability, Wizard spellbook ownership, spell-granting Fighting Styles, event-aware replacement validation, an original A4-ready character sheet, accessible SPA navigation, reduced-motion support, measured bundle budgets, CI, Playwright journeys, and production containers.
+
+![Character Forge mobile landing page](docs/screenshots/home-mobile.png)
+
+![Character Forge desktop character sheet](docs/screenshots/character-sheet-desktop.png)
 
 ## Stack
 
@@ -10,7 +14,7 @@ The project currently contains the completed discovery, foundation, SRD catalog,
 - TanStack Query, Zod, Motion, Lucide
 - ASP.NET Core on .NET 10, typed `HttpClient`, memory cache, minimal REST endpoints, OpenAPI, Problem Details
 - xUnit and ASP.NET Core integration testing
-- Vitest and Testing Library
+- Vitest, Testing Library, and Playwright
 - IndexedDB stores versioned character drafts locally; there is no server database or authentication
 
 ## Repository layout
@@ -32,6 +36,7 @@ The backend uses feature folders and a small `Infrastructure` area. More project
 - Node.js 24 (see `.nvmrc`; Vite also supports its documented compatible Node versions)
 - npm 12+
 - .NET SDK 10.0.401 or a compatible newer feature band
+- Chromium installed through Playwright for browser tests; Docker is optional
 
 ## Run locally
 
@@ -59,6 +64,7 @@ The SRD provider is configured through `SrdApi__BaseUrl`, `SrdApi__TimeoutSecond
 ```bash
 npm run lint:web
 npm run test:web
+npm run test:e2e
 npm run build:web
 npm run audit:bundle:web
 dotnet build CharacterForge.slnx --configuration Release
@@ -80,6 +86,8 @@ Draft characters can be submitted to `POST /api/characters/validate` for canonic
 - [Architecture](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Current progress](docs/PROGRESS.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [Security review](docs/SECURITY-REVIEW.md)
 - [Architecture decisions](docs/DECISIONS)
 
 ## Current limitations
