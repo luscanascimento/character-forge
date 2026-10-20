@@ -1,6 +1,6 @@
 # Phase 7 feat and equipment rule inventory
 
-**Reviewed:** 2026-10-09  
+**Reviewed:** 2026-10-19
 **Rules identity:** `2024` / `SRD-5.2.1`
 
 ## Sources and purpose
@@ -57,6 +57,8 @@ The follow-up `SRD-5.2.1-FS-1` slice applies Archery to normalized ranged-weapon
 Step 5 is implemented through `SRD-5.2.1-WM-1`: provider capacities for Barbarian and Fighter must agree exactly, missing Paladin/Ranger/Rogue capacities are manifest-owned, and selections require distinct owned weapons covered by canonical weapon proficiency ids or normalized equipment categories. Long Rest replacement transitions remain deferred.
 
 Step 6 is implemented with explicit persisted attack configurations. Every attack requires a positively owned, equipped canonical weapon; melee/ranged identity and Finesse govern the allowed Strength/Dexterity choice; proficiency contributes only when resolved stable ids cover the weapon; Versatile damage, range, damage type, and an active mastery are returned from trusted catalog and character state rather than browser calculations.
+
+The completion audit closes Phase 7 at this boundary. Ability Score Improvement, Archery, and Defense are the only feat effects whose complete required state is represented today. Other feat and Fighting Style descriptions remain catalog-only until hands, action/resource use, targets, or roll execution are modeled explicitly; eligibility alone never authorizes persistence or effects. See ADR-027.
 
 The armor effect follow-up now derives walking speed from the selected species and applies the canonical 10-foot penalty when effective Strength is below the single equipped body armor's minimum. This remains independent from Armor Class and training validation.
 
