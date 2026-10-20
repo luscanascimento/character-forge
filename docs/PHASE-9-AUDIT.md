@@ -40,7 +40,7 @@ The layout rules were audited at the roadmap targets: 320 px mobile, 640–672 p
 - Compendium controls, roster cards, builder fields, and sheet columns continue to use bounded or `minmax(0, 1fr)` layouts at their existing breakpoints.
 - Print remains isolated from screen navigation and preserves the Phase 8 A4 layout.
 
-Screenshot regression coverage across these widths is deliberately assigned to Phase 10 alongside Playwright, so one browser toolchain owns both journey and visual checks.
+Phase 10 adds Playwright journey coverage and responsive screenshot artifacts. Pixel-by-pixel regression remains inappropriate until the fallback system fonts are replaced by versioned web fonts that render consistently across runner operating systems.
 
 ## Error and empty states
 

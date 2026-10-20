@@ -200,7 +200,7 @@ Phase 8 provides an original semantic HTML sheet backed by canonical server eval
 - Backend unit tests concentrate on domain rules as they arrive.
 - Backend integration tests cover public endpoints and external-adapter behavior with controlled HTTP handlers, including provider shape differences and predictable failures.
 - Frontend tests cover high-value behavior: navigation, explanations, persistence, import/export, and failures.
-- A small Playwright suite covers local creation/autosave/reopen, canonical sheet rendering, and a mobile visual baseline without depending on the live SRD provider.
+- A small Playwright suite covers local creation/autosave/reopen, canonical sheet rendering, and responsive screenshots without depending on the live SRD provider.
 - Large snapshots and tests of implementation details are avoided.
 
 CI runs the frontend, backend, browser, dependency-audit, bundle-budget, formatting, and container-build gates independently. See the [deployment guide](DEPLOYMENT.md) for the production topology and configuration boundary.

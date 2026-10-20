@@ -192,7 +192,7 @@ Phases 0–10 are implemented. The initial roadmap is complete with reproducible
 - Added an unexpected-route recovery boundary and replaced the obsolete `/forge` coming-soon page with the working roster entrypoint.
 - Recorded the accessibility, motion, performance, responsive, and state audit in `PHASE-9-AUDIT.md` and closed Phase 9 after the complete quality gate passed.
 - Added parallel GitHub Actions gates for frontend, backend, Playwright journeys, vulnerability audits, bundle budgets, formatting, and production container builds with third-party actions pinned by commit SHA.
-- Added deterministic Playwright coverage for IndexedDB creation/autosave/reopen, canonical character-sheet rendering, and a 375×812 mobile visual baseline without depending on the live SRD provider.
+- Added deterministic Playwright coverage for IndexedDB creation/autosave/reopen, canonical character-sheet rendering, and responsive screenshot artifacts without depending on the live SRD provider.
 - Added unprivileged multi-stage API/web images, healthchecks, a same-origin Nginx proxy, SPA fallback, security headers, and a production-like Compose topology.
 - Updated Vite to its patched release, configured weekly Dependabot review across npm, NuGet, Actions, and Docker, and documented the security boundary, reporting path, controls, and residual risks.
 - Added checked-in mobile landing and desktop sheet screenshots; the review caught and fixed a lazy-CSS screen-reader utility leak before regenerating both baselines.

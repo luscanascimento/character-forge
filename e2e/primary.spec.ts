@@ -20,7 +20,7 @@ test('creates, persists, and reopens a local character draft', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'E2E Hero' })).toBeVisible()
 })
 
-test('renders a canonically evaluated character sheet', async ({ page }) => {
+test('renders a canonically evaluated character sheet', async ({ page }, testInfo) => {
   const document = createStoredCharacter()
   await page.route('**/api/characters/validate', async (route) => {
     await route.fulfill({
@@ -38,7 +38,10 @@ test('renders a canonically evaluated character sheet', async ({ page }) => {
   await expect(sheet).toBeVisible()
   await expect(sheet.getByText('Armor class').locator('..').getByText('12')).toBeVisible()
   await expect(sheet.getByText(/canonically validated against SRD-5.2.1/i)).toBeVisible()
-  await expect(page).toHaveScreenshot('character-sheet-desktop.png', { fullPage: true })
+  await testInfo.attach('character-sheet-desktop', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  })
 })
 
 async function seedCharacter(page: Page, document: ReturnType<typeof createStoredCharacter>) {
