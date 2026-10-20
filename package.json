@@ -9,11 +9,14 @@
     "build:web": "npm run build --workspace @character-forge/web",
     "lint:web": "npm run lint --workspace @character-forge/web",
     "test:web": "npm run test --workspace @character-forge/web",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
     "audit:bundle:web": "npm run build:web && node scripts/check-web-bundle.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "prettier": "^3.6.2"
   }
 }
