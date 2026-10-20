@@ -383,6 +383,35 @@
   margin: 9mm;
 }
 
+@media (max-width: 30rem) {
+  .sheet-toolbar,
+  .sheet-toolbar > div {
+    width: 100%;
+  }
+
+  .sheet-toolbar > a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sheet-toolbar > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sheet-toolbar > div > * {
+    justify-content: center;
+  }
+
+  .sheet-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .sheet-header__mark {
+    display: none;
+  }
+}
+
 @media print {
   :root {
     color-scheme: light;

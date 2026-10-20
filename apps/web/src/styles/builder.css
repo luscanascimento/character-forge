@@ -1896,6 +1896,25 @@
   }
 }
 
+@media (max-width: 47.999rem) {
+  .builder-progress nav {
+    margin-inline: -1.25rem;
+    padding-inline: 1.25rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-color: var(--color-border-bright) transparent;
+  }
+
+  .builder-progress ol {
+    grid-auto-columns: minmax(9.5rem, 11rem);
+    grid-auto-flow: column;
+  }
+
+  .builder-step {
+    height: 100%;
+  }
+}
+
 @media (max-width: 26rem) {
   .builder-header > div span {
     display: none;
