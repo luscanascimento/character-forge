@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Phase 9 — Polish: in progress.**
+**Phase 10 — Portfolio Quality: in progress.**
 
-Phases 0–8 are implemented. Phase 8 closed with validated JSON portability and a canonical, responsive, A4-ready character sheet that remains legible without printed backgrounds.
+Phases 0–9 are implemented. Phase 9 closed with accessible route navigation, a global reduced-motion policy, measured bundle budgets, mobile navigation/layout refinements, and complete expected/unexpected failure recovery.
 
 ## Last completed work
 
@@ -185,14 +185,20 @@ Phases 0–8 are implemented. Phase 8 closed with validated JSON portability and
 - Built an original responsive sheet for identity, abilities, derived statistics, proficiencies, spellcasting, attacks, equipment, masteries, and active rules, with direct edit/export/print actions.
 - Added A4 print styles with predictable section breaks and a monochrome-safe presentation that does not depend on background printing; documented portability identity and collision policy in ADR-028.
 - Closed Phase 8 after the complete frontend/backend test, lint, build, formatting, and dependency-audit gate passed.
+- Added accessible SPA navigation with destination-aware document titles, polite announcements, and main-landmark focus after route changes.
+- Centralized reduced-motion behavior across Motion and CSS so animation, smooth scrolling, transitions, and hover displacement stop when requested.
+- Added enforceable production bundle budgets and improved hero discovery/rendering plus below-fold rendering cost.
+- Kept every primary journey reachable on mobile with a safe-area bottom navigation, compacted the builder stepper, and refined narrow sheet actions/header layout.
+- Added an unexpected-route recovery boundary and replaced the obsolete `/forge` coming-soon page with the working roster entrypoint.
+- Recorded the accessibility, motion, performance, responsive, and state audit in `PHASE-9-AUDIT.md` and closed Phase 9 after the complete quality gate passed.
 
 ## Work in progress
 
-Phase 9 has started with the sheet's responsive and print foundations in place. The remaining work is a deliberate accessibility, performance, motion, and multi-viewport visual audit.
+Phase 10 has started with production bundle budgets and route-level code splitting already in place. CI, Playwright journey/visual coverage, deployment artifacts, security documentation, diagrams, and portfolio screenshots remain.
 
 ## Next step
 
-Audit accessibility across the primary builder, roster, compendium, and sheet journeys, then address measured issues before broader visual/performance refinement.
+Add CI for the complete quality gate, then introduce the smallest Playwright suite that covers creation, persistence/reopen, sheet rendering, and representative responsive screenshots.
 
 ## Pending decisions
 
@@ -212,15 +218,16 @@ Audit accessibility across the primary builder, roster, compendium, and sheet jo
 ## Test status
 
 - Frontend lint: passing (`oxlint`, no warnings)
-- Frontend unit tests: 116 passing across 16 files (`vitest run`)
+- Frontend unit tests: 119 passing across 18 files (`vitest run`)
 - Frontend production build/typecheck: passing (`tsc -b && vite build`)
+- Frontend bundle audit: passing (109 KiB initial JavaScript gzip, 4 KiB initial CSS gzip, 140 KiB hero artwork)
 - Formatting: passing (`prettier --check` and `dotnet format --verify-no-changes`)
 - Backend build: passing with 0 warnings and 0 errors
 - Backend unit/integration tests: 212 passing
 - Live provider smoke checks: classes, class/subclass/spellcasting progression, feature-choice manifests including Blessed Warrior/Druidic Warrior class-cantrip lists, all five Weapon Mastery progressions/capacities, species/trait choices, backgrounds, feats including the Ability Score Improvement manifest facts, filtered spells, equipment list/detail, complete character validation including equipped Chain Mail AC, and a valid Bard level-gain spell replacement with Expertise
 - Dependency audit: npm and NuGet report no known vulnerabilities
-- Existing Phase 1 visual smoke checks: desktop 1440×1000 and mobile 375×812 passed; Phase 2 has responsive CSS and behavior coverage but awaits screenshot-based visual regression tooling in Phase 10
+- Responsive layout audit: primary flows reviewed at 320, 640–672, 768, 1024, and 1120+ px; screenshot regression remains assigned to the Phase 10 Playwright toolchain
 
 ## Last checkpoint
 
-2026-10-19 (America/Sao_Paulo)
+2026-10-20 (America/Sao_Paulo)

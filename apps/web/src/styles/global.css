@@ -634,6 +634,18 @@ a {
   margin-top: 2rem;
 }
 
+.route-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.route-error-actions .button {
+  margin-top: 0;
+}
+
 .legal-page {
   width: min(100% - 2rem, 48rem);
   min-height: 100svh;

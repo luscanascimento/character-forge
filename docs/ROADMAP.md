@@ -78,7 +78,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** Phases 4–7.
 
-## Phase 9 — Polish (in progress)
+## Phase 9 — Polish (complete)
 
 **Objectives:** deliberate motion, original/licensed fantasy artwork, accessibility audit, performance audit, responsive refinements, and complete error/empty states.
 
@@ -86,7 +86,7 @@ Each phase depends on the completed phases before it unless stated otherwise. A 
 
 **Dependencies:** all product phases.
 
-## Phase 10 — Portfolio Quality
+## Phase 10 — Portfolio Quality (in progress)
 
 **Objectives:** high-value unit/integration/E2E coverage, CI, clean Dockerfiles where useful, security/dependency review, diagrams, screenshots, and deployment documentation.
 

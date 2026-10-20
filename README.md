@@ -2,7 +2,7 @@
 
 Character Forge is a mobile-first, rule-aware character builder for the modern fifth-edition rules available in **SRD 5.2.1**. It aims to feel like an adventurer's workshop rather than a themed business form, while keeping the codebase straightforward and production-minded.
 
-The project currently contains the completed discovery, foundation, SRD catalog, character-domain, Character Builder MVP, class-progression, spellcasting, feats/equipment, and character-sheet phases. It includes a responsive dark-fantasy landing experience, a searchable compendium, local IndexedDB character management, a versioned JSON backup format, an eight-step auto-saving builder with equipment management, canonical validation/calculation, trusted class progression through level 20, a complete 2024 subclass-name directory with honest SRD availability, Wizard spellbook ownership, spell-granting Fighting Styles, event-aware replacement validation, and an original A4-ready character sheet.
+The project currently contains the completed discovery, foundation, SRD catalog, character-domain, Character Builder MVP, class-progression, spellcasting, feats/equipment, character-sheet, and polish phases. It includes a responsive dark-fantasy landing experience, a searchable compendium, local IndexedDB character management, a versioned JSON backup format, an eight-step auto-saving builder with equipment management, canonical validation/calculation, trusted class progression through level 20, a complete 2024 subclass-name directory with honest SRD availability, Wizard spellbook ownership, spell-granting Fighting Styles, event-aware replacement validation, an original A4-ready character sheet, accessible SPA navigation, reduced-motion support, and measured bundle budgets.
 
 ## Stack
 
@@ -60,6 +60,7 @@ The SRD provider is configured through `SrdApi__BaseUrl`, `SrdApi__TimeoutSecond
 npm run lint:web
 npm run test:web
 npm run build:web
+npm run audit:bundle:web
 dotnet build CharacterForge.slnx --configuration Release
 dotnet test CharacterForge.slnx --configuration Release
 ```

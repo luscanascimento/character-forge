@@ -1,13 +1,13 @@
 /* oxlint-disable react/only-export-components -- This module intentionally exports the route tree. */
 import { lazy, Suspense, type ReactNode } from 'react'
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { RouteFallback } from '../components/RouteFallback'
+import RouteErrorPage from '../pages/RouteErrorPage'
 
 const HomePage = lazy(() => import('../pages/HomePage'))
 const CompendiumPage = lazy(() => import('../pages/CompendiumPage'))
 const CatalogDetailPage = lazy(() => import('../pages/CatalogDetailPage'))
-const ComingSoonPage = lazy(() => import('../pages/ComingSoonPage'))
 const CharacterBuilderPage = lazy(() => import('../pages/CharacterBuilderPage'))
 const MyCharactersPage = lazy(() => import('../pages/MyCharactersPage'))
 const CharacterSheetPage = lazy(() => import('../pages/CharacterSheetPage'))
@@ -21,6 +21,7 @@ const withSuspense = (element: ReactNode) => (
 export const router = createBrowserRouter([
   {
     element: <AppShell />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         path: '/',
@@ -28,13 +29,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/forge',
-        element: withSuspense(
-          <ComingSoonPage
-            eyebrow="The anvil awaits"
-            title="Character builder"
-            description="The guided, rule-aware forging journey begins in Phase 4. The foundation is ready for it."
-          />,
-        ),
+        element: <Navigate to="/characters" replace />,
       },
       {
         path: '/forge/:characterId',
