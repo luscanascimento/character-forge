@@ -10,6 +10,7 @@ const CatalogDetailPage = lazy(() => import('../pages/CatalogDetailPage'))
 const ComingSoonPage = lazy(() => import('../pages/ComingSoonPage'))
 const CharacterBuilderPage = lazy(() => import('../pages/CharacterBuilderPage'))
 const MyCharactersPage = lazy(() => import('../pages/MyCharactersPage'))
+const CharacterSheetPage = lazy(() => import('../pages/CharacterSheetPage'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'))
 const AttributionsPage = lazy(() => import('../pages/AttributionsPage'))
 
@@ -54,6 +55,10 @@ export const router = createBrowserRouter([
       {
         path: '/characters',
         element: withSuspense(<MyCharactersPage />),
+      },
+      {
+        path: '/characters/:characterId/sheet',
+        element: withSuspense(<CharacterSheetPage />),
       },
       {
         path: '/attributions',
