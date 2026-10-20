@@ -1,0 +1,43 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      javascript:
+        patterns: ['*']
+
+  - package-ecosystem: nuget
+    directory: /apps/api
+    schedule:
+      interval: weekly
+    groups:
+      api-packages:
+        patterns: ['*']
+
+  - package-ecosystem: nuget
+    directory: /tests/CharacterForge.Api.Tests
+    schedule:
+      interval: weekly
+    groups:
+      test-packages:
+        patterns: ['*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directory: /apps/api
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /apps/web
+    schedule:
+      interval: weekly

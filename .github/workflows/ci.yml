@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Check formatting
         run: npm run format:check
 
@@ -57,6 +60,9 @@ jobs:
 
       - name: Restore dependencies
         run: dotnet restore CharacterForge.slnx
+
+      - name: Audit dependencies
+        run: dotnet list CharacterForge.slnx package --vulnerable --include-transitive
 
       - name: Check formatting
         run: dotnet format CharacterForge.slnx --verify-no-changes --no-restore
