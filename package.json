@@ -9,6 +9,7 @@
     "build:web": "npm run build --workspace @character-forge/web",
     "lint:web": "npm run lint --workspace @character-forge/web",
     "test:web": "npm run test --workspace @character-forge/web",
+    "audit:bundle:web": "npm run build:web && node scripts/check-web-bundle.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

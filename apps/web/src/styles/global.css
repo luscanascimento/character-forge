@@ -164,10 +164,15 @@ a {
 }
 
 .hero-art {
-  background-image: url('/assets/hero-forge.webp');
-  background-position: 66% center;
-  background-size: cover;
+  overflow: hidden;
   filter: saturate(0.82) contrast(1.06);
+}
+
+.hero-art > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 66% center;
 }
 
 .hero-art::after {
@@ -360,6 +365,8 @@ a {
   width: min(100% - 2rem, var(--content-width));
   margin-inline: auto;
   padding-block: var(--space-8);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 56rem;
 }
 
 .path-section::before {
@@ -796,8 +803,8 @@ a {
     line-height: 1.2;
   }
 
-  .hero-art {
-    background-position: 61% center;
+  .hero-art > img {
+    object-position: 61% center;
   }
 
   .hero-vignette {

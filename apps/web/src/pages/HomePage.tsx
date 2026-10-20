@@ -39,6 +39,14 @@ export default function HomePage() {
     <>
       <section className="hero-section" aria-labelledby="hero-title">
         <div className="hero-art" aria-hidden="true">
+          <img
+            src="/assets/hero-forge.webp"
+            alt=""
+            width="1672"
+            height="941"
+            fetchPriority="high"
+            decoding="async"
+          />
           <div className="hero-art__embers" />
         </div>
         <div className="hero-vignette" aria-hidden="true" />
