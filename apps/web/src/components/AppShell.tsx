@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { BrandMark } from './BrandMark'
+import { RouteAccessibility } from './RouteAccessibility'
 
 const navigation = [
   { to: '/forge', label: 'Forge' },
@@ -13,6 +14,7 @@ export function AppShell() {
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
+      <RouteAccessibility />
       <header className="site-header">
         <NavLink className="brand-link" to="/" aria-label="Character Forge home">
           <BrandMark />
@@ -26,7 +28,7 @@ export function AppShell() {
           ))}
         </nav>
       </header>
-      <main id="main-content">
+      <main id="main-content" tabIndex={-1}>
         <Outlet />
       </main>
     </div>
