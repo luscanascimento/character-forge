@@ -10,7 +10,7 @@ ARG VITE_API_URL=""
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build:web
 
-FROM nginxinc/nginx-unprivileged:1.29-alpine3.23 AS runtime
+FROM nginxinc/nginx-unprivileged:1.31-alpine3.23 AS runtime
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build --chown=nginx:nginx /source/apps/web/dist /usr/share/nginx/html
 
